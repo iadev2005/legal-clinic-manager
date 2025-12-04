@@ -1,25 +1,4 @@
 import Link from "next/link";
-import { prisma } from "@/lib/prisma";
-import {
-  asociarBeneficiarioACaso,
-  createBeneficiario,
-  createCaso,
-  createSolicitante,
-  deleteBeneficiario,
-  deleteCaso,
-  deleteSolicitante,
-} from "./actions";
-import {
-  EstatusCaso,
-  TipoBeneficiarioRel,
-  TipoSexo,
-  TipoTramite,
-} from "@prisma/client";
-
-const sexoOptions = Object.values(TipoSexo);
-const tramiteOptions = Object.values(TipoTramite);
-const estatusOptions = Object.values(EstatusCaso);
-const relacionOptions = Object.values(TipoBeneficiarioRel);
 
 export default async function Home() {
 
