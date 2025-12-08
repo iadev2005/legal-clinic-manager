@@ -27,7 +27,7 @@ export default function Sidebar() {
     const displayName = `${user.name} ${user.lastname} (${user.role})`;
 
     return (
-        <div className="self-stretch px-6 py-4 shadow-[2px_0px_37px_0px_rgba(0,0,0,0.25)] inline-flex flex-col justify-between items-center" style={{ background: "linear-gradient(131deg, #036 26.14%, #3E7DBB 239.06%)" }}>
+        <div className="self-stretch px-8 py-4 shadow-[2px_0px_37px_0px_rgba(0,0,0,0.25)] inline-flex flex-col justify-between items-center" style={{ background: "linear-gradient(131deg, #036 26.14%, #3E7DBB 239.06%)" }}>
             <div className="self-stretch inline-flex flex-col justify-start items-start gap-2">
                 {/* Logo */}
                 <div className="self-stretch pb-2 flex flex-col justify-start items-start gap-3">
@@ -52,12 +52,12 @@ export default function Sidebar() {
                 </div>
             </div>
             <div className="self-stretch inline-flex flex-col justify-center items-start gap-2">
-                <div className="pl-3 pr-10 py-2.5 rounded-2xl inline-flex justify-start items-center gap-3" style={{ background: "linear-gradient(99deg, #3E7DBB 0.65%, #73ACE6 117.83%)", }}>
+                <div className="pl-3 pr-15 py-2.5 rounded-2xl inline-flex justify-start items-center gap-3" style={{ background: "linear-gradient(99deg, #3E7DBB 0.65%, #73ACE6 117.83%)", }}>
                     <div className="p-2 bg-blue-300 rounded-xl flex justify-start items-center gap-2.5">
                         <span className="icon-[mdi--peace] text-4xl text-[#3E7DBB]"></span>
                     </div>
                     <div className="flex-1 inline-flex flex-col justify-start items-start">
-                        <h1 className="self-stretch justify-start text-sky-950 text-base font-semibold leading-tight">Contribuyendo al<br /> ODS 16:</h1>
+                        <h1 className="self-stretch justify-start text-sky-950 text-base font-semibold leading-tight">Contribuyendo al ODS 16:</h1>
                         <h1 className="self-stretch justify-start text-sky-950 text-xs font-semibold leading-tight">Paz, Justicia e Instituciones</h1>
                     </div>
                 </div>
