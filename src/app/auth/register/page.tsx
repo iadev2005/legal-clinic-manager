@@ -8,7 +8,10 @@ import { InputContainer } from "@/components/inputs/InputContainer";
 export default function Register() {
     const [selectedRole, setSelectedRole] = useState("Estudiante");
     const roles = ["Estudiante", "Profesor", "Coordinador"];
-    const [cedula, setCedula] = useState("");
+    const [cedulaPrefix, setCedulaPrefix] = useState("V");
+    const [isPrefixOpen, setIsPrefixOpen] = useState(false);
+    const prefixes = ["V", "E"];
+    const [cedulaNumber, setCedulaNumber] = useState("");
     const [nombres, setNombres] = useState("");
     const [apellidos, setApellidos] = useState("");
     const [correo, setCorreo] = useState("");
@@ -25,7 +28,7 @@ export default function Register() {
 
     useEffect(() => {
         setIsValid(
-            cedula.length === 13 &&
+            cedulaNumber.length >= 7 &&
             nombres.length >= 2 &&
             apellidos.length >= 2 &&
             correo.length >= 5 &&
@@ -36,7 +39,7 @@ export default function Register() {
             confirmPassword.length >= 8 &&
             password === confirmPassword
         );
-    }, [cedula, nombres, apellidos, correo, sexo, telefonoLocal, telefonoCelular, password, confirmPassword]);
+    }, [cedulaNumber, nombres, apellidos, correo, sexo, telefonoLocal, telefonoCelular, password, confirmPassword]);
 
     return (
         <div className="w-full h-screen relative overflow-hidden">
@@ -63,14 +66,39 @@ export default function Register() {
 
                     {/* Cedula del Estudiante */}
                     <LabeledInput label="Cedula de Identidad:" className="self-stretch">
-                        <InputContainer className="px-[2%] py-[0.5%]">
+                        <InputContainer className="px-[2%] py-[0.5%] flex items-center gap-2">
                             <span className="icon-[tabler--users] text-xl text-sky-950"></span>
+                            <div className="relative">
+                                <div
+                                    onClick={() => setIsPrefixOpen(!isPrefixOpen)}
+                                    className="flex items-center gap-1 cursor-pointer"
+                                >
+                                    <div className="text-sky-950 text-lg font-semibold">{cedulaPrefix}-</div>
+                                    <span className={`icon-[mingcute--down-fill] text-xl text-sky-950 transition-transform duration-300 ${isPrefixOpen ? "rotate-180" : ""}`}></span>
+                                </div>
+                                {isPrefixOpen && (
+                                    <div className="absolute top-full left-0 w-full mt-2 bg-neutral-50 rounded-xl outline outline-[3px] outline-sky-950 z-10 overflow-hidden shadow-lg min-w-[60px]">
+                                        {prefixes.map((p) => (
+                                            <div
+                                                key={p}
+                                                onClick={() => {
+                                                    setCedulaPrefix(p);
+                                                    setIsPrefixOpen(false);
+                                                }}
+                                                className="px-2 py-2 hover:bg-blue-100 cursor-pointer text-sky-950 text-lg font-semibold text-center"
+                                            >
+                                                {p}-
+                                            </div>
+                                        ))}
+                                    </div>
+                                )}
+                            </div>
                             <input
                                 type="text"
-                                placeholder="V-12.345.678"
+                                placeholder="12.345.678"
                                 className="w-full bg-transparent outline-none text-sky-950 text-lg font-semibold placeholder:text-sky-950/30"
-                                value={cedula}
-                                onChange={(e) => setCedula(e.target.value)}
+                                value={cedulaNumber}
+                                onChange={(e) => setCedulaNumber(e.target.value)}
                             />
                         </InputContainer>
                     </LabeledInput>

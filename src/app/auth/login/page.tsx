@@ -7,10 +7,13 @@ import { InputContainer } from "@/components/inputs/InputContainer";
 
 export default function Login() {
     const [showPassword, setShowPassword] = useState(false);
-    const [cedula, setCedula] = useState("");
+    const [cedulaPrefix, setCedulaPrefix] = useState("V");
+    const [isPrefixOpen, setIsPrefixOpen] = useState(false);
+    const prefixes = ["V", "E"];
+    const [cedulaNumber, setCedulaNumber] = useState("");
     const [password, setPassword] = useState("");
 
-    const isValid = cedula.trim() !== "" && password.trim() !== "";
+    const isValid = cedulaNumber.trim() !== "" && password.trim() !== "";
 
     return (
         <div className="w-full h-screen relative overflow-hidden">
@@ -21,14 +24,39 @@ export default function Login() {
                 <div className="self-stretch px-[3%] py-[2%] bg-neutral-50 rounded-[20px] shadow-[0px_5px_24.600000381469727px_0px_rgba(0,0,0,0.25)] flex flex-col justify-start items-center gap-5">
 
                     <LabeledInput label="Cedula de Identidad:" className="self-stretch">
-                        <InputContainer className="px-[0.8%] py-[0.3%]">
+                        <InputContainer className="px-[0.8%] py-[0.3%] flex items-center gap-2">
                             <span className="icon-[tabler--users] text-2xl text-sky-950"></span>
+                            <div className="relative">
+                                <div
+                                    onClick={() => setIsPrefixOpen(!isPrefixOpen)}
+                                    className="flex items-center gap-1 cursor-pointer"
+                                >
+                                    <div className="text-sky-950 text-xl font-semibold">{cedulaPrefix}-</div>
+                                    <span className={`icon-[mingcute--down-fill] text-xl text-sky-950 transition-transform duration-300 ${isPrefixOpen ? "rotate-180" : ""}`}></span>
+                                </div>
+                                {isPrefixOpen && (
+                                    <div className="absolute top-full left-0 w-full mt-2 bg-neutral-50 rounded-xl outline outline-[3px] outline-sky-950 z-10 overflow-hidden shadow-lg min-w-[60px]">
+                                        {prefixes.map((p) => (
+                                            <div
+                                                key={p}
+                                                onClick={() => {
+                                                    setCedulaPrefix(p);
+                                                    setIsPrefixOpen(false);
+                                                }}
+                                                className="px-2 py-2 hover:bg-blue-100 cursor-pointer text-sky-950 text-xl font-semibold text-center"
+                                            >
+                                                {p}-
+                                            </div>
+                                        ))}
+                                    </div>
+                                )}
+                            </div>
                             <input
                                 type="text"
-                                placeholder="V-12.345.678"
+                                placeholder="12.345.678"
                                 className="w-full bg-transparent outline-none text-sky-950 text-xl font-semibold placeholder:text-sky-950/30"
-                                value={cedula}
-                                onChange={(e) => setCedula(e.target.value)}
+                                value={cedulaNumber}
+                                onChange={(e) => setCedulaNumber(e.target.value)}
                             />
                         </InputContainer>
                     </LabeledInput>
