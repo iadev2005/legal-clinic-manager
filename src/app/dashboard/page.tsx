@@ -1,5 +1,5 @@
-import Sidebar from "@/components/Sidebar";
-import DashboardCard from "@/components/DashboardCard";
+import Sidebar from "@/components/layout/Sidebar";
+import DashboardCard from "@/components/ui/DashboardCard";
 
 export default function Dashboard() {
     const dashboardCards = [
