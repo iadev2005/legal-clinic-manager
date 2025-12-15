@@ -8,13 +8,13 @@ import {
     CardContent,
     CardHeader,
     CardTitle,
-} from "@/components/ui/card"
+} from "@/components/shadcn/card"
 import {
     ChartContainer,
     ChartTooltip,
     ChartTooltipContent,
     type ChartConfig,
-} from "@/components/ui/chart"
+} from "@/components/shadcn/chart"
 
 interface PieChartProps {
     data: any[]

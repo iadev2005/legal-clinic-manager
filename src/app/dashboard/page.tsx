@@ -1,7 +1,8 @@
 import Sidebar from "@/components/layout/Sidebar";
 import DashboardCard from "@/components/ui/DashboardCard";
+import TaskCard from "@/components/ui/task-card";
 import { PieChart } from "@/components/ui/pie-chart";
-import { type ChartConfig } from "@/components/ui/chart";
+import { type ChartConfig } from "@/components/shadcn/chart";
 import { CustomTable, type Column } from "@/components/ui/custom-table";
 
 export default function Dashboard() {
@@ -106,14 +107,34 @@ export default function Dashboard() {
         },
     ]
 
+    const pendingTasks = [
+        {
+            title: "Redactar Informe Preliminar",
+            caseNumber: "2024-051",
+            dueDate: new Date(new Date().setDate(new Date().getDate() + 1)), // Mañana -> Alta (<= 3 días)
+        },
+        {
+            title: "Entrevista con Solicitante",
+            caseNumber: "2024-049",
+            dueDate: new Date(new Date().setDate(new Date().getDate() + 5)), // 5 días -> Media (<= 7 días)
+        },
+        {
+            title: "Revisar Expediente en Tribunal",
+            caseNumber: "2024-052",
+            dueDate: new Date(new Date().setDate(new Date().getDate() + 20)), // 20 días -> Baja (> 7 días)
+        },
+    ];
+
     return (
         <div className="w-full h-screen min-h-screen bg-neutral-50 inline-flex justify-start items-center overflow-hidden">
             <Sidebar />
             <div className="w-full h-full p-11 inline-flex flex-col justify-start items-center gap-6 overflow-y-auto">
+                {/* Titulo */}
                 <div className="self-stretch flex flex-col justify-start items-start">
                     <h1 className="self-stretch justify-start text-sky-950 text-6xl font-semibold">Dashboard</h1>
                     <h1 className="self-stretch justify-start text-[#325B84] text-2xl font-semibold">Un resumen visual de la actividad reciente y las métricas clave.</h1>
                 </div>
+                {/* Cards */}
                 <div className="self-stretch flex flex-wrap justify-center items-center gap-7">
                     {dashboardCards.map((card, index) => (
                         <DashboardCard
@@ -122,6 +143,7 @@ export default function Dashboard() {
                         />
                     ))}
                 </div>
+                {/* ODS */}
                 <div className="self-stretch px-10 py-10 bg-neutral-50 rounded-[40px] shadow-[0px_0px_15.5px_0px_rgba(0,0,0,0.25)] inline-flex justify-start items-center gap-8">
                     <div className="px-6 aspect-square bg-blue-100 rounded-[20px] flex justify-center items-center gap-2.5">
                         <span className="icon-[flowbite--landmark-solid] text-7xl text-[#3E7DBB]"></span>
@@ -152,6 +174,16 @@ export default function Dashboard() {
                             columns={recentAccessColumns}
                         />
                     </div>
+                </div>
+
+                <div className="self-stretch p-7 bg-neutral-50 rounded-[30px] shadow-[0px_0px_15.5px_0px_rgba(0,0,0,0.25)] inline-flex flex-col justify-start items-start gap-4">
+                    <h1 className="self-stretch justify-start text-sky-950 text-4xl font-semibold">Mis Tareas Pendientes:</h1>
+                    {pendingTasks.map((task, index) => (
+                        <TaskCard
+                            key={index}
+                            {...task}
+                        />
+                    ))}
                 </div>
             </div>
         </div>
