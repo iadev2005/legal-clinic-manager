@@ -21,6 +21,7 @@ interface AdministrationModalProps {
     item?: any;
     mode: "create" | "edit";
     type: "users" | "catalogs" | "formalities" | "centers";
+    parishes?: { id: string; nombre: string }[];
 }
 
 interface CustomSelectProps {
@@ -93,6 +94,7 @@ export default function AdministrationModal({
     item,
     mode,
     type,
+    parishes = [],
 }: AdministrationModalProps) {
     const [formData, setFormData] = useState<any>({});
     const [loading, setLoading] = useState(false);
@@ -108,6 +110,7 @@ export default function AdministrationModal({
                     ...item,
                     cedulaPrefix: item.cedulaPrefix || "V",
                     cedulaNumber: item.cedulaNumber || item.id?.split("-")[1] || "",
+                    parishId: item.parishId || "",
                 });
             } else {
                 setFormData({
@@ -122,6 +125,7 @@ export default function AdministrationModal({
                     telefonoLocal: "",
                     telefonoCelular: "",
                     password: "",
+                    parishId: "",
                 });
             }
             setShowPassword(false);
@@ -325,14 +329,26 @@ export default function AdministrationModal({
                             </div>
                         </div>
                     ) : (
-                        <div className="space-y-2">
-                            <Label htmlFor="nombre">Nombre</Label>
-                            <Input
-                                id="nombre"
-                                value={formData.nombre || ""}
-                                onChange={(e) => handleChange("nombre", e.target.value)}
-                                required
-                            />
+                        <div className="space-y-4">
+                            <div className="space-y-2">
+                                <Label htmlFor="nombre">Nombre</Label>
+                                <Input
+                                    id="nombre"
+                                    value={formData.nombre || ""}
+                                    onChange={(e) => handleChange("nombre", e.target.value)}
+                                    required
+                                />
+                            </div>
+                            {type === "centers" && (
+                                <div className="space-y-2">
+                                    <Label htmlFor="parish">Parroquia</Label>
+                                    <CustomSelect
+                                        value={formData.parishId}
+                                        onChange={(val) => handleChange("parishId", val)}
+                                        options={parishes.map(p => ({ value: p.id, label: p.nombre }))}
+                                    />
+                                </div>
+                            )}
                         </div>
                     )}
 

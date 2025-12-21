@@ -97,6 +97,13 @@ export default function Administration() {
         { id: "4", nombre: "Defensoría del Pueblo" },
     ]);
 
+    const [parishes, setParishes] = useState([
+        { id: "1", nombre: "Unare" },
+        { id: "2", nombre: "Universidad" },
+        { id: "3", nombre: "Cachamay" },
+    ]);
+
+
     // Active tab state
     const [activeTab, setActiveTab] = useState<"users" | "catalogs" | "formalities" | "centers">("users");
 
@@ -360,6 +367,7 @@ export default function Administration() {
                 item={currentItem}
                 mode={currentMode}
                 type={activeTab}
+                parishes={parishes}
             />
 
             <DeleteConfirmationModal
