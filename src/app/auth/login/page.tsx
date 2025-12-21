@@ -95,12 +95,7 @@ export default function Login() {
                         >
                             <div className="justify-start text-neutral-50 text-2xl font-semibold">Iniciar Sesión</div>
                         </Link>
-                        <div className="self-stretch text-center justify-start">
-                            <span className="text-sky-950 text-xl font-semibold">¿No tienes una cuenta? </span>
-                            <Link href="/auth/register" className="text-[#3E7DBB] text-xl font-semibold underline hover:text-[#3E7DBB]/80 transition-colors">
-                                Regístrate
-                            </Link>
-                        </div>
+
                     </div>
                 </div>
             </div>

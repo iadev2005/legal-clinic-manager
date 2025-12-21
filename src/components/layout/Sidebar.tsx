@@ -20,7 +20,7 @@ export default function Sidebar() {
     const user = {
         name: "Ana",
         lastname: "Pérez",
-        role: "Admin"
+        role: "Coordinador"
     };
 
     const initials = `${user.name.charAt(0)}${user.lastname.charAt(0)}`;

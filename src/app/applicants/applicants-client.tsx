@@ -10,6 +10,7 @@ import ApplicantModal, {
   type ApplicantFormData,
 } from "@/components/ui/applicant-modal";
 import Pagination from "@/components/ui/pagination";
+import DeleteConfirmationModal from "@/components/ui/delete-confirmation-modal";
 
 interface Applicant {
   id: string;
@@ -29,8 +30,43 @@ const ITEMS_PER_PAGE = 10;
 
 export default function ApplicantsClient() {
   const router = useRouter();
-  const [applicants, setApplicants] = useState<Applicant[]>([]);
-  const [loading, setLoading] = useState(true);
+  // Datos de prueba iniciales
+  const [applicants, setApplicants] = useState<Applicant[]>([
+    {
+      id: "1",
+      name: "Juan Pérez",
+      email: "juan@example.com",
+      phone: "0414-1234567",
+      address: "Centro, Calle 5",
+      idDocument: "12.345.678",
+      createdAt: new Date().toISOString(),
+      updatedAt: new Date().toISOString(),
+      _count: { cases: 2 },
+    },
+    {
+      id: "2",
+      name: "Maria Rodriguez",
+      email: "maria@example.com",
+      phone: "0412-7654321",
+      address: "La Pica, Sector 2",
+      idDocument: "15.678.901",
+      createdAt: new Date().toISOString(),
+      updatedAt: new Date().toISOString(),
+      _count: { cases: 0 },
+    },
+    {
+      id: "3",
+      name: "Carlos Sanchez",
+      email: "carlos@example.com",
+      phone: "0424-5555555",
+      address: "Fundemos",
+      idDocument: "8.901.234",
+      createdAt: new Date().toISOString(),
+      updatedAt: new Date().toISOString(),
+      _count: { cases: 1 },
+    },
+  ]);
+  const [loading, setLoading] = useState(false);
   const [searchTerm, setSearchTerm] = useState("");
   const [communityFilter, setCommunityFilter] = useState("");
   const [statusFilter, setStatusFilter] = useState("");
@@ -39,25 +75,11 @@ export default function ApplicantsClient() {
   // Modal states
   const [modalOpen, setModalOpen] = useState(false);
   const [modalMode, setModalMode] = useState<"create" | "edit">("create");
-  const [selectedApplicant, setSelectedApplicant] = useState<Applicant | null>(
-    null
-  );
+  const [selectedApplicant, setSelectedApplicant] = useState<Applicant | null>(null);
+  const [deleteModalOpen, setDeleteModalOpen] = useState(false);
 
-  useEffect(() => {
-    fetchApplicants();
-  }, []);
-
-  const fetchApplicants = async () => {
-    try {
-      const response = await fetch("/api/applicants");
-      const data = await response.json();
-      setApplicants(data);
-      setLoading(false);
-    } catch (error) {
-      console.error("Error fetching applicants:", error);
-      setLoading(false);
-    }
-  };
+  // Selection state
+  const [selectedItems, setSelectedItems] = useState<Applicant[]>([]);
 
   // Filtrar solicitantes usando useMemo
   const filteredApplicants = useMemo(() => {
@@ -89,6 +111,7 @@ export default function ApplicantsClient() {
   // Reset page when filters change
   useEffect(() => {
     setCurrentPage(1);
+    setSelectedItems([]); // Clear selection on filter change
   }, [searchTerm, communityFilter, statusFilter]);
 
   const handleNewApplicant = () => {
@@ -99,15 +122,6 @@ export default function ApplicantsClient() {
 
   const handleEdit = (applicant: Applicant) => {
     setModalMode("edit");
-    // Convertir a formato compatible con el modal
-    const formData = {
-      id: applicant.id,
-      name: applicant.name,
-      idDocument: applicant.idDocument,
-      email: applicant.email || "",
-      phone: applicant.phone || "",
-      address: applicant.address || "",
-    };
     setSelectedApplicant(applicant);
     setModalOpen(true);
   };
@@ -117,45 +131,59 @@ export default function ApplicantsClient() {
     router.push(`/cases?applicantId=${id}`);
   };
 
-  const handleSaveApplicant = async (formData: ApplicantFormData) => {
-    try {
-      if (modalMode === "create") {
-        const response = await fetch("/api/applicants", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify(formData),
-        });
+  const handleDelete = (applicant: Applicant) => {
+    setSelectedApplicant(applicant); // Set for single delete
+    setDeleteModalOpen(true);
+  };
 
-        if (!response.ok) {
-          const error = await response.json();
-          throw new Error(error.error || "Error al crear el solicitante");
-        }
+  const handleBulkDelete = () => {
+    setSelectedApplicant(null); // Indicates multiple delete
+    setDeleteModalOpen(true);
+  };
 
-        const newApplicant = await response.json();
-        setApplicants((prev) => [newApplicant, ...prev]);
-      } else {
-        const response = await fetch(`/api/applicants/${formData.id}`, {
-          method: "PUT",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify(formData),
-        });
-
-        if (!response.ok) {
-          const error = await response.json();
-          throw new Error(error.error || "Error al actualizar el solicitante");
-        }
-
-        const updatedApplicant = await response.json();
-        setApplicants((prev) =>
-          prev.map((a) => (a.id === updatedApplicant.id ? updatedApplicant : a))
-        );
-      }
-
-      setModalOpen(false);
-    } catch (error) {
-      console.error("Error saving applicant:", error);
-      throw error;
+  const confirmDelete = () => {
+    if (selectedApplicant) {
+      // Single delete
+      setApplicants(prev => prev.filter(a => a.id !== selectedApplicant.id));
+      setSelectedApplicant(null);
+    } else if (selectedItems.length > 0) {
+      // Bulk delete
+      const idsToDelete = new Set(selectedItems.map(a => a.id));
+      setApplicants(prev => prev.filter(a => !idsToDelete.has(a.id)));
+      setSelectedItems([]);
     }
+    setDeleteModalOpen(false);
+  };
+
+  const handleSaveApplicant = async (formData: ApplicantFormData) => {
+    if (modalMode === "create") {
+      const newApplicant: Applicant = {
+        ...formData,
+        email: formData.email || null,
+        phone: formData.phone || null,
+        address: formData.address || null,
+        id: Math.random().toString(36).substr(2, 9),
+        createdAt: new Date().toISOString(),
+        updatedAt: new Date().toISOString(),
+        _count: { cases: 0 },
+      };
+      setApplicants((prev) => [newApplicant, ...prev]);
+    } else {
+      setApplicants((prev) =>
+        prev.map((a) =>
+          a.id === formData.id
+            ? {
+              ...a,
+              ...formData,
+              email: formData.email || null,
+              phone: formData.phone || null,
+              address: formData.address || null,
+            }
+            : a
+        )
+      );
+    }
+    setModalOpen(false);
   };
 
   const columns: Column<Applicant>[] = [
@@ -200,6 +228,7 @@ export default function ApplicantsClient() {
         return (
           <span className="text-center block">
             {count} persona{count > 1 ? "s" : ""}
+
           </span>
         );
       },
@@ -209,20 +238,27 @@ export default function ApplicantsClient() {
     {
       header: "Acciones",
       render: (applicant) => (
-        <div className="flex justify-center items-center gap-3">
+        <div className="flex justify-center items-center gap-2">
           <button
             onClick={() => handleViewDetails(applicant.id)}
-            className="p-2 hover:bg-blue-100 rounded-lg transition-colors group"
+            className="w-10 h-10 flex justify-center items-center hover:bg-blue-100 rounded-lg transition-colors group cursor-pointer"
             title="Ver casos relacionados"
           >
-            <span className="icon-[mdi--file-document-outline] text-2xl text-[#3E7DBB] group-hover:scale-110 transition-transform"></span>
+            <span className="icon-[mdi--file-document-outline] text-3xl text-[#3E7DBB] group-hover:scale-110 transition-transform"></span>
           </button>
           <button
             onClick={() => handleEdit(applicant)}
-            className="p-2 hover:bg-green-100 rounded-lg transition-colors group"
+            className="w-10 h-10 flex justify-center items-center hover:bg-blue-100 rounded-lg transition-colors group cursor-pointer"
             title="Editar"
           >
-            <span className="icon-[mdi--pencil] text-2xl text-green-600 group-hover:scale-110 transition-transform"></span>
+            <span className="icon-[uil--pen] text-3xl text-[#003366] group-hover:scale-110 transition-transform"></span>
+          </button>
+          <button
+            onClick={() => handleDelete(applicant)}
+            className="w-10 h-10 flex justify-center items-center hover:bg-red-100 rounded-lg transition-colors group cursor-pointer"
+            title="Eliminar"
+          >
+            <span className="icon-[mdi--trash-can-outline] text-3xl text-red-600 group-hover:scale-110 transition-transform"></span>
           </button>
         </div>
       ),
@@ -260,7 +296,7 @@ export default function ApplicantsClient() {
           </PrimaryButton>
         </div>
 
-        {/* Filters */}
+        {/* Filters and Bulk Actions */}
         <div className="self-stretch inline-flex justify-start items-center gap-4">
           <SearchInput
             placeholder="Buscar por C.I. o Nombre"
@@ -290,6 +326,16 @@ export default function ApplicantsClient() {
             ]}
             className="w-72"
           />
+
+          {selectedItems.length > 0 && (
+            <button
+              onClick={handleBulkDelete}
+              className="bg-red-600 text-white px-4 py-2 rounded-lg font-semibold hover:bg-red-700 transition-colors cursor-pointer flex items-center gap-2 h-[42px]"
+            >
+              <span className="icon-[mdi--trash-can-outline] text-xl"></span>
+              Eliminar ({selectedItems.length})
+            </button>
+          )}
         </div>
 
         {/* Table */}
@@ -304,7 +350,12 @@ export default function ApplicantsClient() {
               </p>
             </div>
           ) : (
-            <CustomTable data={paginatedApplicants} columns={columns} />
+            <CustomTable
+              data={paginatedApplicants}
+              columns={columns}
+              enableSelection={true}
+              onSelectionChange={setSelectedItems}
+            />
           )}
         </div>
 
@@ -332,7 +383,7 @@ export default function ApplicantsClient() {
                 setCommunityFilter("");
                 setStatusFilter("");
               }}
-              className="text-[#3E7DBB] text-lg font-semibold hover:text-[#2d5f8f] transition-colors"
+              className="text-[#3E7DBB] text-lg font-semibold hover:text-[#2d5f8f] transition-colors cursor-pointer"
             >
               Limpiar filtros
             </button>
@@ -347,6 +398,12 @@ export default function ApplicantsClient() {
         onSave={handleSaveApplicant}
         applicant={selectedApplicant}
         mode={modalMode}
+      />
+
+      <DeleteConfirmationModal
+        open={deleteModalOpen}
+        onClose={() => setDeleteModalOpen(false)}
+        onConfirm={confirmDelete}
       />
     </>
   );
