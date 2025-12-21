@@ -5,6 +5,7 @@ import { useState } from "react";
 import AdministrationModal from "@/components/ui/administration-modal";
 import DeleteConfirmationModal from "@/components/ui/delete-confirmation-modal";
 
+
 export default function Administration() {
     // State management for all tabs
     const [users, setUsers] = useState([
@@ -19,7 +20,8 @@ export default function Administration() {
             correo: "luis@uni.edu",
             sexo: "M",
             telefonoLocal: "",
-            telefonoCelular: "04121234567"
+            telefonoCelular: "04121234567",
+            status: "Activo"
         },
         {
             id: "V-87654321",
@@ -32,7 +34,8 @@ export default function Administration() {
             correo: "ana@uni.edu",
             sexo: "F",
             telefonoLocal: "02125555555",
-            telefonoCelular: "04149999999"
+            telefonoCelular: "04149999999",
+            status: "Activo"
         },
         {
             id: "V-11223344",
@@ -45,7 +48,8 @@ export default function Administration() {
             correo: "briceno@uni.edu",
             sexo: "M",
             telefonoLocal: "",
-            telefonoCelular: "04241112233"
+            telefonoCelular: "04241112233",
+            status: "Activo"
         },
         {
             id: "V-99887766",
@@ -58,7 +62,8 @@ export default function Administration() {
             correo: "carmen.rod@uni.edu",
             sexo: "F",
             telefonoLocal: "02123334444",
-            telefonoCelular: "04145556666"
+            telefonoCelular: "04145556666",
+            status: "Activo"
         },
         {
             id: "V-55667788",
@@ -71,24 +76,41 @@ export default function Administration() {
             correo: "ana.perez@uni.edu",
             sexo: "F",
             telefonoLocal: "",
-            telefonoCelular: "04125556677"
+            telefonoCelular: "04125556677",
+            status: "Inactivo"
         },
     ]);
 
-    const [catalogs, setCatalogs] = useState([
+    const [students, setStudents] = useState([
+        { id: "V-87654321", semestre: "202515", tipo: "voluntario", nrc: "15753" },
+        { id: "V-87654321", semestre: "2025125", tipo: "Regular", nrc: "15753" },
+        { id: "V-12345678", semestre: "202415", tipo: "Regular", nrc: "15753" },
+    ])
+
+    const [teachers, setTeachers] = useState([
+        { id: "V-11223344", semestre: "202515", tipo: "voluntario", nrc: "15753" },
+        { id: "V-11223344", semestre: "2025125", tipo: "fijo", nrc: "15753" },
+        { id: "V-99887766", semestre: "202415", tipo: "fijo", nrc: "15753" },
+    ])
+
+    const [legalfield, setlegalfield] = useState([
         { id: "1", nombre: "Materia Civil" },
         { id: "2", nombre: "Materia Penal" },
-        { id: "3", nombre: "Materia Laboral" },
-        { id: "4", nombre: "LOPNNA" },
-        { id: "5", nombre: "Violencia de Género" },
-    ]);
-
-    const [formalities, setFormalities] = useState([
-        { id: "1", nombre: "Divorcio 185-A" },
-        { id: "2", nombre: "Rectificación de Partidas" },
-        { id: "3", nombre: "Curatela" },
-        { id: "4", nombre: "Declaración de Herederos" },
-    ]);
+        { id: "3", nombre: "Materia Familiar" },
+        { id: "4", nombre: "Materia Laboral" },
+        { id: "5", nombre: "LOPNNA" },
+        { id: "6", nombre: "Violencia de Género" }
+    ])
+    const [categorylegalfield, setcategorylegalfield] = useState([
+        { id: "1", nombre: "Personas", legalfieldid: "1" },
+        { id: "2", nombre: "Tribunales Ordinarios", legalfieldid: "3" },
+        { id: "3", nombre: "Suceciones", legalfieldid: "3" },
+    ])
+    const [subcategorylegalfield, setsubcategorylegalfield] = useState([
+        { id: "1", nombre: "Rectificaciones de Acta", categorylegalfieldid: "1" },
+        { id: "2", nombre: "Inserciones de Acta", categorylegalfieldid: "1" },
+        { id: "3", nombre: "Testamento", categorylegalfieldid: "3" },
+    ])
 
     const [centers, setCenters] = useState([
         { id: "1", nombre: "Tribunales de Municipio" },
@@ -105,7 +127,7 @@ export default function Administration() {
 
 
     // Active tab state
-    const [activeTab, setActiveTab] = useState<"users" | "catalogs" | "formalities" | "centers">("users");
+    const [activeTab, setActiveTab] = useState<"users" | "categorylegalfield" | "subcategorylegalfield" | "centers">("users");
 
     // Modal States
     const [adminModalOpen, setAdminModalOpen] = useState(false);
@@ -149,17 +171,17 @@ export default function Administration() {
             };
 
             if (activeTab === "users") setUsers(prev => [...prev, newItem]);
-            else if (activeTab === "catalogs") setCatalogs(prev => [...prev, newItem]);
-            else if (activeTab === "formalities") setFormalities(prev => [...prev, newItem]);
+            else if (activeTab === "categorylegalfield") setcategorylegalfield(prev => [...prev, newItem]);
+            else if (activeTab === "subcategorylegalfield") setsubcategorylegalfield(prev => [...prev, newItem]);
             else if (activeTab === "centers") setCenters(prev => [...prev, newItem]);
         } else {
             // Edit mode
             if (activeTab === "users") {
                 setUsers(prev => prev.map(u => u.id === currentItem.id ? { ...u, ...formData } : u));
-            } else if (activeTab === "catalogs") {
-                setCatalogs(prev => prev.map(c => c.id === currentItem.id ? { ...c, ...formData } : c));
-            } else if (activeTab === "formalities") {
-                setFormalities(prev => prev.map(f => f.id === currentItem.id ? { ...f, ...formData } : f));
+            } else if (activeTab === "categorylegalfield") {
+                setcategorylegalfield(prev => prev.map(c => c.id === currentItem.id ? { ...c, ...formData } : c));
+            } else if (activeTab === "subcategorylegalfield") {
+                setsubcategorylegalfield(prev => prev.map(f => f.id === currentItem.id ? { ...f, ...formData } : f));
             } else if (activeTab === "centers") {
                 setCenters(prev => prev.map(c => c.id === currentItem.id ? { ...c, ...formData } : c));
             }
@@ -172,8 +194,8 @@ export default function Administration() {
         if (!currentItem && selectedItems.length > 0) {
             const idsToDelete = new Set(selectedItems.map(i => i.id));
             if (activeTab === "users") setUsers(prev => prev.filter(u => !idsToDelete.has(u.id)));
-            else if (activeTab === "catalogs") setCatalogs(prev => prev.filter(c => !idsToDelete.has(c.id)));
-            else if (activeTab === "formalities") setFormalities(prev => prev.filter(f => !idsToDelete.has(f.id)));
+            else if (activeTab === "categorylegalfield") setcategorylegalfield(prev => prev.filter(c => !idsToDelete.has(c.id)));
+            else if (activeTab === "subcategorylegalfield") setsubcategorylegalfield(prev => prev.filter(f => !idsToDelete.has(f.id)));
             else if (activeTab === "centers") setCenters(prev => prev.filter(c => !idsToDelete.has(c.id)));
             setSelectedItems([]);
         }
@@ -181,8 +203,8 @@ export default function Administration() {
         else if (currentItem) {
             const id = currentItem.id;
             if (activeTab === "users") setUsers(prev => prev.filter(u => u.id !== id));
-            else if (activeTab === "catalogs") setCatalogs(prev => prev.filter(c => c.id !== id));
-            else if (activeTab === "formalities") setFormalities(prev => prev.filter(f => f.id !== id));
+            else if (activeTab === "categorylegalfield") setcategorylegalfield(prev => prev.filter(c => c.id !== id));
+            else if (activeTab === "subcategorylegalfield") setsubcategorylegalfield(prev => prev.filter(f => f.id !== id));
             else if (activeTab === "centers") setCenters(prev => prev.filter(c => c.id !== id));
         }
         setDeleteModalOpen(false);
@@ -219,6 +241,29 @@ export default function Administration() {
             }
         },
         { header: "Correo", accessorKey: "correo", className: "text-center" },
+        {
+            header: "Estatus",
+            accessorKey: "status",
+            className: "text-center",
+            render: (row) => {
+                const status = row.status;
+                let badgeClass = "bg-gray-100 text-gray-800"; // default
+
+                if (status === "Inactivo") {
+                    badgeClass = "bg-[#FFD1D1] text-[#FF0000]"; // Blue variant
+                } else if (status === "Activo") {
+                    badgeClass = "bg-[#D1F7D6] text-[#005C2B]"; // Green variant
+                }
+
+                return (
+                    <div className="flex justify-center">
+                        <span className={`px-4 py-1 rounded-full font-bold text-sm ${badgeClass}`}>
+                            {status}
+                        </span>
+                    </div>
+                );
+            }
+        },
         {
             header: "Accion",
             render: (row) => (
@@ -274,8 +319,8 @@ export default function Administration() {
     const getTableData = () => {
         switch (activeTab) {
             case "users": return { data: users, columns: ManagementUserColumns };
-            case "catalogs": return { data: catalogs, columns: GenericColumns };
-            case "formalities": return { data: formalities, columns: GenericColumns };
+            case "categorylegalfield": return { data: categorylegalfield, columns: GenericColumns };
+            case "subcategorylegalfield": return { data: subcategorylegalfield, columns: GenericColumns };
             case "centers": return { data: centers, columns: GenericColumns };
             default: return { data: users, columns: ManagementUserColumns };
         }
@@ -301,14 +346,14 @@ export default function Administration() {
                             Usuarios
                         </button>
                         <button
-                            onClick={() => { setActiveTab("catalogs"); setSelectedItems([]); }}
-                            className={`px-4 py-2 rounded-lg font-semibold transition-colors cursor-pointer ${activeTab === "catalogs" ? "bg-sky-950 text-white" : "bg-gray-200 text-sky-950 hover:bg-gray-300"}`}
+                            onClick={() => { setActiveTab("categorylegalfield"); setSelectedItems([]); }}
+                            className={`px-4 py-2 rounded-lg font-semibold transition-colors cursor-pointer ${activeTab === "categorylegalfield" ? "bg-sky-950 text-white" : "bg-gray-200 text-sky-950 hover:bg-gray-300"}`}
                         >
                             Catálogos
                         </button>
                         <button
-                            onClick={() => { setActiveTab("formalities"); setSelectedItems([]); }}
-                            className={`px-4 py-2 rounded-lg font-semibold transition-colors cursor-pointer ${activeTab === "formalities" ? "bg-sky-950 text-white" : "bg-gray-200 text-sky-950 hover:bg-gray-300"}`}
+                            onClick={() => { setActiveTab("subcategorylegalfield"); setSelectedItems([]); }}
+                            className={`px-4 py-2 rounded-lg font-semibold transition-colors cursor-pointer ${activeTab === "subcategorylegalfield" ? "bg-sky-950 text-white" : "bg-gray-200 text-sky-950 hover:bg-gray-300"}`}
                         >
                             Trámites
                         </button>
@@ -368,6 +413,14 @@ export default function Administration() {
                 mode={currentMode}
                 type={activeTab}
                 parishes={parishes}
+                participations={
+                    activeTab === "users" && currentItem
+                        ? [
+                            ...(students.filter(s => s.id === currentItem.id)),
+                            ...(teachers.filter(t => t.id === currentItem.id))
+                        ]
+                        : []
+                }
             />
 
             <DeleteConfirmationModal

@@ -22,6 +22,7 @@ interface AdministrationModalProps {
     mode: "create" | "edit";
     type: "users" | "catalogs" | "formalities" | "centers";
     parishes?: { id: string; nombre: string }[];
+    participations?: any[];
 }
 
 interface CustomSelectProps {
@@ -95,6 +96,7 @@ export default function AdministrationModal({
     mode,
     type,
     parishes = [],
+    participations = [],
 }: AdministrationModalProps) {
     const [formData, setFormData] = useState<any>({});
     const [loading, setLoading] = useState(false);
@@ -177,9 +179,11 @@ export default function AdministrationModal({
         return `${action} ${entity}`;
     };
 
+    const isStudentOrTeacher = type === "users" && (formData.role === "Estudiante" || formData.role === "Alumno" || formData.role === "Profesor");
+
     return (
         <Dialog open={open} onOpenChange={onClose}>
-            <DialogContent className={type === "users" ? "max-w-3xl" : "max-w-md"}>
+            <DialogContent className={type === "users" ? "w-[95vw] sm:max-w-3xl" : "w-[95vw] sm:max-w-md"}>
                 <DialogHeader>
                     <DialogTitle className="text-sky-950 text-2xl font-semibold">{getTitle()}</DialogTitle>
                     <DialogDescription className="text-[#325B84]">
@@ -187,189 +191,233 @@ export default function AdministrationModal({
                     </DialogDescription>
                 </DialogHeader>
 
-                <form onSubmit={handleSubmit} className="space-y-4 pt-2">
-                    {error && (
-                        <div className="bg-red-100 text-red-600 p-3 rounded-lg text-sm font-semibold">
-                            {error}
-                        </div>
-                    )}
+                <div className="max-h-[80vh] overflow-y-auto pr-2 custom-scrollbar">
+                    <form onSubmit={handleSubmit} className="space-y-4 pt-2">
+                        {error && (
+                            <div className="bg-red-100 text-red-600 p-3 rounded-lg text-sm font-semibold">
+                                {error}
+                            </div>
+                        )}
 
-                    {type === "users" ? (
-                        <div className="grid grid-cols-2 gap-6">
-                            {/* Columna 1 */}
-                            <div className="space-y-4">
-                                <div className="space-y-2">
-                                    <Label htmlFor="role">Rol en el Sistema</Label>
-                                    <CustomSelect
-                                        value={formData.role}
-                                        onChange={(val) => handleChange("role", val)}
-                                        options={[
-                                            { value: "Estudiante", label: "Estudiante" },
-                                            { value: "Profesor", label: "Profesor" },
-                                            { value: "Coordinador", label: "Coordinador" },
-                                        ]}
-                                    />
-                                </div>
+                        {type === "users" ? (
+                            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                                {/* Columna 1 */}
+                                <div className="space-y-4">
+                                    <div className="space-y-2">
+                                        <Label htmlFor="role">Rol en el Sistema</Label>
+                                        <CustomSelect
+                                            value={formData.role}
+                                            onChange={(val) => handleChange("role", val)}
+                                            options={[
+                                                { value: "Estudiante", label: "Estudiante" },
+                                                { value: "Profesor", label: "Profesor" },
+                                                { value: "Coordinador", label: "Coordinador" },
+                                            ]}
+                                        />
+                                    </div>
 
-                                <div className="space-y-2">
-                                    <Label>Cédula de Identidad</Label>
-                                    <div className="flex gap-2">
-                                        <div className="w-24">
-                                            <CustomSelect
-                                                value={formData.cedulaPrefix}
-                                                onChange={(val) => handleChange("cedulaPrefix", val)}
-                                                options={[
-                                                    { value: "V", label: "V" },
-                                                    { value: "E", label: "E" },
-                                                ]}
+                                    <div className="space-y-2">
+                                        <Label>Cédula de Identidad</Label>
+                                        <div className="flex gap-2">
+                                            <div className="w-24">
+                                                <CustomSelect
+                                                    value={formData.cedulaPrefix}
+                                                    onChange={(val) => handleChange("cedulaPrefix", val)}
+                                                    options={[
+                                                        { value: "V", label: "V" },
+                                                        { value: "E", label: "E" },
+                                                    ]}
+                                                />
+                                            </div>
+                                            <Input
+                                                value={formData.cedulaNumber}
+                                                onChange={(e) => handleChange("cedulaNumber", e.target.value)}
+                                                placeholder="12.345.678"
+                                                required
                                             />
                                         </div>
+                                    </div>
+
+                                    <div className="space-y-2">
+                                        <Label htmlFor="nombres">Nombres</Label>
                                         <Input
-                                            value={formData.cedulaNumber}
-                                            onChange={(e) => handleChange("cedulaNumber", e.target.value)}
-                                            placeholder="12.345.678"
+                                            id="nombres"
+                                            value={formData.nombres}
+                                            onChange={(e) => handleChange("nombres", e.target.value)}
+                                            placeholder="Nombres"
+                                            required
+                                        />
+                                    </div>
+
+                                    <div className="space-y-2">
+                                        <Label htmlFor="apellidos">Apellidos</Label>
+                                        <Input
+                                            id="apellidos"
+                                            value={formData.apellidos}
+                                            onChange={(e) => handleChange("apellidos", e.target.value)}
+                                            placeholder="Apellidos"
                                             required
                                         />
                                     </div>
                                 </div>
 
-                                <div className="space-y-2">
-                                    <Label htmlFor="nombres">Nombres</Label>
-                                    <Input
-                                        id="nombres"
-                                        value={formData.nombres}
-                                        onChange={(e) => handleChange("nombres", e.target.value)}
-                                        placeholder="Nombres"
-                                        required
-                                    />
-                                </div>
+                                {/* Columna 2 */}
+                                <div className="space-y-4">
+                                    <div className="space-y-2">
+                                        <Label htmlFor="correo">Correo Institucional</Label>
+                                        <Input
+                                            id="correo"
+                                            type="email"
+                                            value={formData.correo}
+                                            onChange={(e) => handleChange("correo", e.target.value)}
+                                            placeholder="@universidad.edu"
+                                            required
+                                        />
+                                    </div>
 
-                                <div className="space-y-2">
-                                    <Label htmlFor="apellidos">Apellidos</Label>
-                                    <Input
-                                        id="apellidos"
-                                        value={formData.apellidos}
-                                        onChange={(e) => handleChange("apellidos", e.target.value)}
-                                        placeholder="Apellidos"
-                                        required
-                                    />
+                                    <div className="space-y-2">
+                                        <Label htmlFor="sexo">Sexo</Label>
+                                        <CustomSelect
+                                            value={formData.sexo}
+                                            onChange={(val) => handleChange("sexo", val)}
+                                            options={[
+                                                { value: "M", label: "Masculino" },
+                                                { value: "F", label: "Femenino" },
+                                            ]}
+                                        />
+                                    </div>
+
+                                    <div className="grid grid-cols-2 gap-2">
+                                        <div className="space-y-2">
+                                            <Label htmlFor="tlf_local">Tlf. Local</Label>
+                                            <Input
+                                                id="tlf_local"
+                                                value={formData.telefonoLocal}
+                                                onChange={(e) => handleChange("telefonoLocal", e.target.value)}
+                                                placeholder="(0212) ..."
+                                            />
+                                        </div>
+                                        <div className="space-y-2">
+                                            <Label htmlFor="tlf_celular">Tlf. Celular</Label>
+                                            <Input
+                                                id="tlf_celular"
+                                                value={formData.telefonoCelular}
+                                                onChange={(e) => handleChange("telefonoCelular", e.target.value)}
+                                                placeholder="(0414) ..."
+                                                required
+                                            />
+                                        </div>
+                                    </div>
+
+                                    <div className="space-y-2">
+                                        <Label htmlFor="password">
+                                            {mode === "create" ? "Contraseña" : "Nueva Contraseña"}
+                                        </Label>
+                                        <div className="relative">
+                                            <Input
+                                                id="password"
+                                                type={showPassword ? "text" : "password"}
+                                                value={formData.password}
+                                                onChange={(e) => handleChange("password", e.target.value)}
+                                                placeholder={mode === "create" ? "******" : "(Opcional)"}
+                                                required={mode === "create"}
+                                            />
+                                            <button
+                                                type="button"
+                                                onClick={() => setShowPassword(!showPassword)}
+                                                className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-500 hover:text-sky-950 focus:outline-none cursor-pointer"
+                                            >
+                                                <span className={`text-xl ${showPassword ? "icon-[uil--eye]" : "icon-[uil--eye-slash]"}`}></span>
+                                            </button>
+                                        </div>
+                                    </div>
                                 </div>
                             </div>
-
-                            {/* Columna 2 */}
+                        ) : (
                             <div className="space-y-4">
                                 <div className="space-y-2">
-                                    <Label htmlFor="correo">Correo Institucional</Label>
+                                    <Label htmlFor="nombre">Nombre</Label>
                                     <Input
-                                        id="correo"
-                                        type="email"
-                                        value={formData.correo}
-                                        onChange={(e) => handleChange("correo", e.target.value)}
-                                        placeholder="@universidad.edu"
+                                        id="nombre"
+                                        value={formData.nombre || ""}
+                                        onChange={(e) => handleChange("nombre", e.target.value)}
                                         required
                                     />
                                 </div>
-
-                                <div className="space-y-2">
-                                    <Label htmlFor="sexo">Sexo</Label>
-                                    <CustomSelect
-                                        value={formData.sexo}
-                                        onChange={(val) => handleChange("sexo", val)}
-                                        options={[
-                                            { value: "M", label: "Masculino" },
-                                            { value: "F", label: "Femenino" },
-                                        ]}
-                                    />
-                                </div>
-
-                                <div className="grid grid-cols-2 gap-2">
+                                {type === "centers" && (
                                     <div className="space-y-2">
-                                        <Label htmlFor="tlf_local">Tlf. Local</Label>
-                                        <Input
-                                            id="tlf_local"
-                                            value={formData.telefonoLocal}
-                                            onChange={(e) => handleChange("telefonoLocal", e.target.value)}
-                                            placeholder="(0212) ..."
+                                        <Label htmlFor="parish">Parroquia</Label>
+                                        <CustomSelect
+                                            value={formData.parishId}
+                                            onChange={(val) => handleChange("parishId", val)}
+                                            options={parishes.map(p => ({ value: p.id, label: p.nombre }))}
                                         />
                                     </div>
-                                    <div className="space-y-2">
-                                        <Label htmlFor="tlf_celular">Tlf. Celular</Label>
-                                        <Input
-                                            id="tlf_celular"
-                                            value={formData.telefonoCelular}
-                                            onChange={(e) => handleChange("telefonoCelular", e.target.value)}
-                                            placeholder="(0414) ..."
-                                            required
-                                        />
-                                    </div>
-                                </div>
-
-                                <div className="space-y-2">
-                                    <Label htmlFor="password">
-                                        {mode === "create" ? "Contraseña" : "Nueva Contraseña"}
-                                    </Label>
-                                    <div className="relative">
-                                        <Input
-                                            id="password"
-                                            type={showPassword ? "text" : "password"}
-                                            value={formData.password}
-                                            onChange={(e) => handleChange("password", e.target.value)}
-                                            placeholder={mode === "create" ? "******" : "(Opcional)"}
-                                            required={mode === "create"}
-                                        />
-                                        <button
-                                            type="button"
-                                            onClick={() => setShowPassword(!showPassword)}
-                                            className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-500 hover:text-sky-950 focus:outline-none cursor-pointer"
-                                        >
-                                            <span className={`text-xl ${showPassword ? "icon-[uil--eye]" : "icon-[uil--eye-slash]"}`}></span>
-                                        </button>
-                                    </div>
-                                </div>
+                                )}
                             </div>
-                        </div>
-                    ) : (
-                        <div className="space-y-4">
-                            <div className="space-y-2">
-                                <Label htmlFor="nombre">Nombre</Label>
-                                <Input
-                                    id="nombre"
-                                    value={formData.nombre || ""}
-                                    onChange={(e) => handleChange("nombre", e.target.value)}
-                                    required
-                                />
-                            </div>
-                            {type === "centers" && (
-                                <div className="space-y-2">
-                                    <Label htmlFor="parish">Parroquia</Label>
-                                    <CustomSelect
-                                        value={formData.parishId}
-                                        onChange={(val) => handleChange("parishId", val)}
-                                        options={parishes.map(p => ({ value: p.id, label: p.nombre }))}
-                                    />
-                                </div>
-                            )}
-                        </div>
-                    )}
+                        )}
 
-                    <DialogFooter className="gap-2 pt-4">
-                        <button
-                            type="button"
-                            onClick={onClose}
-                            className="px-4 py-2 bg-neutral-200 hover:bg-neutral-300 rounded-lg text-sky-950 font-semibold transition-colors cursor-pointer"
-                            disabled={loading}
-                        >
-                            Cancelar
-                        </button>
-                        <PrimaryButton
-                            type="submit"
-                            icon={mode === "create" ? "icon-[mdi--plus]" : "icon-[mdi--content-save]"}
-                            className={cn(loading ? "opacity-50 cursor-not-allowed" : "cursor-pointer")}
-                        >
-                            {loading ? "Guardando..." : "Guardar"}
-                        </PrimaryButton>
-                    </DialogFooter>
-                </form>
+                        {isStudentOrTeacher && mode === "edit" && (
+                            <div className="mt-6 border-t pt-4">
+                                <h3 className="text-sky-950 font-bold mb-3 flex items-center gap-2">
+                                    <span className="icon-[uil--history] text-xl"></span>
+                                    Historial de Participación
+                                </h3>
+                                {participations.length > 0 ? (
+                                    <div className="max-h-40 overflow-y-auto border rounded-lg bg-gray-50 overflow-x-auto">
+                                        <table className="w-full text-sm text-left min-w-[400px]">
+                                            <thead className="text-xs text-sky-950 uppercase bg-gray-100 border-b">
+                                                <tr>
+                                                    <th className="px-4 py-2">Semestre</th>
+                                                    <th className="px-4 py-2">NRC</th>
+                                                    <th className="px-4 py-2 text-center">Tipo de Participación</th>
+                                                </tr>
+                                            </thead>
+                                            <tbody>
+                                                {participations.map((p, idx) => (
+                                                    <tr key={idx} className="bg-white border-b hover:bg-neutral-50">
+                                                        <td className="px-4 py-2 font-medium text-sky-950">{p.semestre}</td>
+                                                        <td className="px-4 py-2 text-sky-950">{p.nrc}</td>
+                                                        <td className="px-4 py-2 text-center">
+                                                            <span className={cn(
+                                                                "px-3 py-1 rounded-full text-[10px] font-bold uppercase",
+                                                                (p.tipo === "Regular" || p.tipo === "fijo") ? "bg-green-100 text-green-700" : "bg-blue-100 text-blue-700"
+                                                            )}>
+                                                                {p.tipo}
+                                                            </span>
+                                                        </td>
+                                                    </tr>
+                                                ))}
+                                            </tbody>
+                                        </table>
+                                    </div>
+                                ) : (
+                                    <div className="text-center py-4 bg-gray-50 border rounded-lg text-gray-400 text-sm">
+                                        No hay historial de participación registrado.
+                                    </div>
+                                )}
+                            </div>
+                        )}
+
+                        <DialogFooter className="flex-col sm:flex-row gap-2 pt-4">
+                            <button
+                                type="button"
+                                onClick={onClose}
+                                className="w-full sm:w-auto px-4 py-2 bg-neutral-200 hover:bg-neutral-300 rounded-lg text-sky-950 font-semibold transition-colors cursor-pointer"
+                                disabled={loading}
+                            >
+                                Cancelar
+                            </button>
+                            <PrimaryButton
+                                type="submit"
+                                icon={mode === "create" ? "icon-[mdi--plus]" : "icon-[mdi--content-save]"}
+                                className={cn("w-full sm:w-auto", loading ? "opacity-50 cursor-not-allowed" : "cursor-pointer")}
+                            >
+                                {loading ? "Guardando..." : "Guardar"}
+                            </PrimaryButton>
+                        </DialogFooter>
+                    </form>
+                </div>
             </DialogContent>
         </Dialog>
     );
