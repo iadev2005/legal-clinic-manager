@@ -10,6 +10,7 @@ interface PrimaryButtonProps {
   variant?: "primary" | "secondary";
   type?: "button" | "submit" | "reset";
   disabled?: boolean;
+  form?: string;
 }
 
 export default function PrimaryButton({
@@ -20,6 +21,7 @@ export default function PrimaryButton({
   variant = "primary",
   type = "button",
   disabled = false,
+  form,
 }: PrimaryButtonProps) {
   const bgColor =
     variant === "primary"
@@ -29,9 +31,10 @@ export default function PrimaryButton({
   return (
     <button
       type={type}
+      form={form}
       onClick={onClick}
       disabled={disabled}
-      className={`px-6 py-3 ${bgColor} rounded-2xl inline-flex justify-center items-center gap-2.5 transition-all duration-300 hover:scale-105 hover:shadow-lg active:scale-95 disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:scale-100 ${className}`}
+      className={`px-6 py-3 ${bgColor} rounded-2xl inline-flex justify-center items-center gap-2.5 transition-all duration-300 hover:scale-105 hover:shadow-lg active:scale-95 disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:scale-100 cursor-pointer ${className}`}
     >
       {icon && <span className={`${icon} text-2xl text-white`}></span>}
       <span className="text-white text-lg font-semibold">{children}</span>

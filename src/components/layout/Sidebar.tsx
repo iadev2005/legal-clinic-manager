@@ -40,7 +40,7 @@ export default function Sidebar() {
                     {sidebarItems.map((item, index) => {
                         const isActive = pathname === item.href;
                         return (
-                            <Link key={index} href={item.href} className={`group inline-flex justify-start items-center gap-2 p-1 rounded-xl transition-all duration-300 hover:bg-white/10 hover:scale-105 hover:shadow-md ${isActive ? "bg-white/10" : ""}`}>
+                            <Link key={index} href={item.href} className={`group inline-flex justify-start items-center gap-2 p-1 rounded-xl transition-all duration-300 hover:bg-white/10 hover:scale-105 hover:shadow-md cursor-pointer ${isActive ? "bg-white/10" : ""}`}>
                                 <div className="relative w-11 h-11 flex justify-center items-center">
                                     <span className={`${item.icon} text-4xl text-white absolute transition-all duration-300 ${isActive ? "opacity-0 scale-75" : "group-hover:opacity-0 group-hover:scale-75"}`}></span>
                                     <span className={`${item.activeIcon} text-4xl text-white absolute transition-all duration-300 ${isActive ? "opacity-100 scale-100" : "opacity-0 scale-75 group-hover:opacity-100 group-hover:scale-100"}`}></span>

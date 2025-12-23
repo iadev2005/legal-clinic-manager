@@ -72,7 +72,7 @@ export default function Pagination({
         <button
           onClick={() => onPageChange(currentPage - 1)}
           disabled={currentPage === 1}
-          className="px-4 py-2 rounded-xl bg-white border-2 border-[#003366]/20 text-sky-950 font-semibold transition-all duration-300 hover:bg-[#003366] hover:text-white hover:scale-105 disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:bg-white disabled:hover:text-sky-950 disabled:hover:scale-100"
+          className="px-4 py-2 rounded-xl bg-white border-2 border-[#003366]/20 text-sky-950 font-semibold transition-all duration-300 hover:bg-[#003366] hover:text-white hover:scale-105 disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:bg-white disabled:hover:text-sky-950 disabled:hover:scale-100 cursor-pointer"
         >
           <span className="icon-[mdi--chevron-left] text-xl"></span>
         </button>
@@ -86,11 +86,10 @@ export default function Pagination({
               ) : (
                 <button
                   onClick={() => onPageChange(page as number)}
-                  className={`px-4 py-2 rounded-xl font-semibold transition-all duration-300 hover:scale-105 ${
-                    currentPage === page
+                  className={`px-4 py-2 rounded-xl font-semibold transition-all duration-300 hover:scale-105 cursor-pointer ${currentPage === page
                       ? "bg-[#003366] text-white shadow-lg"
                       : "bg-white border-2 border-[#003366]/20 text-sky-950 hover:bg-[#3E7DBB] hover:text-white"
-                  }`}
+                    }`}
                 >
                   {page}
                 </button>
@@ -103,7 +102,7 @@ export default function Pagination({
         <button
           onClick={() => onPageChange(currentPage + 1)}
           disabled={currentPage === totalPages}
-          className="px-4 py-2 rounded-xl bg-white border-2 border-[#003366]/20 text-sky-950 font-semibold transition-all duration-300 hover:bg-[#003366] hover:text-white hover:scale-105 disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:bg-white disabled:hover:text-sky-950 disabled:hover:scale-100"
+          className="px-4 py-2 rounded-xl bg-white border-2 border-[#003366]/20 text-sky-950 font-semibold transition-all duration-300 hover:bg-[#003366] hover:text-white hover:scale-105 disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:bg-white disabled:hover:text-sky-950 disabled:hover:scale-100 cursor-pointer"
         >
           <span className="icon-[mdi--chevron-right] text-xl"></span>
         </button>

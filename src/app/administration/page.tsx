@@ -127,7 +127,7 @@ export default function Administration() {
 
 
     // Active tab state
-    const [activeTab, setActiveTab] = useState<"users" | "categorylegalfield" | "subcategorylegalfield" | "centers">("users");
+    const [activeTab, setActiveTab] = useState<"users" | "catalogs" | "formalities" | "centers">("users");
 
     // Modal States
     const [adminModalOpen, setAdminModalOpen] = useState(false);
@@ -171,16 +171,16 @@ export default function Administration() {
             };
 
             if (activeTab === "users") setUsers(prev => [...prev, newItem]);
-            else if (activeTab === "categorylegalfield") setcategorylegalfield(prev => [...prev, newItem]);
-            else if (activeTab === "subcategorylegalfield") setsubcategorylegalfield(prev => [...prev, newItem]);
+            else if (activeTab === "catalogs") setcategorylegalfield(prev => [...prev, newItem]);
+            else if (activeTab === "formalities") setsubcategorylegalfield(prev => [...prev, newItem]);
             else if (activeTab === "centers") setCenters(prev => [...prev, newItem]);
         } else {
             // Edit mode
             if (activeTab === "users") {
                 setUsers(prev => prev.map(u => u.id === currentItem.id ? { ...u, ...formData } : u));
-            } else if (activeTab === "categorylegalfield") {
+            } else if (activeTab === "catalogs") {
                 setcategorylegalfield(prev => prev.map(c => c.id === currentItem.id ? { ...c, ...formData } : c));
-            } else if (activeTab === "subcategorylegalfield") {
+            } else if (activeTab === "formalities") {
                 setsubcategorylegalfield(prev => prev.map(f => f.id === currentItem.id ? { ...f, ...formData } : f));
             } else if (activeTab === "centers") {
                 setCenters(prev => prev.map(c => c.id === currentItem.id ? { ...c, ...formData } : c));
@@ -194,8 +194,8 @@ export default function Administration() {
         if (!currentItem && selectedItems.length > 0) {
             const idsToDelete = new Set(selectedItems.map(i => i.id));
             if (activeTab === "users") setUsers(prev => prev.filter(u => !idsToDelete.has(u.id)));
-            else if (activeTab === "categorylegalfield") setcategorylegalfield(prev => prev.filter(c => !idsToDelete.has(c.id)));
-            else if (activeTab === "subcategorylegalfield") setsubcategorylegalfield(prev => prev.filter(f => !idsToDelete.has(f.id)));
+            else if (activeTab === "catalogs") setcategorylegalfield(prev => prev.filter(c => !idsToDelete.has(c.id)));
+            else if (activeTab === "formalities") setsubcategorylegalfield(prev => prev.filter(f => !idsToDelete.has(f.id)));
             else if (activeTab === "centers") setCenters(prev => prev.filter(c => !idsToDelete.has(c.id)));
             setSelectedItems([]);
         }
@@ -203,8 +203,8 @@ export default function Administration() {
         else if (currentItem) {
             const id = currentItem.id;
             if (activeTab === "users") setUsers(prev => prev.filter(u => u.id !== id));
-            else if (activeTab === "categorylegalfield") setcategorylegalfield(prev => prev.filter(c => c.id !== id));
-            else if (activeTab === "subcategorylegalfield") setsubcategorylegalfield(prev => prev.filter(f => f.id !== id));
+            else if (activeTab === "catalogs") setcategorylegalfield(prev => prev.filter(c => c.id !== id));
+            else if (activeTab === "formalities") setsubcategorylegalfield(prev => prev.filter(f => f.id !== id));
             else if (activeTab === "centers") setCenters(prev => prev.filter(c => c.id !== id));
         }
         setDeleteModalOpen(false);
@@ -319,8 +319,8 @@ export default function Administration() {
     const getTableData = () => {
         switch (activeTab) {
             case "users": return { data: users, columns: ManagementUserColumns };
-            case "categorylegalfield": return { data: categorylegalfield, columns: GenericColumns };
-            case "subcategorylegalfield": return { data: subcategorylegalfield, columns: GenericColumns };
+            case "catalogs": return { data: categorylegalfield, columns: GenericColumns };
+            case "formalities": return { data: subcategorylegalfield, columns: GenericColumns };
             case "centers": return { data: centers, columns: GenericColumns };
             default: return { data: users, columns: ManagementUserColumns };
         }
@@ -346,14 +346,14 @@ export default function Administration() {
                             Usuarios
                         </button>
                         <button
-                            onClick={() => { setActiveTab("categorylegalfield"); setSelectedItems([]); }}
-                            className={`px-4 py-2 rounded-lg font-semibold transition-colors cursor-pointer ${activeTab === "categorylegalfield" ? "bg-sky-950 text-white" : "bg-gray-200 text-sky-950 hover:bg-gray-300"}`}
+                            onClick={() => { setActiveTab("catalogs"); setSelectedItems([]); }}
+                            className={`px-4 py-2 rounded-lg font-semibold transition-colors cursor-pointer ${activeTab === "catalogs" ? "bg-sky-950 text-white" : "bg-gray-200 text-sky-950 hover:bg-gray-300"}`}
                         >
                             Catálogos
                         </button>
                         <button
-                            onClick={() => { setActiveTab("subcategorylegalfield"); setSelectedItems([]); }}
-                            className={`px-4 py-2 rounded-lg font-semibold transition-colors cursor-pointer ${activeTab === "subcategorylegalfield" ? "bg-sky-950 text-white" : "bg-gray-200 text-sky-950 hover:bg-gray-300"}`}
+                            onClick={() => { setActiveTab("formalities"); setSelectedItems([]); }}
+                            className={`px-4 py-2 rounded-lg font-semibold transition-colors cursor-pointer ${activeTab === "formalities" ? "bg-sky-950 text-white" : "bg-gray-200 text-sky-950 hover:bg-gray-300"}`}
                         >
                             Trámites
                         </button>

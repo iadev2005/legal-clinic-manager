@@ -191,8 +191,8 @@ export default function AdministrationModal({
                     </DialogDescription>
                 </DialogHeader>
 
-                <div className="max-h-[80vh] overflow-y-auto pr-2 custom-scrollbar">
-                    <form onSubmit={handleSubmit} className="space-y-4 pt-2">
+                <div className="max-h-[80vh] overflow-y-auto pr-2 custom-scrollbar flex flex-col gap-4">
+                    <form id="admin-form" onSubmit={handleSubmit} className="space-y-4 pt-2">
                         {error && (
                             <div className="bg-red-100 text-red-600 p-3 rounded-lg text-sm font-semibold">
                                 {error}
@@ -399,25 +399,27 @@ export default function AdministrationModal({
                             </div>
                         )}
 
-                        <DialogFooter className="flex-col sm:flex-row gap-2 pt-4">
-                            <button
-                                type="button"
-                                onClick={onClose}
-                                className="w-full sm:w-auto px-4 py-2 bg-neutral-200 hover:bg-neutral-300 rounded-lg text-sky-950 font-semibold transition-colors cursor-pointer"
-                                disabled={loading}
-                            >
-                                Cancelar
-                            </button>
-                            <PrimaryButton
-                                type="submit"
-                                icon={mode === "create" ? "icon-[mdi--plus]" : "icon-[mdi--content-save]"}
-                                className={cn("w-full sm:w-auto", loading ? "opacity-50 cursor-not-allowed" : "cursor-pointer")}
-                            >
-                                {loading ? "Guardando..." : "Guardar"}
-                            </PrimaryButton>
-                        </DialogFooter>
                     </form>
                 </div>
+
+                <DialogFooter className="flex-col sm:flex-row gap-2 pt-4">
+                    <button
+                        type="button"
+                        onClick={onClose}
+                        className="w-full sm:w-auto px-4 py-2 bg-neutral-200 hover:bg-neutral-300 rounded-lg text-sky-950 font-semibold transition-colors cursor-pointer"
+                        disabled={loading}
+                    >
+                        Cancelar
+                    </button>
+                    <PrimaryButton
+                        type="submit"
+                        form="admin-form"
+                        icon={mode === "create" ? "icon-[mdi--plus]" : "icon-[mdi--content-save]"}
+                        className={cn("w-full sm:w-auto", loading ? "opacity-50 cursor-not-allowed" : "cursor-pointer")}
+                    >
+                        {loading ? "Guardando..." : "Guardar"}
+                    </PrimaryButton>
+                </DialogFooter>
             </DialogContent>
         </Dialog>
     );
