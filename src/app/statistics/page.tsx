@@ -1,13 +1,31 @@
+"use client"
+
+import { useSearchParams } from "next/navigation";
 import Sidebar from "@/components/layout/Sidebar";
 import { ParishChart } from "@/components/charts/ParishChart";
 import { CaseStatusChart } from "@/components/charts/CaseStatusChart";
 import { CaseGrowthChart } from "@/components/charts/CaseGrowthChart";
 import { DownloadReportButton } from "@/components/DownloadReportButton";
 import { StatisticsFilters } from "@/components/StatisticsFilters";
-
-export const dynamic = 'force-dynamic';
+import { GenderChart } from "@/components/charts/GenderChart";
+import { HousingChart } from "@/components/charts/HousingChart";
+import { EducationChart } from "@/components/charts/EducationChart";
+import { EmploymentChart } from "@/components/charts/EmploymentChart";
+import { AgeChart } from "@/components/charts/AgeChart";
+import { useStatisticsData } from "@/hooks/useStatisticsData";
 
 export default function Statistics() {
+    const searchParams = useSearchParams();
+
+    const filters = {
+        materia: searchParams.get('subject') || undefined,
+        startDate: searchParams.get('startDate') || undefined,
+        endDate: searchParams.get('endDate') || undefined,
+        nucleus: searchParams.get('nucleus') || undefined,
+    };
+
+    const { data, loading, error } = useStatisticsData(filters);
+
     return (
         <div className="w-full h-screen min-h-screen bg-neutral-50 inline-flex justify-start items-center overflow-hidden">
             <Sidebar />
@@ -22,11 +40,35 @@ export default function Statistics() {
                         <DownloadReportButton />
                     </StatisticsFilters>
 
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-6 pb-10">
-                        <ParishChart />
-                        <CaseStatusChart />
-                        <CaseGrowthChart />
-                    </div>
+                    {error && (
+                        <div className="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded">
+                            <p className="font-bold">Error</p>
+                            <p>{error}</p>
+                        </div>
+                    )}
+
+                    {loading ? (
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-6 pb-10">
+                            {[...Array(8)].map((_, i) => (
+                                <div key={i} className="bg-white rounded-lg shadow h-64 animate-pulse">
+                                    <div className="h-full bg-gray-200 rounded-lg"></div>
+                                </div>
+                            ))}
+                        </div>
+                    ) : data ? (
+                        <div id="stats-charts-container" className="grid grid-cols-1 md:grid-cols-2 gap-6 pb-10">
+                            <ParishChart data={data.parish} />
+                            <CaseStatusChart data={data.caseStatus} />
+                            <CaseGrowthChart data={data.caseGrowth} />
+
+                            {/* Socio-economic Charts */}
+                            <GenderChart data={data.socioEconomic.gender} />
+                            <AgeChart data={data.socioEconomic.age} />
+                            <HousingChart data={data.socioEconomic.housing} />
+                            <EducationChart data={data.socioEconomic.education} />
+                            <EmploymentChart data={data.socioEconomic.employment} />
+                        </div>
+                    ) : null}
                 </div>
             </div>
         </div>

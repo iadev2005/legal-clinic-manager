@@ -2,9 +2,12 @@
 
 import { Line, LineChart, CartesianGrid, XAxis, YAxis, Tooltip, ResponsiveContainer } from "recharts"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/shadcn/card"
-import { caseGrowthData } from "@/data/statistics-data"
 
-export function CaseGrowthChart() {
+interface CaseGrowthChartProps {
+    data: { month: string; count: number }[]
+}
+
+export function CaseGrowthChart({ data }: CaseGrowthChartProps) {
     return (
         <Card className="font-bold text-sky-950 col-span-2">
             <CardHeader>
@@ -14,7 +17,7 @@ export function CaseGrowthChart() {
             <CardContent>
                 <div className="h-[300px] w-full flex items-center justify-center">
                     <ResponsiveContainer width="100%" height="100%">
-                        <LineChart data={caseGrowthData}>
+                        <LineChart data={data}>
                             <CartesianGrid strokeDasharray="3 3" />
                             <XAxis
                                 dataKey="month"
