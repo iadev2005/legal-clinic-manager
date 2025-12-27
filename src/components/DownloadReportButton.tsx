@@ -4,8 +4,9 @@ import { Download, Loader2 } from "lucide-react"
 import { useState } from "react"
 import { useSearchParams } from "next/navigation"
 import { domToPng } from "modern-screenshot"
-import { pdf } from "@react-pdf/renderer"
-import { ReportDocument } from "./ReportDocument"
+import { Packer } from "docx"
+import { createReportDocument } from "./ReportDocxDocument"
+
 
 export function DownloadReportButton() {
     const [isGenerating, setIsGenerating] = useState(false)
@@ -23,6 +24,7 @@ export function DownloadReportButton() {
             iframe.style.width = "210mm" // A4 width
             iframe.style.height = "10000px" // Tall enough
 
+
             // Pass current search params to the report page
             const params = searchParams.toString()
             iframe.src = `/statistics/report${params ? `?${params}` : ''}`
@@ -39,31 +41,30 @@ export function DownloadReportButton() {
                 throw new Error("No se pudo acceder al contenido del reporte.")
             }
 
-            // 3. Wait for loading to complete by checking for the presence of report pages
+            // 3. Wait for loading to complete by checking for the presence of report pages (1 to 3)
             let attempts = 0
             const maxAttempts = 20
-            let p1Element, p2Element, p3Element
+            const pageIds = [
+                "report-page-1", "report-page-2", "report-page-3"
+            ];
+            let pageElements: (HTMLElement | null)[] = [];
 
             while (attempts < maxAttempts) {
-                p1Element = iframeDoc.getElementById("report-page-1")
-                p2Element = iframeDoc.getElementById("report-page-2")
-                p3Element = iframeDoc.getElementById("report-page-3")
+                pageElements = pageIds.map(id => iframeDoc.getElementById(id));
 
-                if (p1Element && p2Element && p3Element) {
-                    // Check if elements have content (not just loading state)
-                    const hasContent = p1Element.children.length > 0 &&
-                        p2Element.children.length > 0 &&
-                        p3Element.children.length > 0
-                    if (hasContent) break
+                if (pageElements.every(el => el)) {
+                    // Check content inside
+                    const hasContent = pageElements.every(el => el && el.children.length > 0);
+                    if (hasContent) break;
                 }
 
                 await new Promise(resolve => setTimeout(resolve, 500))
                 attempts++
             }
 
-            if (!p1Element || !p2Element || !p3Element) {
+            if (pageElements.some(el => !el)) {
                 document.body.removeChild(iframe)
-                throw new Error("No se encontraron las páginas del reporte. Intente nuevamente.")
+                throw new Error("No se encontraron todas las páginas del reporte.")
             }
 
             // Options for high quality capture
@@ -72,25 +73,33 @@ export function DownloadReportButton() {
                 backgroundColor: "white",
             }
 
-            const page1Image = await domToPng(p1Element, captureOptions)
-            const page2Image = await domToPng(p2Element, captureOptions)
-            const page3Image = await domToPng(p3Element, captureOptions)
+            const images: string[] = [];
+            for (const el of pageElements) {
+                if (el) {
+                    const img = await domToPng(el, captureOptions);
+                    images.push(img);
+                }
+            }
 
-            // 4. Generate PDF using react-pdf
-            const blob = await pdf(
-                <ReportDocument
-                    page1Image={page1Image}
-                    page2Image={page2Image}
-                    page3Image={page3Image}
-                    date={new Date().toLocaleString()}
-                />
-            ).toBlob()
+            // 4. Generate DOCX using docx
+            const doc = createReportDocument({
+                images,
+                date: new Date().toLocaleString(),
+                // Custom titles for 3-page report
+                titles: [
+                    { title: "Métricas de Casos y Crecimiento", subtitle: "Reporte Socio-Cultural" },
+                    { title: "Datos Socio-Económicos I", subtitle: "Reporte Socio-Cultural" },
+                    { title: "Datos Socio-Económicos II", subtitle: "Reporte Socio-Cultural" }
+                ]
+            })
+
+            const blob = await Packer.toBlob(doc)
 
             // 5. Trigger download
             const url = URL.createObjectURL(blob)
             const link = document.createElement("a")
             link.href = url
-            link.download = `reporte_clinica_${new Date().toISOString().split('T')[0]}.pdf`
+            link.download = `reporte_socio_cultural_${new Date().toISOString().split('T')[0]}.docx`
             document.body.appendChild(link)
             link.click()
             document.body.removeChild(link)
@@ -100,7 +109,7 @@ export function DownloadReportButton() {
             document.body.removeChild(iframe)
 
         } catch (error) {
-            console.error("Error generating PDF:", error)
+            console.error("Error generating DOCX:", error)
             alert("Ocurrió un error al generar el reporte. Revise la consola para más detalles.")
         } finally {
             setIsGenerating(false)
@@ -118,7 +127,7 @@ export function DownloadReportButton() {
             ) : (
                 <Download className="w-5 h-5" />
             )}
-            {isGenerating ? "Generando Reporte Pro..." : "Descargar Reporte Pro"}
+            {isGenerating ? "Generando Socio-Cultural..." : "Reporte Socio-Cultural"}
         </button>
     )
 }

@@ -2,16 +2,12 @@
 
 import { useSearchParams } from "next/navigation";
 import Sidebar from "@/components/layout/Sidebar";
-import { ParishChart } from "@/components/charts/ParishChart";
-import { CaseStatusChart } from "@/components/charts/CaseStatusChart";
-import { CaseGrowthChart } from "@/components/charts/CaseGrowthChart";
+import { CaseGrowthChart } from "@/components/ui/area-chart";
 import { DownloadReportButton } from "@/components/DownloadReportButton";
+import { GeneralReportDialog } from "@/components/GeneralReportDialog";
+import { BarChart } from "@/components/ui/bar-chart";
+import { Pie2Chart } from "@/components/ui/pie2-chart";
 import { StatisticsFilters } from "@/components/StatisticsFilters";
-import { GenderChart } from "@/components/charts/GenderChart";
-import { HousingChart } from "@/components/charts/HousingChart";
-import { EducationChart } from "@/components/charts/EducationChart";
-import { EmploymentChart } from "@/components/charts/EmploymentChart";
-import { AgeChart } from "@/components/charts/AgeChart";
 import { useStatisticsData } from "@/hooks/useStatisticsData";
 
 export default function Statistics() {
@@ -37,7 +33,10 @@ export default function Statistics() {
 
                 <div className="self-stretch w-full p-7 mt-6 bg-neutral-50 rounded-[30px] shadow-[0px_0px_15.5px_0px_rgba(0,0,0,0.25)] flex flex-col gap-6">
                     <StatisticsFilters>
-                        <DownloadReportButton />
+                        <div className="flex items-center gap-2">
+                            <DownloadReportButton />
+                            <GeneralReportDialog />
+                        </div>
                     </StatisticsFilters>
 
                     {error && (
@@ -57,16 +56,85 @@ export default function Statistics() {
                         </div>
                     ) : data ? (
                         <div id="stats-charts-container" className="grid grid-cols-1 md:grid-cols-2 gap-6 pb-10">
-                            <ParishChart data={data.parish} />
-                            <CaseStatusChart data={data.caseStatus} />
-                            <CaseGrowthChart data={data.caseGrowth} />
+                            {/* Replaced specialized components with generic UI components where applicable */}
+                            <div className="bg-neutral-50 rounded-[30px] shadow-[0px_0px_15.5px_0px_rgba(0,0,0,0.25)] p-8">
+                                <BarChart
+                                    data={data.parish.map((p: any) => ({ name: p.name, value: p.value }))}
+                                    config={{ value: { label: "Casos", color: "#3E7DBB" } }}
+                                    dataKey="value"
+                                    nameKey="name"
+                                    title="Distribución por Parroquia"
+                                />
+                            </div>
+                            <div className="bg-neutral-50 rounded-[30px] shadow-[0px_0px_15.5px_0px_rgba(0,0,0,0.25)] p-8">
+                                <Pie2Chart
+                                    data={data.caseStatus.map((s: any) => ({ name: s.name, value: s.value }))}
+                                    config={{ value: { label: "Casos", color: "#3E7DBB" } }}
+                                    dataKey="value"
+                                    nameKey="name"
+                                    title="Estado de los Casos"
+                                />
+                            </div>
+                            <div className="bg-neutral-50 rounded-[30px] shadow-[0px_0px_15.5px_0px_rgba(0,0,0,0.25)] p-8 col-span-2">
+                                <CaseGrowthChart
+                                    data={data.caseGrowth.map((c: any) => ({ name: c.month, value: c.count }))}
+                                    config={{ value: { label: "Casos", color: "#3E7DBB" } }}
+                                    dataKey="value"
+                                    nameKey="name"
+                                    title="Crecimiento de Casos"
+                                />
+                            </div>
 
-                            {/* Socio-economic Charts */}
-                            <GenderChart data={data.socioEconomic.gender} />
-                            <AgeChart data={data.socioEconomic.age} />
-                            <HousingChart data={data.socioEconomic.housing} />
-                            <EducationChart data={data.socioEconomic.education} />
-                            <EmploymentChart data={data.socioEconomic.employment} />
+                            <div className="bg-neutral-50 rounded-[30px] shadow-[0px_0px_15.5px_0px_rgba(0,0,0,0.25)] p-8">
+                                <Pie2Chart
+                                    data={data.socioEconomic.gender.map((g: any) => ({ name: g.name, value: g.value }))}
+                                    config={{ value: { label: "Cantidad", color: "#3E7DBB" } }}
+                                    dataKey="value"
+                                    nameKey="name"
+                                    title="Género"
+                                />
+                            </div>
+
+                            <div className="bg-neutral-50 rounded-[30px] shadow-[0px_0px_15.5px_0px_rgba(0,0,0,0.25)] p-8">
+                                <BarChart
+                                    data={data.socioEconomic.age.map((a: any) => ({ name: a.name, value: a.value }))}
+                                    config={{ value: { label: "Cantidad", color: "#3E7DBB" } }}
+                                    dataKey="value"
+                                    nameKey="name"
+                                    title="Rangos de Edad"
+                                />
+                            </div>
+
+                            <div className="bg-neutral-50 rounded-[30px] shadow-[0px_0px_15.5px_0px_rgba(0,0,0,0.25)] p-8">
+                                <Pie2Chart
+                                    data={data.socioEconomic.housing.map((h: any) => ({ name: h.name, value: h.value }))}
+                                    config={{ value: { label: "Cantidad" } }}
+                                    dataKey="value"
+                                    nameKey="name"
+                                    title="Tipo de Vivienda"
+                                />
+                            </div>
+
+                            <div className="bg-neutral-50 rounded-[30px] shadow-[0px_0px_15.5px_0px_rgba(0,0,0,0.25)] p-8">
+                                <BarChart
+                                    data={data.socioEconomic.education.map((e: any) => ({ name: e.name, value: e.value }))}
+                                    config={{ value: { label: "Cantidad", color: "#2751BA" } }} // Different shade maybe
+                                    dataKey="value"
+                                    nameKey="name"
+                                    title="Nivel Educativo"
+                                />
+                            </div>
+
+                            <div className="bg-neutral-50 rounded-[30px] shadow-[0px_0px_15.5px_0px_rgba(0,0,0,0.25)] p-8">
+                                <Pie2Chart
+                                    data={data.socioEconomic.employment.map((e: any) => ({ name: e.name, value: e.value }))}
+                                    config={{ value: { label: "Cantidad" } }}
+                                    dataKey="value"
+                                    nameKey="name"
+                                    title="Situación Laboral"
+                                />
+                            </div>
+
                         </div>
                     ) : null}
                 </div>

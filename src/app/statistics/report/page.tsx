@@ -1,10 +1,9 @@
 "use client"
 
 import { useSearchParams } from "next/navigation";
-import { PieChartCustom } from "@/components/charts/PieChartCustom";
-import { ParishChart } from "@/components/charts/ParishChart";
-import { CaseGrowthChart } from "@/components/charts/CaseGrowthChart";
-import { AgeChart } from "@/components/charts/AgeChart";
+import { Pie2Chart } from "@/components/ui/pie2-chart";
+import { BarChart } from "@/components/ui/bar-chart";
+import { CaseGrowthChart } from "@/components/ui/area-chart";
 import { type ChartConfig } from "@/components/shadcn/chart";
 import { useStatisticsData } from "@/hooks/useStatisticsData";
 
@@ -28,7 +27,7 @@ export default function ReportPage() {
     const { data, loading } = useStatisticsData(filters);
 
     const pageStyle = {
-        width: "210mm",
+        width: "270mm",
         height: "270mm",
         padding: "15mm",
         backgroundColor: "white",
@@ -47,50 +46,85 @@ export default function ReportPage() {
         <div className="bg-white">
             {/* Page 1: Case Metrics */}
             <div id="report-page-1" style={pageStyle} className="flex flex-col gap-10">
-                <div className="flex flex-col gap-10">
-                    <PieChartCustom
-                        data={data.caseStatus}
-                        title="Estados de los Casos"
-                        description="Distribución actual de los estatus"
-                        config={commonConfig}
-                    />
-                    <ParishChart data={data.parish} />
-                    <CaseGrowthChart data={data.caseGrowth} />
+                <div className="grid grid-cols-1 md:grid-cols-2">
+                    <div className="p-5 col-span-2">
+                        <CaseGrowthChart
+                            data={data.caseGrowth.map((c: any) => ({ name: c.month, value: c.count }))}
+                            config={{ value: { label: "Casos", color: "#3E7DBB" } }}
+                            dataKey="value"
+                            nameKey="name"
+                            title="Crecimiento de Casos"
+                        />
+                    </div>
+                    <div className="p-5 ">
+                        <BarChart
+                            data={data.parish.map((p: any) => ({ name: p.name, value: p.value }))}
+                            config={{ value: { label: "Casos", color: "#3E7DBB" } }}
+                            dataKey="value"
+                            nameKey="name"
+                            title="Distribución por Parroquia"
+                        />
+                    </div>
+                    <div className="p-5 ">
+                        <Pie2Chart
+                            data={data.caseStatus.map((s: any) => ({ name: s.name, value: s.value }))}
+                            config={{ value: { label: "Casos", color: "#3E7DBB" } }}
+                            dataKey="value"
+                            nameKey="name"
+                            title="Estado de los Casos"
+                        />
+                    </div>
+
                 </div>
             </div>
 
             {/* Page 2: Socio-Economic Part 1 */}
             <div id="report-page-2" style={pageStyle} className="flex flex-col gap-10">
-                <div className="grid grid-cols-2 gap-8">
-                    <PieChartCustom
-                        data={data.socioEconomic.gender}
+                <div className="grid grid-cols-1 md:grid-cols-2 ">
+                    <Pie2Chart
+                        data={data.socioEconomic.gender.map((g: any) => ({ name: g.name, value: g.value }))}
                         title="Distribución por Género"
-                        config={commonConfig}
+                        config={{ value: { label: "Cantidad" } }}
+                        dataKey="value"
+                        nameKey="name"
                     />
-                    <AgeChart data={data.socioEconomic.age} />
+                    {/* AgeChart -> BarChart */}
+                    <BarChart
+                        data={data.socioEconomic.age.map((a: any) => ({ name: a.name, value: a.value }))}
+                        title="Rangos de Edad"
+                        config={{ value: { label: "Cantidad" } }}
+                        dataKey="value"
+                        nameKey="name"
+                    />
                 </div>
                 <div className="grid grid-cols-1">
-                    <PieChartCustom
-                        data={data.socioEconomic.housing}
+                    <Pie2Chart
+                        data={data.socioEconomic.housing.map((h: any) => ({ name: h.name, value: h.value }))}
                         title="Tipo de Vivienda"
-                        config={commonConfig}
+                        config={{ value: { label: "Cantidad" } }}
+                        dataKey="value"
+                        nameKey="name"
                     />
                 </div>
             </div>
 
             {/* Page 3: Socio-Economic Part 2 */}
             <div id="report-page-3" style={pageStyle} className="flex flex-col gap-10">
-                <div className="grid grid-cols-1 gap-12">
-                    <PieChartCustom
-                        data={data.socioEconomic.education}
+                <div className="grid grid-cols-1 md:grid-cols-2 ">
+                    <Pie2Chart
+                        data={data.socioEconomic.education.map((e: any) => ({ name: e.name, value: e.value }))}
                         title="Nivel Educativo"
-                        config={commonConfig}
+                        config={{ value: { label: "Cantidad" } }}
+                        dataKey="value"
+                        nameKey="name"
                     />
 
-                    <PieChartCustom
-                        data={data.socioEconomic.employment}
+                    <Pie2Chart
+                        data={data.socioEconomic.employment.map((e: any) => ({ name: e.name, value: e.value }))}
                         title="Condición Laboral"
-                        config={commonConfig}
+                        config={{ value: { label: "Cantidad" } }}
+                        dataKey="value"
+                        nameKey="name"
                     />
                 </div>
             </div>

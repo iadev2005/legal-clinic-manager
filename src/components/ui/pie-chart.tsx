@@ -46,7 +46,7 @@ export function PieChart({ data, config, dataKey, nameKey, title, innerRadius = 
         <Card className="flex flex-col border-none shadow-none bg-transparent">
             {title && (
                 <CardHeader className="items-center pb-0">
-                    <CardTitle className="text-sky-950 text-4xl font-semibold font-serif leading-none">{title}</CardTitle>
+                    <CardTitle className="text-sky-950 text-2xl font-semibold font-serif leading-none">{title}</CardTitle>
                 </CardHeader>
             )}
             <CardContent className="flex-1 pb-0 pt-0">

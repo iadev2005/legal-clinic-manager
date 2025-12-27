@@ -193,6 +193,37 @@ export async function getParishStats(filters: FilterParams = {}) {
     }
 }
 
+export async function getStateStats(filters: FilterParams = {}) {
+    try {
+        const { whereClause, params } = buildCaseFilters(filters);
+
+        const solicitanteFilter = whereClause ? `
+            WHERE s.cedula_solicitante IN (
+                SELECT DISTINCT c.cedula_solicitante 
+                FROM Casos c
+                JOIN Materias m ON c.id_materia = m.id_materia
+                JOIN Nucleos n ON c.id_nucleo = n.id_nucleo
+                ${whereClause}
+            )
+        ` : '';
+
+        const stats = await query(`
+            SELECT e.nombre_estado as name, COUNT(s.cedula_solicitante)::int as value 
+            FROM Estados e
+            JOIN Municipios m ON e.id_estado = m.id_estado
+            JOIN Parroquias p ON m.id_municipio = p.id_municipio
+            LEFT JOIN Solicitantes s ON p.id_parroquia = s.id_parroquia
+            ${solicitanteFilter}
+            GROUP BY e.nombre_estado
+            ORDER BY value DESC
+        `, params);
+        return stats.rows;
+    } catch (error) {
+        console.error("Error fetching state stats:", error);
+        return [];
+    }
+}
+
 export async function getCaseGrowthStats(filters: FilterParams = {}) {
     try {
         const { whereClause, params } = buildCaseFilters(filters);
@@ -214,5 +245,91 @@ export async function getCaseGrowthStats(filters: FilterParams = {}) {
     } catch (error) {
         console.error("Error fetching case growth stats:", error);
         return [];
+    }
+}
+
+export async function getMateriaDetailsStats(filters: FilterParams = {}) {
+    try {
+        const { whereClause, params } = buildCaseFilters(filters);
+
+        // 1. Stats by Materia and Estatus (for specific pies like 'Materia Civil- Sucesiones')
+        const materiaStatusStats = await query(`
+            SELECT 
+                m.nombre_materia,
+                e.nombre_estatus,
+                COUNT(DISTINCT c.nro_caso)::int as value
+            FROM Casos c
+            JOIN Materias m ON c.id_materia = m.id_materia
+            JOIN Se_Le_Adjudican sla ON c.nro_caso = sla.id_caso
+            JOIN Estatus e ON sla.id_estatus = e.id_estatus
+            -- Get only the latest status for each case
+            WHERE sla.fecha_registro = (
+                SELECT MAX(sla2.fecha_registro)
+                FROM Se_Le_Adjudican sla2
+                WHERE sla2.id_caso = c.nro_caso
+            )
+            ${whereClause ? `AND ${whereClause.replace('WHERE', '')}` : ''}
+            GROUP BY m.nombre_materia, e.nombre_estatus
+        `, params);
+
+        // 2. Stats by Materia (for 'Reporte de casos por Materia')
+        const materiaStats = await query(`
+            SELECT 
+                m.nombre_materia as name,
+                COUNT(*)::int as value
+            FROM Casos c
+            JOIN Materias m ON c.id_materia = m.id_materia
+            JOIN Nucleos n ON c.id_nucleo = n.id_nucleo
+            ${whereClause}
+            GROUP BY m.nombre_materia
+        `, params);
+
+        // 3. Detailed Hierarchy Query (Full breakdown for Custom Report)
+        const detailedStats = await query(`
+            SELECT 
+                m.nombre_materia,
+                cat.nombre_categoria,
+                sc.nombre_subcategoria,
+                al.nombre_ambito_legal,
+                e.nombre_estatus,
+                COUNT(c.nro_caso)::int as value
+            FROM Casos c
+            JOIN Materias m ON c.id_materia = m.id_materia
+            JOIN Categorias cat ON c.num_categoria = cat.num_categoria AND c.id_materia = cat.id_materia
+            JOIN Sub_Categorias sc ON 
+                c.num_subcategoria = sc.num_subcategoria AND 
+                c.num_categoria = sc.num_categoria AND 
+                c.id_materia = sc.id_materia
+            JOIN Ambitos_Legales al ON 
+                c.num_ambito_legal = al.num_ambito_legal AND 
+                c.num_subcategoria = al.num_subcategoria AND 
+                c.num_categoria = al.num_categoria AND 
+                c.id_materia = al.id_materia
+            JOIN Se_Le_Adjudican sla ON c.nro_caso = sla.id_caso
+            JOIN Estatus e ON sla.id_estatus = e.id_estatus
+            JOIN Nucleos n ON c.id_nucleo = n.id_nucleo
+            WHERE sla.fecha_registro = (
+                SELECT MAX(sla2.fecha_registro)
+                FROM Se_Le_Adjudican sla2
+                WHERE sla2.id_caso = c.nro_caso
+            )
+            ${whereClause ? `AND ${whereClause.replace('WHERE', '')}` : ''}
+            GROUP BY 
+                m.nombre_materia, 
+                cat.nombre_categoria,
+                sc.nombre_subcategoria, 
+                al.nombre_ambito_legal, 
+                e.nombre_estatus
+        `, params);
+
+        return {
+            byMateriaAndStatus: materiaStatusStats.rows,
+            byMateria: materiaStats.rows,
+            detailedBreakdown: detailedStats.rows
+        };
+
+    } catch (error) {
+        console.error("Error fetching detailed materia stats:", error);
+        return { byMateriaAndStatus: [], byMateria: [], detailedBreakdown: [] };
     }
 }

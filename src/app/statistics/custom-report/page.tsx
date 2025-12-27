@@ -1,8 +1,37 @@
+
 "use client"
 
 import { useSearchParams } from "next/navigation";
 import { type ChartConfig } from "@/components/shadcn/chart";
 import { useStatisticsData } from "@/hooks/useStatisticsData";
+import { Pie2Chart } from "@/components/ui/pie2-chart";
+import { BarChart } from "@/components/ui/bar-chart";
+
+// Generic helper to filter and group data
+function getFilteredAndGroupedData(
+    data: any[],
+    filterFn: (item: any) => boolean,
+    groupByField: string = 'nombre_subcategoria'
+) {
+    if (!data) return [];
+    return data
+        .filter(item => filterFn(item))
+        .reduce((acc: any[], item: any) => {
+            const groupName = item[groupByField] || "Desconocido";
+            const existing = acc.find((x: any) => x.name === groupName);
+            if (existing) {
+                existing.value += item.value;
+            } else {
+                acc.push({
+                    name: groupName,
+                    value: item.value,
+                    fill: `hsl(var(--chart-${(acc.length % 5) + 1}))`
+                });
+            }
+            return acc;
+        }, [])
+        .sort((a: any, b: any) => b.value - a.value);
+}
 
 const commonConfig = {
     value: {
@@ -14,60 +43,222 @@ const commonConfig = {
 export default function CustomReportPage() {
     const searchParams = useSearchParams();
 
-    const filters = {
-        materia: searchParams.get('subject') || undefined,
-        startDate: searchParams.get('startDate') || undefined,
-        endDate: searchParams.get('endDate') || undefined,
-        nucleus: searchParams.get('nucleus') || undefined,
+    const activeFilters = {
+        materia: searchParams.get("materia") || undefined,
+        startDate: searchParams.get("startDate") || undefined,
+        endDate: searchParams.get("endDate") || undefined,
+        nucleus: searchParams.get("nucleus") || undefined,
     };
 
-    const { data, loading } = useStatisticsData(filters);
+    const { data, loading, error } = useStatisticsData(activeFilters);
 
     const pageStyle = {
-        width: "210mm",
+        width: "270mm",
         height: "270mm",
         padding: "15mm",
         backgroundColor: "white",
         margin: "0 auto",
     };
 
-    if (loading || !data) {
-        return (
-            <div className="bg-white flex items-center justify-center min-h-screen">
-                <div className="text-sky-950 text-2xl font-semibold">Cargando reporte personalizado...</div>
-            </div>
-        );
-    }
+    if (loading) return <div>Cargando reporte personalizado...</div>;
+    if (error) return <div>Error cargando datos: {error}</div>;
+    if (!data) return <div>No hay datos para mostrar.</div>;
+
+    const breakdown = data.materiaDetails.detailedBreakdown;
+
+    // Data Preparation - Grouping by Subcategory for all Materia charts
+
+    // 1. Civil - Sucesiones
+    const civilSucesiones = getFilteredAndGroupedData(breakdown,
+        i => i.nombre_materia?.toLowerCase() === 'civil' && i.nombre_categoria?.toLowerCase().includes('sucesiones')
+    );
+
+    // 2. Civil - Familia
+    const civilFamiliaOrd = getFilteredAndGroupedData(breakdown,
+        i => i.nombre_materia?.toLowerCase() === 'civil' && i.nombre_ambito_legal?.toLowerCase().includes('ordinario')
+    );
+    const civilFamiliaProt = getFilteredAndGroupedData(breakdown,
+        i => i.nombre_materia?.toLowerCase() === 'civil' && i.nombre_ambito_legal?.toLowerCase().includes('protección')
+    );
+
+    // 3. Civil - Personas, Bienes, Contratos
+    // Assuming "Personas", "Bienes", "Contratos" are Categories or implied context
+    const civilPersonas = getFilteredAndGroupedData(breakdown,
+        i => i.nombre_materia?.toLowerCase() === 'civil' && (i.nombre_categoria?.toLowerCase().includes('personas') || i.nombre_subcategoria?.toLowerCase().includes('personas'))
+    );
+    const civilPersonasBar = civilPersonas.map((p: any) => ({ category: p.name, value: p.value }));
+
+    const civilBienes = getFilteredAndGroupedData(breakdown,
+        i => i.nombre_materia?.toLowerCase() === 'civil' && (i.nombre_categoria?.toLowerCase().includes('bienes') || i.nombre_subcategoria?.toLowerCase().includes('bienes'))
+    );
+
+    const civilContrato = getFilteredAndGroupedData(breakdown,
+        i => i.nombre_materia?.toLowerCase() === 'civil' && (i.nombre_categoria?.toLowerCase().includes('contratos') || i.nombre_subcategoria?.toLowerCase().includes('contratos'))
+    );
+
+    // 4. Other Materias
+    const penal = getFilteredAndGroupedData(breakdown,
+        i => i.nombre_materia?.toLowerCase().includes('penal') || i.nombre_materia?.toLowerCase().includes('violencia') // Penal often grouped with Violencia
+    );
+    const laboral = getFilteredAndGroupedData(breakdown,
+        i => i.nombre_materia?.toLowerCase().includes('laboral')
+    );
+    const mercantil = getFilteredAndGroupedData(breakdown,
+        i => i.nombre_materia?.toLowerCase().includes('mercantil')
+    );
+
+    // 'Otros' logic
+    const otros = getFilteredAndGroupedData(breakdown,
+        i => i.nombre_materia?.toLowerCase() === 'otro' || i.nombre_materia?.toLowerCase().includes('lopnna')
+    );
+    const otrosBar = otros.map((p: any) => ({ category: p.name, value: p.value }));
+
+    const porMateria = data.materiaDetails.byMateria.map((item: any) => ({
+        name: item.name,
+        value: item.value,
+        fill: `var(--color-${item.name.toLowerCase().replace(/\s+/g, '-')})`
+    }));
+
+    const genero = data.socioEconomic.gender.map((item: any) => ({ category: item.name, value: item.value }));
+    const parroquia = data.parish.map((item: any) => ({ category: item.name, value: item.value }));
+    const estado = data.state.map((item: any) => ({ category: item.name, value: item.value }));
 
     return (
-        <div className="bg-white">
-            {/* Page 1: Placeholder - Waiting for chart specifications */}
-            <div id="custom-report-page-1" style={pageStyle} className="flex flex-col gap-10">
-                <div className="flex flex-col items-center justify-center h-full">
-                    <h1 className="text-sky-950 text-4xl font-bold mb-4">Reporte Personalizado</h1>
-                    <p className="text-gray-600 text-lg">
-                        Página base creada. Lista para agregar gráficas.
-                    </p>
+        <div className="w-full h-screen min-h-screen bg-neutral-50 inline-flex justify-start items-center overflow-hidden">
+            <div className="w-full h-full p-6 overflow-y-auto">
+                <div className="self-stretch flex flex-col justify-start items-start">
+                    <h1 className="self-stretch justify-start text-sky-950 text-6xl font-semibold">Reporte General</h1>
+                    <h1 className="self-stretch justify-start text-[#325B84] text-2xl font-semibold">Vista previa del reporte personalizado.</h1>
                 </div>
-            </div>
 
-            {/* Page 2: Placeholder - Ready for additional charts */}
-            <div id="custom-report-page-2" style={pageStyle} className="flex flex-col gap-10">
-                <div className="flex flex-col items-center justify-center h-full">
-                    <p className="text-gray-500 text-lg">
-                        Página 2 - Esperando especificaciones de gráficas
-                    </p>
-                </div>
-            </div>
+                <div className="w-full flex flex-col gap-8 mt-8 items-center">
+                    {/* Page 1 */}
+                    <div id="custom-report-page-1" style={pageStyle} className="flex flex-col gap-8 shadow-md">
+                        <header className="text-center mb-6">
+                            <h1 className="text-3xl font-bold text-sky-950">Reporte de Gestión - Página 1</h1>
+                            <p className="text-gray-500">Materia Civil: Sucesiones y Familia</p>
+                        </header>
+                        <div className="grid grid-cols-1 md:grid-cols-2">
+                            <div className="p-3 col-span-2">
+                                <Pie2Chart
+                                    data={civilSucesiones}
+                                    config={commonConfig}
+                                    dataKey="value"
+                                    nameKey="name"
+                                    title="Materia Civil - Sucesiones"
+                                />
+                            </div>
+                            <div className="p-3">
+                                <Pie2Chart
+                                    data={civilFamiliaOrd}
+                                    config={commonConfig}
+                                    dataKey="value"
+                                    nameKey="name"
+                                    title=" Materia Civil - Familia (Tribunales Ordinarios)"
+                                />
+                            </div>
+                            <div className="p-3">
+                                <Pie2Chart
+                                    data={civilFamiliaProt}
+                                    config={commonConfig}
+                                    dataKey="value"
+                                    nameKey="name"
+                                    title="Materia Civil - Familia (Protección)" />
+                            </div>
+                        </div>
+                    </div>
 
-            {/* Page 3: Placeholder - Ready for additional charts */}
-            <div id="custom-report-page-3" style={pageStyle} className="flex flex-col gap-10">
-                <div className="flex flex-col items-center justify-center h-full">
-                    <p className="text-gray-500 text-lg">
-                        Página 3 - Esperando especificaciones de gráficas
-                    </p>
+                    {/* Page 2 */}
+                    <div id="custom-report-page-2" style={pageStyle} className="flex flex-col gap-8 shadow-md">
+                        <header className="text-center mb-6">
+                            <h1 className="text-3xl font-bold text-sky-950">Reporte de Gestión - Página 2</h1>
+                            <p className="text-gray-500">Materia Civil: Personas, Bienes y Contratos</p>
+                        </header>
+                        <div className="grid grid-cols-1 md:grid-cols-2">
+                            <div className="p-3 col-span-2">
+                                <BarChart
+                                    data={civilPersonasBar}
+                                    config={commonConfig}
+                                    dataKey="value"
+                                    nameKey="category"
+                                    title="Materia Civil - Personas" />
+                            </div>
+                            <div className="p-3 col-span-1">
+                                <Pie2Chart
+                                    data={civilBienes} config={commonConfig} dataKey="value" nameKey="name" title="Materia Civil - Bienes" />
+                            </div>
+                            <div className="p-3 col-span-1">
+                                <Pie2Chart data={civilContrato} config={commonConfig} dataKey="value" nameKey="name" title="Materia Civil - Contratos" />
+                            </div>
+                        </div>
+                    </div>
+
+                    {/* Page 3 */}
+                    <div id="custom-report-page-3" style={pageStyle} className="flex flex-col gap-8 shadow-md">
+                        <header className="text-center mb-6">
+                            <h1 className="text-3xl font-bold text-sky-950">Reporte de Gestión - Página 3</h1>
+                            <p className="text-gray-500">Materias: Penal, Laboral y Mercantil</p>
+                        </header>
+                        <div className="grid grid-cols-1 md:grid-cols-2">
+                            <div className="p-3 col-span-2">
+                                <Pie2Chart data={penal} config={commonConfig} dataKey="value" nameKey="name" title="Materia Penal" />
+                            </div>
+                            <div className="p-3 col-span-2">
+                                <Pie2Chart data={laboral} config={commonConfig} dataKey="value" nameKey="name" title="Materia Laboral" />
+                            </div>
+                        </div>
+                    </div>
+
+                    {/* Page 4 */}
+                    <div id="custom-report-page-4" style={pageStyle} className="flex flex-col gap-8 shadow-md">
+                        <header className="text-center mb-6">
+                            <h1 className="text-3xl font-bold text-sky-950">Reporte de Gestión - Página 4</h1>
+                            <p className="text-gray-500">Otros Casos y Resumen General</p>
+                        </header>
+                        <div className="grid grid-cols-1 md:grid-cols-2">
+                            <div className="p-3 col-span-2">
+                                <BarChart data={otrosBar} config={commonConfig} dataKey="value" nameKey="category" title="Otros Casos" />
+                            </div>
+                            <div className="p-3 col-span-1">
+                                <Pie2Chart data={mercantil} config={commonConfig} dataKey="value" nameKey="name" title="Materia Mercantil" />
+                            </div>
+                            <div className="p-3 col-span-1">
+                                <Pie2Chart data={porMateria} config={commonConfig} dataKey="value" nameKey="name" title="Reporte de Casos por Materia" />
+                            </div>
+                        </div>
+                    </div>
+
+                    {/* Page 5 */}
+                    <div id="custom-report-page-5" style={pageStyle} className="flex flex-col gap-8 shadow-md">
+                        <header className="text-center mb-6">
+                            <h1 className="text-3xl font-bold text-sky-950">Reporte de Gestión - Página 5</h1>
+                            <p className="text-gray-500">Demografía: Género y Ubicación</p>
+                        </header>
+                        <div className="grid grid-cols-1 md:grid-cols-2">
+                            <div className="p-3 col-span-2">
+                                <BarChart data={genero} config={commonConfig} dataKey="value" nameKey="category" title="Clasificación por Género" />
+                            </div>
+                            <div className="p-3 col-span-2">
+                                <BarChart data={estado} config={commonConfig} dataKey="value" nameKey="category" title="Usuario por Estado" />
+                            </div>
+                        </div>
+                    </div>
+
+                    {/* Page 6 */}
+                    <div id="custom-report-page-6" style={pageStyle} className="flex flex-col gap-8 shadow-md">
+                        <header className="text-center mb-6">
+                            <h1 className="text-3xl font-bold text-sky-950">Reporte de Gestión - Página 6</h1>
+                            <p className="text-gray-500">Distribución por Parroquia</p>
+                        </header>
+                        <div className="grid grid-cols-1 md:grid-cols-2">
+                            <div className="p-3 col-span-2">
+                                <BarChart data={parroquia} config={commonConfig} dataKey="value" nameKey="category" title="Usuario por Parroquia" />
+                            </div>
+                        </div>
+                    </div>
                 </div>
             </div>
         </div>
     );
 }
+
