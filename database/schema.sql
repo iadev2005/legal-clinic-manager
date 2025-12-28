@@ -374,6 +374,10 @@ CREATE TABLE Se_Asignan (
     FOREIGN KEY (cedula_alumno, term) REFERENCES Alumnos(cedula_alumno, term)
 );
 
+-- Índice parcial para asegurar Regla de Negocio: Solo 1 alumno activo por caso
+CREATE UNIQUE INDEX idx_asignacion_unica_activa 
+ON Se_Asignan (id_caso) WHERE (estatus = 'Activo');
+
 -- Tabla 29 (Con restricción de profesor único activo)
 CREATE TABLE Supervisan (
     id_supervision SERIAL PRIMARY KEY,

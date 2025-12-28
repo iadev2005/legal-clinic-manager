@@ -12,6 +12,7 @@ import {
 import { Label } from "@/components/shadcn/label";
 import FilterSelect from "./filter-select";
 import PrimaryButton from "./primary-button";
+import { getAlumnosDisponibles, getAsignacionesActivas } from "@/actions/casos";
 
 interface CaseEditModalProps {
   open: boolean;
@@ -30,18 +31,10 @@ interface CaseEditModalProps {
 export interface CaseEditData {
   id: string;
   status: "EN_PROCESO" | "ARCHIVADO" | "ENTREGADO" | "ASESORIA";
-  assignedStudent: string;
+  assignedStudent: string; // Nombre completo para mostrar
+  assignedStudentCedula?: string; // Cédula del alumno
+  assignedStudentTerm?: string; // Term del alumno
 }
-
-// Lista de estudiantes disponibles (mock - en producción vendría de la API)
-const AVAILABLE_STUDENTS = [
-  { value: "José Gómez", label: "José Gómez" },
-  { value: "Ana Martínez", label: "Ana Martínez" },
-  { value: "Luisa Fernández", label: "Luisa Fernández" },
-  { value: "Carlos Rodríguez", label: "Carlos Rodríguez" },
-  { value: "María González", label: "María González" },
-  { value: "Pedro Sánchez", label: "Pedro Sánchez" },
-];
 
 // Mapear estatus de BD a formato del frontend
 const mapEstatusToFrontend = (estatus: string): "EN_PROCESO" | "ARCHIVADO" | "ENTREGADO" | "ASESORIA" => {
@@ -64,20 +57,102 @@ export default function CaseEditModal({
     id: "",
     status: "EN_PROCESO",
     assignedStudent: "",
+    assignedStudentCedula: "",
+    assignedStudentTerm: "",
   });
   const [loading, setLoading] = useState(false);
   const [hasChanges, setHasChanges] = useState(false);
+  const [alumnosList, setAlumnosList] = useState<Array<{ value: string; label: string }>>([]);
+  const [loadingAlumnos, setLoadingAlumnos] = useState(false);
+
+  // Cargar alumnos cuando se abre el modal
+  useEffect(() => {
+    if (open) {
+      loadAlumnos();
+    }
+  }, [open]);
+
+  const [alumnosData, setAlumnosData] = useState<Array<{ cedula: string; nombre: string; term: string }>>([]);
+
+  const loadAlumnos = async () => {
+    setLoadingAlumnos(true);
+    try {
+      const result = await getAlumnosDisponibles();
+      if (result.success && result.data) {
+        const alumnos = result.data.map((alumno: any) => ({
+          cedula: alumno.cedula_usuario,
+          nombre: alumno.nombre_completo || `${alumno.nombres} ${alumno.apellidos}`,
+          term: alumno.term,
+        }));
+        setAlumnosData(alumnos);
+        setAlumnosList(
+          alumnos.map((alumno) => ({
+            value: alumno.cedula,
+            label: alumno.nombre,
+          }))
+        );
+      } else {
+        console.error("Error loading alumnos:", result.error);
+        setAlumnosList([]);
+        setAlumnosData([]);
+      }
+    } catch (error) {
+      console.error("Error loading alumnos:", error);
+      setAlumnosList([]);
+      setAlumnosData([]);
+    } finally {
+      setLoadingAlumnos(false);
+    }
+  };
 
   useEffect(() => {
-    if (caseData) {
-      setFormData({
-        id: caseData.id,
-        status: caseData.status,
-        assignedStudent: caseData.assignedStudent,
-      });
-      setHasChanges(false);
+    if (caseData && open) {
+      // Obtener la información del alumno actual del caso
+      const loadCurrentAssignment = async () => {
+        try {
+          const nroCaso = parseInt(caseData.id);
+          const asignaciones = await getAsignacionesActivas(nroCaso);
+          if (asignaciones.success && asignaciones.data?.alumnos?.length > 0) {
+            const alumnoActual = asignaciones.data.alumnos[0];
+            setFormData({
+              id: caseData.id,
+              status: caseData.status,
+              assignedStudent: caseData.assignedStudent,
+              assignedStudentCedula: alumnoActual.cedula_alumno || "",
+              assignedStudentTerm: alumnoActual.term || "",
+            });
+          } else {
+            // Buscar en la lista de alumnos disponibles por nombre
+            const alumnoEnLista = alumnosData.find(
+              (a) => a.nombre === caseData.assignedStudent
+            );
+            setFormData({
+              id: caseData.id,
+              status: caseData.status,
+              assignedStudent: caseData.assignedStudent,
+              assignedStudentCedula: alumnoEnLista?.cedula || "",
+              assignedStudentTerm: alumnoEnLista?.term || "",
+            });
+          }
+        } catch (error) {
+          console.error("Error loading current assignment:", error);
+          // Fallback: buscar en la lista de alumnos disponibles
+          const alumnoEnLista = alumnosData.find(
+            (a) => a.nombre === caseData.assignedStudent
+          );
+          setFormData({
+            id: caseData.id,
+            status: caseData.status,
+            assignedStudent: caseData.assignedStudent,
+            assignedStudentCedula: alumnoEnLista?.cedula || "",
+            assignedStudentTerm: alumnoEnLista?.term || "",
+          });
+        }
+        setHasChanges(false);
+      };
+      loadCurrentAssignment();
     }
-  }, [caseData, open]);
+  }, [caseData, open, alumnosData]);
 
   const handleChange = (field: keyof CaseEditData, value: string) => {
     setFormData((prev) => ({ ...prev, [field]: value }));
@@ -184,10 +259,22 @@ export default function CaseEditModal({
               Alumno Asignado <span className="text-red-500">*</span>
             </Label>
             <FilterSelect
-              placeholder="Seleccionar alumno"
-              value={formData.assignedStudent}
-              onChange={(value) => handleChange("assignedStudent", value)}
-              options={AVAILABLE_STUDENTS}
+              placeholder={loadingAlumnos ? "Cargando alumnos..." : "Seleccionar alumno"}
+              value={formData.assignedStudentCedula || formData.assignedStudent}
+              onChange={(value) => {
+                const alumnoSeleccionado = alumnosData.find((a) => a.cedula === value);
+                if (alumnoSeleccionado) {
+                  setFormData((prev) => ({
+                    ...prev,
+                    assignedStudent: alumnoSeleccionado.nombre,
+                    assignedStudentCedula: alumnoSeleccionado.cedula,
+                    assignedStudentTerm: alumnoSeleccionado.term,
+                  }));
+                  setHasChanges(true);
+                }
+              }}
+              options={alumnosList}
+              disabled={loadingAlumnos}
             />
             <p className="text-sm text-sky-950/60">
               Asigna o reasigna el caso a un estudiante

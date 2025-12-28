@@ -2,6 +2,7 @@
 
 import { query } from '@/lib/db';
 import { revalidatePath } from 'next/cache';
+import { getSession } from '@/lib/auth-utils';
 
 // ============================================================================
 // INTERFACES Y TIPOS
@@ -203,10 +204,11 @@ export async function createCaso(data: CreateCasoData) {
     `);
 
         if (estatusResult.rows.length > 0) {
+            const session = await getSession();
             await query(`
-        INSERT INTO Se_Le_Adjudican (id_caso, id_estatus, motivo)
-        VALUES ($1, $2, $3)
-      `, [nroCaso, estatusResult.rows[0].id_estatus, 'Caso creado']);
+        INSERT INTO Se_Le_Adjudican (id_caso, id_estatus, cedula_usuario, motivo)
+        VALUES ($1, $2, $3, $4)
+      `, [nroCaso, estatusResult.rows[0].id_estatus, session?.cedula || null, 'Caso creado']);
         }
 
         // 4. Asignar alumno/profesor si se proporcionó
@@ -349,14 +351,26 @@ export async function getAsignacionesActivas(nroCaso: number) {
 
 export async function asignarAlumno(nroCaso: number, cedulaAlumno: string, term: string) {
     try {
+        await query('BEGIN');
+        
+        // 1. Desactivar cualquier asignación activa previa para este caso
+        await query(`
+      UPDATE Se_Asignan
+      SET estatus = 'Inactivo'
+      WHERE id_caso = $1 AND estatus = 'Activo'
+    `, [nroCaso]);
+        
+        // 2. Insertar la nueva asignación activa
         await query(`
       INSERT INTO Se_Asignan (id_caso, cedula_alumno, term, estatus)
       VALUES ($1, $2, $3, 'Activo')
     `, [nroCaso, cedulaAlumno, term]);
-
+        
+        await query('COMMIT');
         revalidatePath('/cases');
         return { success: true };
     } catch (error: any) {
+        await query('ROLLBACK');
         console.error('Error al asignar alumno:', error);
         return { success: false, error: error.message };
     }
@@ -364,14 +378,26 @@ export async function asignarAlumno(nroCaso: number, cedulaAlumno: string, term:
 
 export async function asignarProfesor(nroCaso: number, cedulaProfesor: string, term: string) {
     try {
+        await query('BEGIN');
+        
+        // 1. Desactivar cualquier supervisión activa previa para este caso
+        await query(`
+      UPDATE Supervisan
+      SET estatus = 'Inactivo'
+      WHERE id_caso = $1 AND estatus = 'Activo'
+    `, [nroCaso]);
+        
+        // 2. Insertar la nueva supervisión activa
         await query(`
       INSERT INTO Supervisan (id_caso, cedula_profesor, term, estatus)
       VALUES ($1, $2, $3, 'Activo')
     `, [nroCaso, cedulaProfesor, term]);
-
+        
+        await query('COMMIT');
         revalidatePath('/cases');
         return { success: true };
     } catch (error: any) {
+        await query('ROLLBACK');
         console.error('Error al asignar profesor:', error);
         return { success: false, error: error.message };
     }
@@ -647,6 +673,72 @@ export async function getAccionesCaso(nroCaso: number) {
         return { success: true, data: result.rows };
     } catch (error: any) {
         console.error('Error al obtener acciones:', error);
+        return { success: false, error: error.message };
+    }
+}
+
+// ============================================================================
+// OBTENER ALUMNOS Y PROFESORES DISPONIBLES
+// ============================================================================
+
+export async function getAlumnosDisponibles(term?: string) {
+    try {
+        let queryStr = `
+      SELECT DISTINCT
+        u.cedula_usuario,
+        u.nombres || ' ' || u.apellidos as nombre_completo,
+        u.nombres,
+        u.apellidos,
+        a.term,
+        a.tipo
+      FROM Usuarios_Sistema u
+      INNER JOIN Alumnos a ON u.cedula_usuario = a.cedula_alumno
+      WHERE u.rol = 'Estudiante' AND u.activo = TRUE
+    `;
+        
+        const params: any[] = [];
+        if (term) {
+            queryStr += ` AND a.term = $1`;
+            params.push(term);
+        }
+        
+        queryStr += ` ORDER BY u.nombres, u.apellidos`;
+        
+        const result = await query(queryStr, params);
+        return { success: true, data: result.rows };
+    } catch (error: any) {
+        console.error('Error al obtener alumnos:', error);
+        return { success: false, error: error.message };
+    }
+}
+
+export async function getProfesoresDisponibles(term?: string) {
+    try {
+        let queryStr = `
+      SELECT DISTINCT
+        u.cedula_usuario,
+        u.nombres || ' ' || u.apellidos as nombre_completo,
+        u.nombres,
+        u.apellidos,
+        p.term,
+        p.tipo
+      FROM Usuarios_Sistema u
+      INNER JOIN Profesores p ON u.cedula_usuario = p.cedula_profesor
+      WHERE u.rol = 'Profesor' AND u.activo = TRUE
+    `;
+        
+        const params: any[] = [];
+        if (term) {
+            queryStr += ` AND p.term = $1`;
+            params.push(term);
+        }
+        
+        queryStr += ` ORDER BY u.nombres, u.apellidos`;
+        
+        const result = await query(queryStr, params);
+        return { success: true, data: result.rows };
+    } catch (error: any) {
+        console.error('Error al obtener profesores:', error);
         return { success: false, error: error.message };
     }
 }

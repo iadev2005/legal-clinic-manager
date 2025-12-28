@@ -20,7 +20,7 @@ export default async function Cases() {
   return (
     <div className="w-full h-screen min-h-screen bg-neutral-50 inline-flex justify-start items-center overflow-hidden">
       <Sidebar user={session as any} />
-      <CasesClient userRole={userRole} />
+      <CasesClient userRole={userRole} userCedula={session?.cedula as string | undefined} />
     </div>
   );
 }

@@ -47,6 +47,7 @@ interface Case {
 
 interface CasesClientProps {
   userRole: "ADMIN" | "PROFESSOR" | "STUDENT";
+  userCedula?: string;
 }
 
 const ITEMS_PER_PAGE = 10;
@@ -62,7 +63,7 @@ const mapEstatusToFrontend = (estatus: string | null): "EN_PROCESO" | "ARCHIVADO
   return "EN_PROCESO";
 };
 
-export default function CasesClient({ userRole }: CasesClientProps) {
+export default function CasesClient({ userRole, userCedula }: CasesClientProps) {
   const router = useRouter();
   const searchParams = useSearchParams();
   const applicantIdFilter = searchParams.get("applicantId");
@@ -329,26 +330,16 @@ export default function CasesClient({ userRole }: CasesClientProps) {
         });
         
         if (estatusObj) {
-          await cambiarEstatus(nroCaso, estatusObj.id_estatus, "Cambio de estatus desde la interfaz");
+          await cambiarEstatus(nroCaso, estatusObj.id_estatus, "Cambio de estatus desde la interfaz", userCedula);
         }
       }
 
-      // 2. Asignar alumno si es diferente (TODO: obtener term actual)
-      // Por ahora solo actualizamos el estado local
-      // En producción, aquí se llamaría a asignarAlumno() con el term correcto
-
-      // Actualizar el caso en el estado local
-      setCases((prevCases) =>
-        prevCases.map((caso) =>
-          caso.id === data.id
-            ? {
-                ...caso,
-                status: data.status,
-                assignedStudent: data.assignedStudent,
-              }
-            : caso
-        )
-      );
+      // 2. Asignar alumno si es diferente
+      if (casoActual && casoActual.assignedStudent !== data.assignedStudent) {
+        if (data.assignedStudentCedula && data.assignedStudentTerm) {
+          await asignarAlumno(nroCaso, data.assignedStudentCedula, data.assignedStudentTerm);
+        }
+      }
 
       // Recargar datos para asegurar sincronización
       await loadData();
