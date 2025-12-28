@@ -1,6 +1,5 @@
 "use client";
 
-import Sidebar from "@/components/layout/Sidebar";
 import DashboardCard from "@/components/ui/DashboardCard";
 import { PieChart } from "@/components/ui/pie-chart";
 import { type ChartConfig } from "@/components/shadcn/chart";
@@ -206,74 +205,71 @@ export default function Dashboard() {
   ];
 
   return (
-    <div className="w-full h-screen min-h-screen bg-neutral-50 inline-flex justify-start items-center overflow-hidden">
-      <Sidebar />
-      <div className="w-full h-full p-11 inline-flex flex-col justify-start items-center gap-6 overflow-y-auto">
-        {/* Titulo */}
-        <div className="self-stretch flex flex-col justify-start items-start">
-          <h1 className="self-stretch justify-start text-sky-950 text-6xl font-semibold">
-            Dashboard
+    <>
+      {/* Titulo */}
+      <div className="self-stretch flex flex-col justify-start items-start">
+        <h1 className="self-stretch justify-start text-sky-950 text-6xl font-semibold">
+          Dashboard
+        </h1>
+        <h1 className="self-stretch justify-start text-[#325B84] text-2xl font-semibold">
+          Un resumen visual de la actividad reciente y las métricas clave.
+        </h1>
+      </div>
+
+      {/* Cards */}
+      <div className="self-stretch flex flex-wrap justify-center items-center gap-7">
+        {dashboardCards.map((card, index) => (
+          <DashboardCard key={index} {...card} />
+        ))}
+      </div>
+
+      {/* ODS */}
+      <div className="self-stretch px-10 py-10 bg-neutral-50 rounded-[40px] shadow-[0px_0px_15.5px_0px_rgba(0,0,0,0.25)] inline-flex justify-start items-center gap-8">
+        <div className="px-6 aspect-square bg-blue-100 rounded-[20px] flex justify-center items-center gap-2.5">
+          <span className="icon-[flowbite--landmark-solid] text-7xl text-[#3E7DBB]"></span>
+        </div>
+        <div className="self-stretch inline-flex flex-col justify-center items-start gap-1">
+          <h1 className="self-stretch justify-start text-sky-950 text-3xl font-semibold leading-tight">
+            Comprometidos con el ODS 16: Paz, Justicia e Instituciones Sólidas
           </h1>
-          <h1 className="self-stretch justify-start text-[#325B84] text-2xl font-semibold">
-            Un resumen visual de la actividad reciente y las métricas clave.
-          </h1>
-        </div>
-
-        {/* Cards */}
-        <div className="self-stretch flex flex-wrap justify-center items-center gap-7">
-          {dashboardCards.map((card, index) => (
-            <DashboardCard key={index} {...card} />
-          ))}
-        </div>
-
-        {/* ODS */}
-        <div className="self-stretch px-10 py-10 bg-neutral-50 rounded-[40px] shadow-[0px_0px_15.5px_0px_rgba(0,0,0,0.25)] inline-flex justify-start items-center gap-8">
-          <div className="px-6 aspect-square bg-blue-100 rounded-[20px] flex justify-center items-center gap-2.5">
-            <span className="icon-[flowbite--landmark-solid] text-7xl text-[#3E7DBB]"></span>
+          <div className="self-stretch justify-start text-sky-950 text-xl font-semibold leading-tight">
+            Nuestra clínica jurídica promueve el acceso a la justicia para
+            todos, brindando asesoría legal y fortaleciendo las instituciones,
+            en línea directa con los objetivos de desarrollo sostenible.
           </div>
-          <div className="self-stretch inline-flex flex-col justify-center items-start gap-1">
-            <h1 className="self-stretch justify-start text-sky-950 text-3xl font-semibold leading-tight">
-              Comprometidos con el ODS 16: Paz, Justicia e Instituciones Sólidas
-            </h1>
-            <div className="self-stretch justify-start text-sky-950 text-xl font-semibold leading-tight">
-              Nuestra clínica jurídica promueve el acceso a la justicia para
-              todos, brindando asesoría legal y fortaleciendo las instituciones,
-              en línea directa con los objetivos de desarrollo sostenible.
-            </div>
-          </div>
-        </div>
-
-        <div className="self-stretch inline-flex justify-center items-stretch gap-5 flex-wrap content-center">
-          {/* Casos por Estatus */}
-          <div className="flex-1 px-3.5 py-2 bg-neutral-50 rounded-[30px] shadow-[0px_0px_15.5px_0px_rgba(0,0,0,0.25)] flex flex-col justify-center items-center gap-9">
-            <PieChart
-              title="Casos por Estatus:"
-              data={pieChartData}
-              config={pieChartConfig}
-              dataKey="cases"
-              nameKey="status"
-              innerRadius={55}
-            />
-          </div>
-
-          {/* Accesos Recientes */}
-          <div className="flex-[3] min-w-[700px] px-8 py-12 bg-neutral-50 rounded-[30px] shadow-[0px_0px_15.5px_0px_rgba(0,0,0,0.25)] flex flex-col justify-start items-center gap-5 overflow-hidden">
-            <h1 className="self-stretch justify-start text-sky-950 text-4xl font-semibold font-serif">
-              Accesos Recientes:
-            </h1>
-            <CustomTable data={recentAccessData} columns={recentAccessColumns} />
-          </div>
-        </div>
-
-        <div className="self-stretch p-7 bg-neutral-50 rounded-[30px] shadow-[0px_0px_15.5px_0px_rgba(0,0,0,0.25)] inline-flex flex-col justify-start items-start gap-4">
-          <h1 className="self-stretch justify-start text-sky-950 text-4xl font-semibold">
-            Mis Tareas Pendientes:
-          </h1>
-          {pendingTasks.map((task, index) => (
-            <TaskCard key={index} {...task} />
-          ))}
         </div>
       </div>
-    </div>
+
+      <div className="self-stretch inline-flex justify-center items-stretch gap-5 flex-wrap content-center">
+        {/* Casos por Estatus */}
+        <div className="flex-1 px-3.5 py-2 bg-neutral-50 rounded-[30px] shadow-[0px_0px_15.5px_0px_rgba(0,0,0,0.25)] flex flex-col justify-center items-center gap-9">
+          <PieChart
+            title="Casos por Estatus:"
+            data={pieChartData}
+            config={pieChartConfig}
+            dataKey="cases"
+            nameKey="status"
+            innerRadius={55}
+          />
+        </div>
+
+        {/* Accesos Recientes */}
+        <div className="flex-[3] min-w-[700px] px-8 py-12 bg-neutral-50 rounded-[30px] shadow-[0px_0px_15.5px_0px_rgba(0,0,0,0.25)] flex flex-col justify-start items-center gap-5 overflow-hidden">
+          <h1 className="self-stretch justify-start text-sky-950 text-4xl font-semibold font-serif">
+            Accesos Recientes:
+          </h1>
+          <CustomTable data={recentAccessData} columns={recentAccessColumns} />
+        </div>
+      </div>
+
+      <div className="self-stretch p-7 bg-neutral-50 rounded-[30px] shadow-[0px_0px_15.5px_0px_rgba(0,0,0,0.25)] inline-flex flex-col justify-start items-start gap-4">
+        <h1 className="self-stretch justify-start text-sky-950 text-4xl font-semibold">
+          Mis Tareas Pendientes:
+        </h1>
+        {pendingTasks.map((task, index) => (
+          <TaskCard key={index} {...task} />
+        ))}
+      </div>
+    </>
   );
 }

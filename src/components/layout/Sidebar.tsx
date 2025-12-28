@@ -2,8 +2,17 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
+import { logout } from "@/actions/auth";
 
-export default function Sidebar() {
+interface SidebarProps {
+    user: {
+        nombre: string;
+        rol: string;
+        cedula?: string;
+    } | null;
+}
+
+export default function Sidebar({ user }: SidebarProps) {
     const pathname = usePathname();
 
     const sidebarItems = [
@@ -16,15 +25,9 @@ export default function Sidebar() {
         { label: "Administración", href: "/administration", icon: "icon-[ph--sliders-horizontal]", activeIcon: "icon-[ph--sliders-horizontal-fill]" },
     ];
 
-    // Mock User Data (ToDo: Replace with real auth data)
-    const user = {
-        name: "Ana",
-        lastname: "Pérez",
-        role: "Coordinador"
-    };
-
-    const initials = `${user.name.charAt(0)}${user.lastname.charAt(0)}`;
-    const displayName = `${user.name} ${user.lastname} (${user.role})`;
+    const safeUser = user || { nombre: "Usuario", rol: "Invitado" };
+    const initials = safeUser.nombre.charAt(0).toUpperCase();
+    const displayName = `${safeUser.nombre} (${safeUser.rol})`;
 
     return (
         <div className="w-fit self-stretch px-8 py-4 shadow-[2px_0px_37px_0px_rgba(0,0,0,0.25)] inline-flex flex-col justify-between items-center" style={{ background: "linear-gradient(131deg, #036 26.14%, #3E7DBB 239.06%)" }}>
@@ -67,9 +70,14 @@ export default function Sidebar() {
                     </div>
                     <div className="inline-flex flex-col justify-start items-start">
                         <h1 className="self-stretch justify-start text-white text-lg font-semibold leading-tight [text-shadow:_0px_4px_6px_rgb(0_0_0_/_0.25)]">{displayName}</h1>
-                        <Link href="/" className="flex justify-start items-center gap-2 text-red-500 text-sm font-semibold leading-tight [text-shadow:_0px_4px_6px_rgb(0_0_0_/_0.25)] cursor-pointer transition-all duration-100 hover:text-red-400 hover:drop-shadow-[0_0_8px_rgba(248,113,113,1)]">
+                        <button
+                            onClick={async () => {
+                                await logout();
+                            }}
+                            className="flex justify-start items-center gap-2 text-red-500 text-sm font-semibold leading-tight [text-shadow:_0px_4px_6px_rgb(0_0_0_/_0.25)] cursor-pointer transition-all duration-100 hover:text-red-400 hover:drop-shadow-[0_0_8px_rgba(248,113,113,1)]"
+                        >
                             Cerrar Sesión
-                        </Link>
+                        </button>
                     </div>
                 </div>
             </div>
