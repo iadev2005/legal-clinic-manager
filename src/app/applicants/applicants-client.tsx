@@ -18,6 +18,7 @@ import {
   deleteSolicitante,
   getParroquias,
   getTrabajos,
+  getSolicitanteCompleto,
 } from "@/actions/solicitantes";
 
 interface Solicitante {
@@ -148,10 +149,27 @@ export default function ApplicantsClient() {
     setModalOpen(true);
   };
 
-  const handleEdit = (applicant: Solicitante) => {
+  const handleEdit = async (applicant: Solicitante) => {
     setModalMode("edit");
-    setSelectedApplicant(applicant);
-    setModalOpen(true);
+    setLoading(true);
+    try {
+      // Cargar datos completos del solicitante
+      const result = await getSolicitanteCompleto(applicant.cedula_solicitante);
+      if (result.success && result.data) {
+        setSelectedApplicant(result.data as any);
+        setModalOpen(true);
+      } else {
+        // Si falla, usar los datos básicos
+        setSelectedApplicant(applicant);
+        setModalOpen(true);
+      }
+    } catch (error) {
+      console.error("Error loading applicant details:", error);
+      setSelectedApplicant(applicant);
+      setModalOpen(true);
+    } finally {
+      setLoading(false);
+    }
   };
 
   const handleViewDetails = (cedula: string) => {
@@ -198,8 +216,9 @@ export default function ApplicantsClient() {
       const result = await createSolicitante(formData);
       if (result.success) {
         await loadData();
+        setModalOpen(false);
       } else {
-        throw new Error(result.error);
+        throw new Error(result.error || "Error al crear el solicitante");
       }
     } else if (selectedApplicant) {
       const result = await updateSolicitante(
@@ -208,11 +227,11 @@ export default function ApplicantsClient() {
       );
       if (result.success) {
         await loadData();
+        setModalOpen(false);
       } else {
-        throw new Error(result.error);
+        throw new Error(result.error || "Error al actualizar el solicitante");
       }
     }
-    setModalOpen(false);
   };
 
   const columns: Column<Solicitante>[] = [

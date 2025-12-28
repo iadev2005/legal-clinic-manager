@@ -19,6 +19,9 @@ import {
   getNivelesEducativos,
   getTrabajos,
   getActividadesSolicitantes,
+  getBienes,
+  type Vivienda,
+  type FamiliaHogar,
 } from "@/actions/solicitantes";
 
 interface ApplicantModalProps {
@@ -44,6 +47,9 @@ interface ApplicantModalProps {
     id_actividad_solicitante?: number | null;
     id_trabajo?: number | null;
     id_nivel_educativo?: number | null;
+    vivienda?: Partial<Vivienda>;
+    familia?: Partial<FamiliaHogar>;
+    bienes?: any[];
   } | null;
   mode: "create" | "edit";
 }
@@ -67,6 +73,10 @@ export interface ApplicantFormData {
   id_actividad_solicitante?: number;
   id_trabajo?: number;
   id_nivel_educativo?: number;
+  // Nuevos campos
+  vivienda?: Partial<Vivienda>;
+  familia?: Partial<FamiliaHogar>;
+  bienes?: number[];
 }
 
 interface Catalog {
@@ -100,17 +110,22 @@ export default function ApplicantModal({
     id_actividad_solicitante: undefined,
     id_trabajo: undefined,
     id_nivel_educativo: undefined,
+    vivienda: undefined,
+    familia: undefined,
+    bienes: [],
   });
 
   const [loading, setLoading] = useState(false);
   const [errors, setErrors] = useState<
     Partial<Record<keyof ApplicantFormData, string>>
   >({});
+  const [submitError, setSubmitError] = useState<string | null>(null);
 
   // Catálogos
   const [nivelesEducativos, setNivelesEducativos] = useState<Catalog[]>([]);
   const [trabajos, setTrabajos] = useState<Catalog[]>([]);
   const [actividades, setActividades] = useState<Catalog[]>([]);
+  const [bienes, setBienes] = useState<Catalog[]>([]);
 
   useEffect(() => {
     loadCatalogs();
@@ -139,6 +154,9 @@ export default function ApplicantModal({
           applicant.id_actividad_solicitante || undefined,
         id_trabajo: applicant.id_trabajo || undefined,
         id_nivel_educativo: applicant.id_nivel_educativo || undefined,
+        vivienda: (applicant as any).vivienda || undefined,
+        familia: (applicant as any).familia || undefined,
+        bienes: (applicant as any).bienes?.map((b: any) => b.id_bien) || [],
       });
     } else {
       setFormData({
@@ -160,16 +178,21 @@ export default function ApplicantModal({
         id_actividad_solicitante: undefined,
         id_trabajo: undefined,
         id_nivel_educativo: undefined,
+        vivienda: undefined,
+        familia: undefined,
+        bienes: [],
       });
     }
     setErrors({});
+    setSubmitError(null);
   }, [applicant, mode, open]);
 
   const loadCatalogs = async () => {
-    const [niveles, jobs, acts] = await Promise.all([
+    const [niveles, jobs, acts, bienesData] = await Promise.all([
       getNivelesEducativos(),
       getTrabajos(),
       getActividadesSolicitantes(),
+      getBienes(),
     ]);
 
     if (niveles.success && niveles.data) {
@@ -195,6 +218,15 @@ export default function ApplicantModal({
         acts.data.map((a: any) => ({
           id: a.id_actividad_solicitante,
           label: a.condicion_actividad,
+        }))
+      );
+    }
+
+    if (bienesData.success && bienesData.data) {
+      setBienes(
+        bienesData.data.map((b: any) => ({
+          id: b.id_bien,
+          label: b.descripcion,
         }))
       );
     }
@@ -234,9 +266,23 @@ export default function ApplicantModal({
 
     if (
       formData.telefono_celular &&
-      !/^(\+?58\s?)?4\d{2}-?\d{7}$/.test(formData.telefono_celular)
+      !/^(\+?58\s?)?0?4\d{2}-?\d{7}$/.test(formData.telefono_celular)
     ) {
       newErrors.telefono_celular = "Formato inválido (Ej: 0412-1234567)";
+    }
+
+    // Validar constraint de familia/hogar
+    if (formData.familia?.cantidad_personas) {
+      const cantidadPersonas = formData.familia.cantidad_personas;
+      const cantidadTrabajadores = formData.familia.cantidad_trabajadores || 0;
+      const cantidadNinos = formData.familia.cantidad_ninos || 0;
+      
+      if (cantidadTrabajadores + cantidadNinos > cantidadPersonas) {
+        // Agregar error visual en el campo de cantidad de personas
+        (newErrors as any).cantidad_personas = 
+          `La suma de trabajadores (${cantidadTrabajadores}) y niños (${cantidadNinos}) ` +
+          `no puede ser mayor que la cantidad de personas (${cantidadPersonas})`;
+      }
     }
 
     setErrors(newErrors);
@@ -245,6 +291,7 @@ export default function ApplicantModal({
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    setSubmitError(null);
 
     if (!validateForm()) {
       return;
@@ -254,9 +301,9 @@ export default function ApplicantModal({
     try {
       await onSave(formData);
       onClose();
-    } catch (error) {
+    } catch (error: any) {
       console.error("Error saving applicant:", error);
-      alert("Error al guardar el solicitante");
+      setSubmitError(error.message || "Error al guardar el solicitante");
     } finally {
       setLoading(false);
     }
@@ -282,6 +329,25 @@ export default function ApplicantModal({
               : "Modifica los datos del solicitante"}
           </DialogDescription>
         </DialogHeader>
+
+        {submitError && (
+          <div className="mx-6 mt-4 p-4 bg-red-50 border border-red-200 rounded-lg">
+            <div className="flex items-start gap-3">
+              <span className="icon-[mdi--alert-circle] text-2xl text-red-500 flex-shrink-0 mt-0.5"></span>
+              <div className="flex-1">
+                <h4 className="text-red-800 font-semibold mb-1">Error al guardar</h4>
+                <p className="text-red-700 text-sm">{submitError}</p>
+              </div>
+              <button
+                onClick={() => setSubmitError(null)}
+                className="text-red-500 hover:text-red-700 flex-shrink-0"
+                type="button"
+              >
+                <span className="icon-[mdi--close] text-xl"></span>
+              </button>
+            </div>
+          </div>
+        )}
 
         <div className="max-h-[calc(90vh-200px)] overflow-y-auto pr-2 custom-scrollbar">
           <form id="applicant-form" onSubmit={handleSubmit} className="space-y-6">
@@ -546,9 +612,17 @@ export default function ApplicantModal({
                   <FilterSelect
                     placeholder="Seleccione"
                     value={formData.id_nivel_educativo?.toString() || ""}
-                    onChange={(value) =>
-                      handleChange("id_nivel_educativo", value ? parseInt(value) : undefined)
-                    }
+                    onChange={(value) => {
+                      const nivelEducativo = value ? parseInt(value) : undefined;
+                      handleChange("id_nivel_educativo", nivelEducativo);
+                      // Si es jefe de hogar, sincronizar el nivel educativo del jefe
+                      if (formData.familia?.es_jefe_hogar) {
+                        handleChange("familia", {
+                          ...formData.familia,
+                          id_nivel_educativo_jefe: nivelEducativo,
+                        });
+                      }
+                    }}
                     options={nivelesEducativos.map((n) => ({
                       value: n.id.toString(),
                       label: n.label,
@@ -610,6 +684,448 @@ export default function ApplicantModal({
                       ¿Busca trabajo actualmente?
                     </span>
                   </label>
+                </div>
+              </div>
+            </div>
+
+            {/* Sección 5: Información de Vivienda */}
+            <div className="space-y-4">
+              <h3 className="text-sky-950 text-xl font-semibold border-b pb-2">
+                Información de Vivienda
+              </h3>
+
+              <div className="grid grid-cols-2 gap-4">
+                {/* Tipo de Vivienda */}
+                <div className="space-y-2">
+                  <Label htmlFor="tipo_vivienda" className="text-sky-950 font-semibold">
+                    Tipo de Vivienda
+                  </Label>
+                  <FilterSelect
+                    placeholder="Seleccione"
+                    value={formData.vivienda?.tipo_vivienda || ""}
+                    onChange={(value) =>
+                      handleChange("vivienda", {
+                        ...formData.vivienda,
+                        tipo_vivienda: value as any,
+                      })
+                    }
+                    options={[
+                      { value: "Casa", label: "Casa" },
+                      { value: "Apartamento", label: "Apartamento" },
+                      { value: "Rancho", label: "Rancho" },
+                      { value: "Otro", label: "Otro" },
+                    ]}
+                  />
+                </div>
+
+                {/* Cantidad de Habitaciones */}
+                <div className="space-y-2">
+                  <Label htmlFor="cantidad_habitaciones" className="text-sky-950 font-semibold">
+                    Cantidad de Habitaciones
+                  </Label>
+                  <Input
+                    id="cantidad_habitaciones"
+                    type="number"
+                    min="0"
+                    value={formData.vivienda?.cantidad_habitaciones || ""}
+                    onChange={(e) =>
+                      handleChange("vivienda", {
+                        ...formData.vivienda,
+                        cantidad_habitaciones: e.target.value ? parseInt(e.target.value) : undefined,
+                      })
+                    }
+                    placeholder="Ej: 3"
+                  />
+                </div>
+
+                {/* Cantidad de Baños */}
+                <div className="space-y-2">
+                  <Label htmlFor="cantidad_banos" className="text-sky-950 font-semibold">
+                    Cantidad de Baños
+                  </Label>
+                  <Input
+                    id="cantidad_banos"
+                    type="number"
+                    min="0"
+                    value={formData.vivienda?.cantidad_banos || ""}
+                    onChange={(e) =>
+                      handleChange("vivienda", {
+                        ...formData.vivienda,
+                        cantidad_banos: e.target.value ? parseInt(e.target.value) : undefined,
+                      })
+                    }
+                    placeholder="Ej: 2"
+                  />
+                </div>
+
+                {/* Material del Piso */}
+                <div className="space-y-2">
+                  <Label htmlFor="material_piso" className="text-sky-950 font-semibold">
+                    Material del Piso
+                  </Label>
+                  <FilterSelect
+                    placeholder="Seleccione"
+                    value={formData.vivienda?.material_piso || ""}
+                    onChange={(value) =>
+                      handleChange("vivienda", {
+                        ...formData.vivienda,
+                        material_piso: value as any,
+                      })
+                    }
+                    options={[
+                      { value: "Tierra", label: "Tierra" },
+                      { value: "Cemento", label: "Cemento" },
+                      { value: "Cerámica", label: "Cerámica" },
+                      { value: "Granito / Parquet / Mármol", label: "Granito / Parquet / Mármol" },
+                      { value: "Otro", label: "Otro" },
+                    ]}
+                  />
+                </div>
+
+                {/* Material de Paredes */}
+                <div className="space-y-2">
+                  <Label htmlFor="material_paredes" className="text-sky-950 font-semibold">
+                    Material de Paredes
+                  </Label>
+                  <FilterSelect
+                    placeholder="Seleccione"
+                    value={formData.vivienda?.material_paredes || ""}
+                    onChange={(value) =>
+                      handleChange("vivienda", {
+                        ...formData.vivienda,
+                        material_paredes: value as any,
+                      })
+                    }
+                    options={[
+                      { value: "Cartón / Palma / Desechos", label: "Cartón / Palma / Desechos" },
+                      { value: "Bahareque", label: "Bahareque" },
+                      { value: "Bloque sin frizar", label: "Bloque sin frizar" },
+                      { value: "Bloque frizado", label: "Bloque frizado" },
+                      { value: "Otro", label: "Otro" },
+                    ]}
+                  />
+                </div>
+
+                {/* Material del Techo */}
+                <div className="space-y-2">
+                  <Label htmlFor="material_techo" className="text-sky-950 font-semibold">
+                    Material del Techo
+                  </Label>
+                  <FilterSelect
+                    placeholder="Seleccione"
+                    value={formData.vivienda?.material_techo || ""}
+                    onChange={(value) =>
+                      handleChange("vivienda", {
+                        ...formData.vivienda,
+                        material_techo: value as any,
+                      })
+                    }
+                    options={[
+                      { value: "Madera / Cartón / Palma", label: "Madera / Cartón / Palma" },
+                      { value: "Zinc / Acerolit", label: "Zinc / Acerolit" },
+                      { value: "Platabanda / Tejas", label: "Platabanda / Tejas" },
+                      { value: "Otro", label: "Otro" },
+                    ]}
+                  />
+                </div>
+
+                {/* Agua Potable */}
+                <div className="space-y-2">
+                  <Label htmlFor="agua_potable" className="text-sky-950 font-semibold">
+                    Agua Potable
+                  </Label>
+                  <FilterSelect
+                    placeholder="Seleccione"
+                    value={formData.vivienda?.agua_potable || ""}
+                    onChange={(value) =>
+                      handleChange("vivienda", {
+                        ...formData.vivienda,
+                        agua_potable: value as any,
+                      })
+                    }
+                    options={[
+                      { value: "Dentro de la vivienda", label: "Dentro de la vivienda" },
+                      { value: "Fuera de la vivienda", label: "Fuera de la vivienda" },
+                      { value: "No tiene servicio", label: "No tiene servicio" },
+                    ]}
+                  />
+                </div>
+
+                {/* Eliminación de Aguas */}
+                <div className="space-y-2">
+                  <Label htmlFor="eliminacion_aguas" className="text-sky-950 font-semibold">
+                    Eliminación de Aguas
+                  </Label>
+                  <FilterSelect
+                    placeholder="Seleccione"
+                    value={formData.vivienda?.eliminacion_aguas || ""}
+                    onChange={(value) =>
+                      handleChange("vivienda", {
+                        ...formData.vivienda,
+                        eliminacion_aguas: value as any,
+                      })
+                    }
+                    options={[
+                      { value: "Poceta a cloaca", label: "Poceta a cloaca" },
+                      { value: "Pozo séptico", label: "Pozo séptico" },
+                      { value: "Letrina", label: "Letrina" },
+                      { value: "No tiene", label: "No tiene" },
+                    ]}
+                  />
+                </div>
+
+                {/* Aseo Urbano */}
+                <div className="space-y-2">
+                  <Label htmlFor="aseo_urbano" className="text-sky-950 font-semibold">
+                    Aseo Urbano
+                  </Label>
+                  <FilterSelect
+                    placeholder="Seleccione"
+                    value={formData.vivienda?.aseo_urbano || ""}
+                    onChange={(value) =>
+                      handleChange("vivienda", {
+                        ...formData.vivienda,
+                        aseo_urbano: value as any,
+                      })
+                    }
+                    options={[
+                      { value: "Llega a la vivienda", label: "Llega a la vivienda" },
+                      { value: "No llega / Container", label: "No llega / Container" },
+                      { value: "No tiene", label: "No tiene" },
+                    ]}
+                  />
+                </div>
+              </div>
+            </div>
+
+            {/* Sección 6: Información de Familia/Hogar */}
+            <div className="space-y-4">
+              <h3 className="text-sky-950 text-xl font-semibold border-b pb-2">
+                Información de Familia/Hogar
+              </h3>
+
+              <div className="grid grid-cols-2 gap-4">
+                {/* Cantidad de Personas */}
+                <div className="space-y-2">
+                  <Label htmlFor="cantidad_personas" className="text-sky-950 font-semibold">
+                    Cantidad de Personas <span className="text-red-500">*</span>
+                  </Label>
+                  <Input
+                    id="cantidad_personas"
+                    type="number"
+                    min="1"
+                    value={formData.familia?.cantidad_personas || ""}
+                    onChange={(e) => {
+                      const cantidadPersonas = e.target.value ? parseInt(e.target.value) : 1;
+                      handleChange("familia", {
+                        ...formData.familia,
+                        cantidad_personas: cantidadPersonas,
+                      });
+                      // Limpiar error si se corrige
+                      if (errors.cantidad_personas) {
+                        setErrors((prev) => ({ ...prev, cantidad_personas: undefined }));
+                      }
+                    }}
+                    placeholder="Ej: 4"
+                    className={errors.cantidad_personas ? "border-red-500" : ""}
+                  />
+                  {errors.cantidad_personas && (
+                    <p className="text-red-500 text-sm">{errors.cantidad_personas}</p>
+                  )}
+                </div>
+
+                {/* Cantidad de Trabajadores */}
+                <div className="space-y-2">
+                  <Label htmlFor="cantidad_trabajadores" className="text-sky-950 font-semibold">
+                    Cantidad de Trabajadores
+                  </Label>
+                  <Input
+                    id="cantidad_trabajadores"
+                    type="number"
+                    min="0"
+                    value={formData.familia?.cantidad_trabajadores || ""}
+                    onChange={(e) => {
+                      const cantidadTrabajadores = e.target.value ? parseInt(e.target.value) : 0;
+                      handleChange("familia", {
+                        ...formData.familia,
+                        cantidad_trabajadores: cantidadTrabajadores,
+                      });
+                      // Validar constraint en tiempo real
+                      const cantidadPersonas = formData.familia?.cantidad_personas || 0;
+                      const cantidadNinos = formData.familia?.cantidad_ninos || 0;
+                      if (cantidadTrabajadores + cantidadNinos > cantidadPersonas && cantidadPersonas > 0) {
+                        (setErrors as any)((prev: any) => ({
+                          ...prev,
+                          cantidad_personas: 
+                            `La suma de trabajadores (${cantidadTrabajadores}) y niños (${cantidadNinos}) ` +
+                            `no puede ser mayor que la cantidad de personas (${cantidadPersonas})`,
+                        }));
+                      } else if (errors.cantidad_personas) {
+                        setErrors((prev) => ({ ...prev, cantidad_personas: undefined }));
+                      }
+                    }}
+                    placeholder="Ej: 2"
+                  />
+                </div>
+
+                {/* Cantidad de Niños */}
+                <div className="space-y-2">
+                  <Label htmlFor="cantidad_ninos" className="text-sky-950 font-semibold">
+                    Cantidad de Niños
+                  </Label>
+                  <Input
+                    id="cantidad_ninos"
+                    type="number"
+                    min="0"
+                    value={formData.familia?.cantidad_ninos || ""}
+                    onChange={(e) => {
+                      const cantidadNinos = e.target.value ? parseInt(e.target.value) : 0;
+                      handleChange("familia", {
+                        ...formData.familia,
+                        cantidad_ninos: cantidadNinos,
+                      });
+                      // Validar constraint en tiempo real
+                      const cantidadPersonas = formData.familia?.cantidad_personas || 0;
+                      const cantidadTrabajadores = formData.familia?.cantidad_trabajadores || 0;
+                      if (cantidadTrabajadores + cantidadNinos > cantidadPersonas && cantidadPersonas > 0) {
+                        setErrors((prev: any) => ({
+                          ...prev,
+                          cantidad_personas: 
+                            `La suma de trabajadores (${cantidadTrabajadores}) y niños (${cantidadNinos}) ` +
+                            `no puede ser mayor que la cantidad de personas (${cantidadPersonas})`,
+                        }));
+                      } else if (errors.cantidad_personas) {
+                        setErrors((prev) => ({ ...prev, cantidad_personas: undefined }));
+                      }
+                    }}
+                    placeholder="Ej: 2"
+                  />
+                </div>
+
+                {/* Cantidad de Niños Estudiando */}
+                <div className="space-y-2">
+                  <Label htmlFor="cantidad_ninos_estudiando" className="text-sky-950 font-semibold">
+                    Niños Estudiando
+                  </Label>
+                  <Input
+                    id="cantidad_ninos_estudiando"
+                    type="number"
+                    min="0"
+                    value={formData.familia?.cantidad_ninos_estudiando || ""}
+                    onChange={(e) =>
+                      handleChange("familia", {
+                        ...formData.familia,
+                        cantidad_ninos_estudiando: e.target.value ? parseInt(e.target.value) : 0,
+                      })
+                    }
+                    placeholder="Ej: 1"
+                  />
+                </div>
+
+                {/* Ingreso Mensual Aproximado */}
+                <div className="space-y-2">
+                  <Label htmlFor="ingreso_mensual" className="text-sky-950 font-semibold">
+                    Ingreso Mensual Aproximado (Bs.)
+                  </Label>
+                  <Input
+                    id="ingreso_mensual"
+                    type="number"
+                    min="0"
+                    step="0.01"
+                    value={formData.familia?.ingreso_mensual_aprox || ""}
+                    onChange={(e) =>
+                      handleChange("familia", {
+                        ...formData.familia,
+                        ingreso_mensual_aprox: e.target.value ? parseFloat(e.target.value) : undefined,
+                      })
+                    }
+                    placeholder="Ej: 500.00"
+                  />
+                </div>
+
+                {/* Nivel Educativo del Jefe de Hogar */}
+                <div className="space-y-2">
+                  <Label htmlFor="nivel_educativo_jefe" className="text-sky-950 font-semibold">
+                    Nivel Educativo del Jefe
+                  </Label>
+                  <FilterSelect
+                    placeholder="Seleccione"
+                    value={formData.familia?.id_nivel_educativo_jefe?.toString() || ""}
+                    onChange={(value) =>
+                      handleChange("familia", {
+                        ...formData.familia,
+                        id_nivel_educativo_jefe: value ? parseInt(value) : undefined,
+                      })
+                    }
+                    options={nivelesEducativos.map((n) => ({
+                      value: n.id.toString(),
+                      label: n.label,
+                    }))}
+                  />
+                </div>
+
+                {/* Es Jefe de Hogar */}
+                <div className="space-y-2 flex items-center pt-6 col-span-2">
+                  <label className="flex items-center gap-2 cursor-pointer">
+                    <input
+                      type="checkbox"
+                      checked={formData.familia?.es_jefe_hogar || false}
+                      onChange={(e) => {
+                        const isJefeHogar = e.target.checked;
+                        handleChange("familia", {
+                          ...formData.familia,
+                          es_jefe_hogar: isJefeHogar,
+                          // Si es jefe de hogar, sincronizar con el nivel educativo del solicitante
+                          id_nivel_educativo_jefe: isJefeHogar 
+                            ? formData.id_nivel_educativo 
+                            : formData.familia?.id_nivel_educativo_jefe,
+                        });
+                      }}
+                      className="w-4 h-4"
+                    />
+                    <span className="text-sky-950 font-semibold">
+                      ¿Es jefe de hogar?
+                    </span>
+                  </label>
+                </div>
+              </div>
+            </div>
+
+            {/* Sección 7: Bienes del Solicitante */}
+            <div className="space-y-4">
+              <h3 className="text-sky-950 text-xl font-semibold border-b pb-2">
+                Bienes del Solicitante
+              </h3>
+
+              <div className="space-y-2">
+                <Label className="text-sky-950 font-semibold">
+                  Seleccione los bienes que posee
+                </Label>
+                <div className="grid grid-cols-2 gap-3 max-h-48 overflow-y-auto p-2 border rounded-lg">
+                  {bienes.map((bien) => (
+                    <label
+                      key={bien.id}
+                      className="flex items-center gap-2 cursor-pointer hover:bg-gray-50 p-2 rounded"
+                    >
+                      <input
+                        type="checkbox"
+                        checked={formData.bienes?.includes(bien.id) || false}
+                        onChange={(e) => {
+                          const currentBienes = formData.bienes || [];
+                          if (e.target.checked) {
+                            handleChange("bienes", [...currentBienes, bien.id]);
+                          } else {
+                            handleChange(
+                              "bienes",
+                              currentBienes.filter((id) => id !== bien.id)
+                            );
+                          }
+                        }}
+                        className="w-4 h-4"
+                      />
+                      <span className="text-sky-950">{bien.label}</span>
+                    </label>
+                  ))}
                 </div>
               </div>
             </div>
