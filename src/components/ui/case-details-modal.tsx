@@ -7,6 +7,7 @@ import {
   DialogTitle,
 } from "@/components/shadcn/dialog";
 import StatusBadge from "./status-badge";
+import PrintButton from "@/app/cases/report/PrintButton";
 
 interface CaseDetailsModalProps {
   open: boolean;
@@ -167,8 +168,12 @@ export default function CaseDetailsModal({
           </div>
         </div>
 
-        {/* Footer con botón de cerrar */}
+        {/* Footer con botones de acción */}
         <div className="flex justify-end gap-3 pt-4 border-t">
+          <PrintButton
+            caseId={caseData.id}
+            caseNumber={caseData.caseNumber}
+          />
           <button
             onClick={onClose}
             className="px-6 py-3 bg-neutral-200 hover:bg-neutral-300 rounded-2xl text-sky-950 text-lg font-semibold transition-all duration-300 hover:scale-105"
