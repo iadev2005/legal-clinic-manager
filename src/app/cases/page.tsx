@@ -1,15 +1,26 @@
 import Sidebar from "@/components/layout/Sidebar";
 import CasesClient from "./cases-client";
+import { getSession } from "@/lib/auth-utils";
 
-export default function Cases() {
-  // TODO: Obtener el rol del usuario desde la sesión/auth
-  // Por ahora usamos 'ADMIN' como ejemplo
-  const userRole = "PROFESSOR"; // Cambiar a 'PROFESSOR' o 'STUDENT' según el usuario
+export default async function Cases() {
+  const session = await getSession();
+
+  // Mapear el rol del usuario desde la sesión
+  // El cliente espera 'ADMIN', 'PROFESSOR' o 'STUDENT'
+  let userRole: "ADMIN" | "PROFESSOR" | "STUDENT" = "STUDENT";
+
+  if (session?.rol === "ADMIN" || session?.rol === "COORDINATOR") {
+    userRole = "ADMIN";
+  } else if (session?.rol === "PROFESSOR") {
+    userRole = "PROFESSOR";
+  } else {
+    userRole = "STUDENT";
+  }
 
   return (
     <div className="w-full h-screen min-h-screen bg-neutral-50 inline-flex justify-start items-center overflow-hidden">
-      <Sidebar />
-      <CasesClient userRole={userRole as "ADMIN" | "PROFESSOR" | "STUDENT"} />
+      <Sidebar user={session as any} />
+      <CasesClient userRole={userRole} />
     </div>
   );
 }
