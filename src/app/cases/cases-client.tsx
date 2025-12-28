@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useMemo } from "react";
+import { useState, useMemo, useEffect } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { CustomTable, type Column } from "@/components/ui/custom-table";
 import PrimaryButton from "@/components/ui/primary-button";
@@ -16,9 +16,23 @@ import CaseDetailsModal from "@/components/ui/case-details-modal";
 import CaseEditModal, {
   type CaseEditData,
 } from "@/components/ui/case-edit-modal";
+import {
+  getCasos,
+  getCasosBySolicitante,
+  cambiarEstatus,
+  getEstatus,
+  getMaterias,
+  getTramites,
+  getNucleos,
+  asignarAlumno,
+  asignarProfesor,
+  getAsignacionesActivas,
+  type Caso as CasoBD,
+} from "@/actions/casos";
 
 interface Case {
   id: string;
+  nro_caso: number;
   caseNumber: string;
   applicantName: string;
   applicantId: string;
@@ -37,66 +51,29 @@ interface CasesClientProps {
 
 const ITEMS_PER_PAGE = 10;
 
+// Mapear estatus de BD a formato del frontend
+const mapEstatusToFrontend = (estatus: string | null): "EN_PROCESO" | "ARCHIVADO" | "ENTREGADO" | "ASESORIA" => {
+  if (!estatus) return "EN_PROCESO";
+  const upper = estatus.toUpperCase();
+  if (upper.includes("PROCESO")) return "EN_PROCESO";
+  if (upper.includes("ARCHIVADO")) return "ARCHIVADO";
+  if (upper.includes("ENTREGADO")) return "ENTREGADO";
+  if (upper.includes("ASESORIA") || upper.includes("ASESORÍA")) return "ASESORIA";
+  return "EN_PROCESO";
+};
+
 export default function CasesClient({ userRole }: CasesClientProps) {
   const router = useRouter();
   const searchParams = useSearchParams();
   const applicantIdFilter = searchParams.get("applicantId");
 
-  // Mock data
-  const [cases, setCases] = useState<Case[]>([
-    {
-      id: "1",
-      caseNumber: "#2024-051",
-      applicantName: "Carlos Mendoza",
-      applicantId: "V-18.765.432",
-      subject: "Laboral",
-      procedure: "Asesoría",
-      tribunal: "Tribunal de Protección del Niño",
-      period: "2024-I",
-      assignedStudent: "José Gómez",
-      status: "EN_PROCESO",
-      createdAt: "2024-05-10",
-    },
-    {
-      id: "2",
-      caseNumber: "#2024-050",
-      applicantName: "Pedro Pérez",
-      applicantId: "V-15.123.456",
-      subject: "Civil",
-      procedure: "Redacción Documento",
-      tribunal: "Sin asignar",
-      period: "2023-II",
-      assignedStudent: "Ana Martínez",
-      status: "ENTREGADO",
-      createdAt: "2024-05-10",
-    },
-    {
-      id: "3",
-      caseNumber: "#2024-049",
-      applicantName: "María Rodríguez",
-      applicantId: "V-20.111.222",
-      subject: "Familia",
-      procedure: "Conciliación",
-      tribunal: "Tribunal de Familia",
-      period: "2024-I",
-      assignedStudent: "Luisa Fernández",
-      status: "EN_PROCESO",
-      createdAt: "2024-03-15",
-    },
-    {
-      id: "4",
-      caseNumber: "#2024-048",
-      applicantName: "Jorge Silva",
-      applicantId: "V-12.333.444",
-      subject: "Penal",
-      procedure: "Asesoría",
-      tribunal: "Tribunal Penal",
-      period: "2024-I",
-      assignedStudent: "José Gómez",
-      status: "ARCHIVADO",
-      createdAt: "2024-02-20",
-    },
-  ]);
+  const [cases, setCases] = useState<Case[]>([]);
+  const [loading, setLoading] = useState(true);
+  
+  // Catálogos para filtros
+  const [estatusList, setEstatusList] = useState<any[]>([]);
+  const [materiasList, setMateriasList] = useState<any[]>([]);
+  const [tramitesList, setTramitesList] = useState<any[]>([]);
 
   const [searchTerm, setSearchTerm] = useState("");
   const [statusFilter, setStatusFilter] = useState("");
@@ -112,21 +89,115 @@ export default function CasesClient({ userRole }: CasesClientProps) {
   const [editModalOpen, setEditModalOpen] = useState(false);
   const [selectedCase, setSelectedCase] = useState<Case | null>(null);
 
+  // Cargar datos al montar el componente
+  useEffect(() => {
+    loadData();
+    loadCatalogs();
+  }, [applicantIdFilter]);
+
+  const loadData = async () => {
+    setLoading(true);
+    try {
+      let result;
+      if (applicantIdFilter) {
+        result = await getCasosBySolicitante(applicantIdFilter);
+      } else {
+        result = await getCasos();
+      }
+
+      if (result.success && result.data) {
+        // Mapear datos de BD al formato del frontend
+        const mappedCases: Case[] = result.data.map((caso: any) => {
+          // Asegurar que la fecha sea un string
+          let fechaStr = "";
+          if (caso.fecha_caso_inicio) {
+            if (caso.fecha_caso_inicio instanceof Date) {
+              fechaStr = caso.fecha_caso_inicio.toISOString().split('T')[0];
+            } else if (typeof caso.fecha_caso_inicio === 'string') {
+              // Si ya es string, tomar solo la parte de la fecha (antes de T si hay hora)
+              fechaStr = caso.fecha_caso_inicio.split('T')[0];
+            } else {
+              fechaStr = new Date().toISOString().split('T')[0];
+            }
+          } else {
+            fechaStr = new Date().toISOString().split('T')[0];
+          }
+
+          return {
+            id: caso.nro_caso.toString(),
+            nro_caso: caso.nro_caso,
+            caseNumber: `#${caso.nro_caso.toString().padStart(6, '0')}`,
+            applicantName: caso.solicitante_nombre || "N/A",
+            applicantId: caso.cedula_solicitante || "",
+            subject: caso.nombre_materia || "N/A",
+            procedure: caso.nombre_tramite || "N/A",
+            tribunal: caso.nombre_subcategoria || "Sin asignar", // Usar subcategoría como tribunal temporalmente
+            period: "N/A", // TODO: Obtener del semestre asignado
+            assignedStudent: caso.alumno_asignado || "Sin asignar",
+            status: mapEstatusToFrontend(caso.estatus_actual),
+            createdAt: fechaStr,
+          };
+        });
+        setCases(mappedCases);
+      } else {
+        console.error("Error loading cases:", result.error);
+        setCases([]);
+      }
+    } catch (error) {
+      console.error("Error loading cases:", error);
+      setCases([]);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const loadCatalogs = async () => {
+    const [estatusResult, materiasResult, tramitesResult] = await Promise.all([
+      getEstatus(),
+      getMaterias(),
+      getTramites(),
+    ]);
+
+    if (estatusResult.success && estatusResult.data) {
+      setEstatusList(estatusResult.data);
+    }
+    if (materiasResult.success && materiasResult.data) {
+      setMateriasList(materiasResult.data);
+    }
+    if (tramitesResult.success && tramitesResult.data) {
+      setTramitesList(tramitesResult.data);
+    }
+  };
+
   // Filtrar casos
   const filteredCases = useMemo(() => {
     return cases.filter((caso) => {
       const matchesSearch =
         !searchTerm ||
         caso.caseNumber.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        caso.applicantName.toLowerCase().includes(searchTerm.toLowerCase());
+        caso.applicantName.toLowerCase().includes(searchTerm.toLowerCase()) ||
+        caso.applicantId.toLowerCase().includes(searchTerm.toLowerCase());
 
-      const matchesStatus = !statusFilter || caso.status === statusFilter;
-      const matchesSubject = !subjectFilter || caso.subject === subjectFilter;
+      // Comparar estatus (puede venir de BD con formato diferente)
+      const matchesStatus = !statusFilter || 
+        caso.status === statusFilter ||
+        (statusFilter && caso.status === mapEstatusToFrontend(statusFilter));
+
+      const matchesSubject = !subjectFilter || 
+        caso.subject.toLowerCase().includes(subjectFilter.toLowerCase());
+      
       const matchesProcedure =
-        !procedureFilter || caso.procedure === procedureFilter;
+        !procedureFilter || 
+        caso.procedure.toLowerCase().includes(procedureFilter.toLowerCase());
+      
       const matchesSemester = !semesterFilter || caso.period === semesterFilter;
+      
       const matchesTribunal =
-        !tribunalFilter || caso.tribunal === tribunalFilter;
+        !tribunalFilter || 
+        caso.tribunal.toLowerCase().includes(tribunalFilter.toLowerCase());
+
+      // Filtro por fecha
+      const matchesDate = !dateFilter || caso.createdAt >= dateFilter;
 
       // Filtro por applicantId desde URL (cuando viene desde Gestión de Solicitantes)
       const matchesApplicant =
@@ -139,6 +210,7 @@ export default function CasesClient({ userRole }: CasesClientProps) {
         matchesProcedure &&
         matchesSemester &&
         matchesTribunal &&
+        matchesDate &&
         matchesApplicant
       );
     });
@@ -149,6 +221,7 @@ export default function CasesClient({ userRole }: CasesClientProps) {
     procedureFilter,
     semesterFilter,
     tribunalFilter,
+    dateFilter,
     applicantIdFilter,
     cases,
   ]);
@@ -167,42 +240,53 @@ export default function CasesClient({ userRole }: CasesClientProps) {
   }, [filteredCases, effectiveCurrentPage]);
 
   const handleNewCase = () => {
-    // TODO: Abrir modal de nuevo caso
+    // TODO: Abrir modal de nuevo caso (se implementará después)
     console.log("Crear nuevo caso");
+    alert("Funcionalidad de crear caso próximamente");
   };
 
   const handleValidateCase = () => {
     // TODO: Abrir modal de validación
     console.log("Validar/Asignar caso");
+    alert("Funcionalidad de validar caso próximamente");
   };
 
-  // Datos para gráficos
-  const pieChartData = [
-    { subject: "civil", cases: 45 },
-    { subject: "laboral", cases: 30 },
-    { subject: "penal", cases: 25 },
-    { subject: "familia", cases: 20 },
-    { subject: "lopnna", cases: 15 },
-    { subject: "otros", cases: 10 },
-  ];
+  // Datos para gráficos (calculados desde casos reales)
+  const pieChartData = useMemo(() => {
+    const materiasCount: Record<string, number> = {};
+    cases.forEach((caso) => {
+      const materia = caso.subject.toLowerCase();
+      materiasCount[materia] = (materiasCount[materia] || 0) + 1;
+    });
 
-  const pieChartConfig = {
-    cases: { label: "Casos" },
-    civil: { label: "Civil" },
-    laboral: { label: "Laboral" },
-    penal: { label: "Penal" },
-    familia: { label: "Familia" },
-    lopnna: { label: "LOPNNA" },
-    otros: { label: "Otros" },
-  } satisfies ChartConfig;
+    return Object.entries(materiasCount).map(([subject, cases]) => ({
+      subject,
+      cases,
+    }));
+  }, [cases]);
 
-  const barChartData = [
-    { procedure: "Representación", count: 60 },
-    { procedure: "Conciliación", count: 25 },
-    { procedure: "Redacción", count: 30 },
-    { procedure: "Investigación", count: 10 },
-    { procedure: "Asesoría", count: 5 },
-  ];
+  const pieChartConfig = useMemo(() => {
+    const config: ChartConfig = {
+      cases: { label: "Casos" },
+    };
+    pieChartData.forEach((item) => {
+      config[item.subject] = { label: item.subject.charAt(0).toUpperCase() + item.subject.slice(1) };
+    });
+    return config;
+  }, [pieChartData]) satisfies ChartConfig;
+
+  const barChartData = useMemo(() => {
+    const tramitesCount: Record<string, number> = {};
+    cases.forEach((caso) => {
+      const tramite = caso.procedure;
+      tramitesCount[tramite] = (tramitesCount[tramite] || 0) + 1;
+    });
+
+    return Object.entries(tramitesCount).map(([procedure, count]) => ({
+      procedure,
+      count,
+    }));
+  }, [cases]);
 
   const barChartConfig = {
     count: { label: "Cantidad" },
@@ -226,24 +310,52 @@ export default function CasesClient({ userRole }: CasesClientProps) {
   };
 
   const handleSaveEdit = async (data: CaseEditData) => {
-    // Actualizar el caso en el estado
-    setCases((prevCases) =>
-      prevCases.map((caso) =>
-        caso.id === data.id
-          ? {
-              ...caso,
-              status: data.status,
-              assignedStudent: data.assignedStudent,
-            }
-          : caso
-      )
-    );
+    try {
+      const nroCaso = parseInt(data.id);
+      
+      // 1. Cambiar estatus si es diferente
+      const casoActual = cases.find(c => c.id === data.id);
+      if (casoActual && casoActual.status !== data.status) {
+        // Buscar el ID del estatus
+        const estatusObj = estatusList.find((e: any) => {
+          const nombre = e.nombre_estatus?.toUpperCase() || "";
+          const statusMap: Record<string, string> = {
+            "EN_PROCESO": "EN PROCESO",
+            "ARCHIVADO": "ARCHIVADO",
+            "ENTREGADO": "ENTREGADO",
+            "ASESORIA": "ASESORÍA",
+          };
+          return nombre.includes(statusMap[data.status] || "");
+        });
+        
+        if (estatusObj) {
+          await cambiarEstatus(nroCaso, estatusObj.id_estatus, "Cambio de estatus desde la interfaz");
+        }
+      }
 
-    // TODO: Aquí iría la llamada a la API para actualizar en el backend
-    // await fetch(`/api/cases/${data.id}`, {
-    //   method: 'PUT',
-    //   body: JSON.stringify(data),
-    // });
+      // 2. Asignar alumno si es diferente (TODO: obtener term actual)
+      // Por ahora solo actualizamos el estado local
+      // En producción, aquí se llamaría a asignarAlumno() con el term correcto
+
+      // Actualizar el caso en el estado local
+      setCases((prevCases) =>
+        prevCases.map((caso) =>
+          caso.id === data.id
+            ? {
+                ...caso,
+                status: data.status,
+                assignedStudent: data.assignedStudent,
+              }
+            : caso
+        )
+      );
+
+      // Recargar datos para asegurar sincronización
+      await loadData();
+    } catch (error) {
+      console.error("Error saving case:", error);
+      throw error;
+    }
   };
 
   // Columnas según el rol
@@ -254,7 +366,13 @@ export default function CasesClient({ userRole }: CasesClientProps) {
         render: (caso) => (
           <div className="text-center">
             <div className="font-bold text-sky-950">{caso.caseNumber}</div>
-            <div className="text-sm text-sky-950/60">{caso.createdAt}</div>
+            <div className="text-sm text-sky-950/60">
+              {typeof caso.createdAt === 'string' 
+                ? caso.createdAt 
+                : caso.createdAt instanceof Date 
+                  ? caso.createdAt.toISOString().split('T')[0]
+                  : new Date().toISOString().split('T')[0]}
+            </div>
           </div>
         ),
         className: "text-center",
@@ -350,6 +468,14 @@ export default function CasesClient({ userRole }: CasesClientProps) {
     return baseColumns;
   };
 
+  if (loading) {
+    return (
+      <div className="w-full h-full flex items-center justify-center">
+        <div className="text-2xl text-sky-950">Cargando casos...</div>
+      </div>
+    );
+  }
+
   return (
     <div className="w-full h-full p-11 inline-flex flex-col justify-start items-start gap-6 overflow-y-auto">
       {/* Header */}
@@ -414,23 +540,19 @@ export default function CasesClient({ userRole }: CasesClientProps) {
           placeholder="Filtrar por Estatus"
           value={statusFilter}
           onChange={setStatusFilter}
-          options={[
-            { value: "EN_PROCESO", label: "En Proceso" },
-            { value: "ENTREGADO", label: "Entregado" },
-            { value: "ARCHIVADO", label: "Archivado" },
-            { value: "ASESORIA", label: "Asesoría" },
-          ]}
+          options={estatusList.map((e: any) => ({
+            value: e.nombre_estatus,
+            label: e.nombre_estatus,
+          }))}
         />
         <FilterSelect
           placeholder="Filtrar por Materia"
           value={subjectFilter}
           onChange={setSubjectFilter}
-          options={[
-            { value: "Civil", label: "Civil" },
-            { value: "Laboral", label: "Laboral" },
-            { value: "Penal", label: "Penal" },
-            { value: "Familia", label: "Familia" },
-          ]}
+          options={materiasList.map((m: any) => ({
+            value: m.nombre_materia,
+            label: m.nombre_materia,
+          }))}
         />
       </div>
 
@@ -441,12 +563,10 @@ export default function CasesClient({ userRole }: CasesClientProps) {
             placeholder="Filtrar por Trámite"
             value={procedureFilter}
             onChange={setProcedureFilter}
-            options={[
-              { value: "Asesoría", label: "Asesoría" },
-              { value: "Representación", label: "Representación" },
-              { value: "Conciliación", label: "Conciliación" },
-              { value: "Redacción Documento", label: "Redacción Documento" },
-            ]}
+            options={tramitesList.map((t: any) => ({
+              value: t.nombre,
+              label: t.nombre,
+            }))}
           />
           <FilterSelect
             placeholder="Filtrar por Semestre"
@@ -568,6 +688,7 @@ export default function CasesClient({ userRole }: CasesClientProps) {
         }}
         onSave={handleSaveEdit}
         caseData={selectedCase}
+        estatusList={estatusList}
       />
     </div>
   );

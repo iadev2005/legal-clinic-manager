@@ -24,6 +24,7 @@ interface CaseEditModalProps {
     status: "EN_PROCESO" | "ARCHIVADO" | "ENTREGADO" | "ASESORIA";
     assignedStudent: string;
   } | null;
+  estatusList?: Array<{ id_estatus: number; nombre_estatus: string }>;
 }
 
 export interface CaseEditData {
@@ -42,18 +43,22 @@ const AVAILABLE_STUDENTS = [
   { value: "Pedro Sánchez", label: "Pedro Sánchez" },
 ];
 
-const STATUS_OPTIONS = [
-  { value: "EN_PROCESO", label: "En Proceso" },
-  { value: "ENTREGADO", label: "Entregado" },
-  { value: "ARCHIVADO", label: "Archivado" },
-  { value: "ASESORIA", label: "Asesoría" },
-];
+// Mapear estatus de BD a formato del frontend
+const mapEstatusToFrontend = (estatus: string): "EN_PROCESO" | "ARCHIVADO" | "ENTREGADO" | "ASESORIA" => {
+  const upper = estatus.toUpperCase();
+  if (upper.includes("PROCESO")) return "EN_PROCESO";
+  if (upper.includes("ARCHIVADO")) return "ARCHIVADO";
+  if (upper.includes("ENTREGADO")) return "ENTREGADO";
+  if (upper.includes("ASESORIA") || upper.includes("ASESORÍA")) return "ASESORIA";
+  return "EN_PROCESO";
+};
 
 export default function CaseEditModal({
   open,
   onClose,
   onSave,
   caseData,
+  estatusList = [],
 }: CaseEditModalProps) {
   const [formData, setFormData] = useState<CaseEditData>({
     id: "",
@@ -151,7 +156,19 @@ export default function CaseEditModal({
               onChange={(value) =>
                 handleChange("status", value as CaseEditData["status"])
               }
-              options={STATUS_OPTIONS}
+              options={
+                estatusList.length > 0
+                  ? estatusList.map((e) => ({
+                      value: mapEstatusToFrontend(e.nombre_estatus),
+                      label: e.nombre_estatus,
+                    }))
+                  : [
+                      { value: "EN_PROCESO", label: "En Proceso" },
+                      { value: "ENTREGADO", label: "Entregado" },
+                      { value: "ARCHIVADO", label: "Archivado" },
+                      { value: "ASESORIA", label: "Asesoría" },
+                    ]
+              }
             />
             <p className="text-sm text-sky-950/60">
               Cambia el estado actual del caso según su progreso
