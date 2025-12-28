@@ -11,75 +11,95 @@ import ApplicantModal, {
 } from "@/components/ui/applicant-modal";
 import Pagination from "@/components/ui/pagination";
 import DeleteConfirmationModal from "@/components/ui/delete-confirmation-modal";
+import {
+  getSolicitantes,
+  createSolicitante,
+  updateSolicitante,
+  deleteSolicitante,
+  getParroquias,
+  getTrabajos,
+} from "@/actions/solicitantes";
 
-interface Applicant {
-  id: string;
-  name: string;
-  email: string | null;
-  phone: string | null;
-  address: string | null;
-  idDocument: string;
-  createdAt: string;
-  updatedAt: string;
-  _count?: {
-    cases: number;
-  };
+interface Solicitante {
+  cedula_solicitante: string;
+  nombres: string;
+  apellidos: string;
+  telefono_local?: string;
+  telefono_celular?: string;
+  correo_electronico?: string;
+  sexo?: "M" | "F";
+  nacionalidad?: "V" | "E";
+  estado_civil?: "Soltero" | "Casado" | "Divorciado" | "Viudo";
+  en_concubinato?: boolean;
+  fecha_nacimiento: string;
+  buscando_trabajo?: boolean;
+  tipo_periodo_educacion?: string;
+  cantidad_tiempo_educacion?: number;
+  id_parroquia: number;
+  id_actividad_solicitante?: number;
+  id_trabajo?: number;
+  id_nivel_educativo?: number;
+  // Joined data
+  nombre_parroquia?: string;
+  nombre_municipio?: string;
+  nombre_estado?: string;
 }
 
 const ITEMS_PER_PAGE = 10;
 
 export default function ApplicantsClient() {
   const router = useRouter();
-  // Datos de prueba iniciales
-  const [applicants, setApplicants] = useState<Applicant[]>([
-    {
-      id: "1",
-      name: "Juan Pérez",
-      email: "juan@example.com",
-      phone: "0414-1234567",
-      address: "Centro, Calle 5",
-      idDocument: "12.345.678",
-      createdAt: new Date().toISOString(),
-      updatedAt: new Date().toISOString(),
-      _count: { cases: 2 },
-    },
-    {
-      id: "2",
-      name: "Maria Rodriguez",
-      email: "maria@example.com",
-      phone: "0412-7654321",
-      address: "La Pica, Sector 2",
-      idDocument: "15.678.901",
-      createdAt: new Date().toISOString(),
-      updatedAt: new Date().toISOString(),
-      _count: { cases: 0 },
-    },
-    {
-      id: "3",
-      name: "Carlos Sanchez",
-      email: "carlos@example.com",
-      phone: "0424-5555555",
-      address: "Fundemos",
-      idDocument: "8.901.234",
-      createdAt: new Date().toISOString(),
-      updatedAt: new Date().toISOString(),
-      _count: { cases: 1 },
-    },
-  ]);
-  const [loading, setLoading] = useState(false);
+  const [applicants, setApplicants] = useState<Solicitante[]>([]);
+  const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState("");
-  const [communityFilter, setCommunityFilter] = useState("");
-  const [statusFilter, setStatusFilter] = useState("");
+  const [parroquiaFilter, setParroquiaFilter] = useState("");
+  const [trabajoFilter, setTrabajoFilter] = useState("");
   const [currentPage, setCurrentPage] = useState(1);
+
+  // Catálogos para filtros
+  const [parroquias, setParroquias] = useState<any[]>([]);
+  const [trabajos, setTrabajos] = useState<any[]>([]);
 
   // Modal states
   const [modalOpen, setModalOpen] = useState(false);
   const [modalMode, setModalMode] = useState<"create" | "edit">("create");
-  const [selectedApplicant, setSelectedApplicant] = useState<Applicant | null>(null);
+  const [selectedApplicant, setSelectedApplicant] =
+    useState<Solicitante | null>(null);
   const [deleteModalOpen, setDeleteModalOpen] = useState(false);
 
   // Selection state
-  const [selectedItems, setSelectedItems] = useState<Applicant[]>([]);
+  const [selectedItems, setSelectedItems] = useState<Solicitante[]>([]);
+
+  useEffect(() => {
+    loadData();
+    loadCatalogs();
+  }, []);
+
+  const loadData = async () => {
+    setLoading(true);
+    const result = await getSolicitantes();
+    if (result.success && result.data) {
+      setApplicants(result.data);
+    } else {
+      console.error("Error loading applicants:", result.error);
+    }
+    setLoading(false);
+  };
+
+  const loadCatalogs = async () => {
+    const [parroquiasResult, trabajosResult] = await Promise.all([
+      getParroquias(),
+      getTrabajos(),
+    ]);
+
+    if (parroquiasResult.success && parroquiasResult.data) {
+      setParroquias(parroquiasResult.data);
+    }
+
+    if (trabajosResult.success && trabajosResult.data) {
+      setTrabajos(trabajosResult.data);
+    }
+  };
 
   // Filtrar solicitantes usando useMemo
   const filteredApplicants = useMemo(() => {
@@ -87,18 +107,26 @@ export default function ApplicantsClient() {
       // Filtro de búsqueda
       const matchesSearch =
         !searchTerm ||
-        applicant.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        applicant.idDocument.toLowerCase().includes(searchTerm.toLowerCase());
+        `${applicant.nombres} ${applicant.apellidos}`
+          .toLowerCase()
+          .includes(searchTerm.toLowerCase()) ||
+        applicant.cedula_solicitante
+          .toLowerCase()
+          .includes(searchTerm.toLowerCase());
 
-      // Filtro de comunidad (simulado - puedes agregar este campo al schema)
-      const matchesCommunity = !communityFilter;
+      // Filtro de parroquia
+      const matchesParroquia =
+        !parroquiaFilter ||
+        applicant.id_parroquia.toString() === parroquiaFilter;
 
-      // Filtro de condición laboral (simulado - puedes agregar este campo al schema)
-      const matchesStatus = !statusFilter;
+      // Filtro de trabajo
+      const matchesTrabajo =
+        !trabajoFilter ||
+        applicant.id_trabajo?.toString() === trabajoFilter;
 
-      return matchesSearch && matchesCommunity && matchesStatus;
+      return matchesSearch && matchesParroquia && matchesTrabajo;
     });
-  }, [searchTerm, communityFilter, statusFilter, applicants]);
+  }, [searchTerm, parroquiaFilter, trabajoFilter, applicants]);
 
   // Paginación
   const totalPages = Math.ceil(filteredApplicants.length / ITEMS_PER_PAGE);
@@ -112,7 +140,7 @@ export default function ApplicantsClient() {
   useEffect(() => {
     setCurrentPage(1);
     setSelectedItems([]); // Clear selection on filter change
-  }, [searchTerm, communityFilter, statusFilter]);
+  }, [searchTerm, parroquiaFilter, trabajoFilter]);
 
   const handleNewApplicant = () => {
     setModalMode("create");
@@ -120,18 +148,18 @@ export default function ApplicantsClient() {
     setModalOpen(true);
   };
 
-  const handleEdit = (applicant: Applicant) => {
+  const handleEdit = (applicant: Solicitante) => {
     setModalMode("edit");
     setSelectedApplicant(applicant);
     setModalOpen(true);
   };
 
-  const handleViewDetails = (id: string) => {
+  const handleViewDetails = (cedula: string) => {
     // Redirigir a la página de casos del solicitante
-    router.push(`/cases?applicantId=${id}`);
+    router.push(`/cases?applicantId=${cedula}`);
   };
 
-  const handleDelete = (applicant: Applicant) => {
+  const handleDelete = (applicant: Solicitante) => {
     setSelectedApplicant(applicant); // Set for single delete
     setDeleteModalOpen(true);
   };
@@ -141,15 +169,25 @@ export default function ApplicantsClient() {
     setDeleteModalOpen(true);
   };
 
-  const confirmDelete = () => {
+  const confirmDelete = async () => {
     if (selectedApplicant) {
       // Single delete
-      setApplicants(prev => prev.filter(a => a.id !== selectedApplicant.id));
+      const result = await deleteSolicitante(
+        selectedApplicant.cedula_solicitante
+      );
+      if (result.success) {
+        await loadData();
+      } else {
+        alert(`Error: ${result.error}`);
+      }
       setSelectedApplicant(null);
     } else if (selectedItems.length > 0) {
       // Bulk delete
-      const idsToDelete = new Set(selectedItems.map(a => a.id));
-      setApplicants(prev => prev.filter(a => !idsToDelete.has(a.id)));
+      const promises = selectedItems.map((item) =>
+        deleteSolicitante(item.cedula_solicitante)
+      );
+      await Promise.all(promises);
+      await loadData();
       setSelectedItems([]);
     }
     setDeleteModalOpen(false);
@@ -157,81 +195,69 @@ export default function ApplicantsClient() {
 
   const handleSaveApplicant = async (formData: ApplicantFormData) => {
     if (modalMode === "create") {
-      const newApplicant: Applicant = {
-        ...formData,
-        email: formData.email || null,
-        phone: formData.phone || null,
-        address: formData.address || null,
-        id: Math.random().toString(36).substr(2, 9),
-        createdAt: new Date().toISOString(),
-        updatedAt: new Date().toISOString(),
-        _count: { cases: 0 },
-      };
-      setApplicants((prev) => [newApplicant, ...prev]);
-    } else {
-      setApplicants((prev) =>
-        prev.map((a) =>
-          a.id === formData.id
-            ? {
-              ...a,
-              ...formData,
-              email: formData.email || null,
-              phone: formData.phone || null,
-              address: formData.address || null,
-            }
-            : a
-        )
+      const result = await createSolicitante(formData);
+      if (result.success) {
+        await loadData();
+      } else {
+        throw new Error(result.error);
+      }
+    } else if (selectedApplicant) {
+      const result = await updateSolicitante(
+        selectedApplicant.cedula_solicitante,
+        formData
       );
+      if (result.success) {
+        await loadData();
+      } else {
+        throw new Error(result.error);
+      }
     }
     setModalOpen(false);
   };
 
-  const columns: Column<Applicant>[] = [
+  const columns: Column<Solicitante>[] = [
     {
       header: "C.I.",
-      accessorKey: "idDocument",
+      accessorKey: "cedula_solicitante",
       className: "font-bold text-center",
       headerClassName: "w-[15%]",
     },
     {
       header: "Nombre Completo",
-      accessorKey: "name",
-      className: "font-bold",
+      render: (applicant) => (
+        <span className="font-bold">
+          {applicant.nombres} {applicant.apellidos}
+        </span>
+      ),
       headerClassName: "w-[25%]",
     },
     {
-      header: "Comunidad",
+      header: "Parroquia",
       render: (applicant) => (
         <span className="text-center block">
-          {applicant.address?.split(",")[0] || "N/A"}
+          {applicant.nombre_parroquia || "N/A"}
         </span>
       ),
       className: "text-center",
       headerClassName: "w-[15%]",
     },
     {
-      header: "Condición Laboral",
+      header: "Teléfono",
       render: (applicant) => (
         <span className="text-center block">
-          {applicant._count && applicant._count.cases > 0
-            ? "Activo"
-            : "Inactivo"}
+          {applicant.telefono_celular || applicant.telefono_local || "N/A"}
         </span>
       ),
       className: "text-center",
       headerClassName: "w-[15%]",
     },
     {
-      header: "Carga Familiar",
-      render: () => {
-        const count = Math.floor(Math.random() * 5) + 1;
-        return (
-          <span className="text-center block">
-            {count} persona{count > 1 ? "s" : ""}
-
-          </span>
-        );
-      },
+      header: "Email",
+      render: (applicant) => (
+        <span className="text-center block text-sm">
+          {applicant.correo_electronico || "N/A"}
+        </span>
+      ),
       className: "text-center",
       headerClassName: "w-[15%]",
     },
@@ -240,7 +266,7 @@ export default function ApplicantsClient() {
       render: (applicant) => (
         <div className="flex justify-center items-center gap-2">
           <button
-            onClick={() => handleViewDetails(applicant.id)}
+            onClick={() => handleViewDetails(applicant.cedula_solicitante)}
             className="w-10 h-10 flex justify-center items-center hover:bg-blue-100 rounded-lg transition-colors group cursor-pointer"
             title="Ver casos relacionados"
           >
@@ -306,24 +332,22 @@ export default function ApplicantsClient() {
           />
           <FilterSelect
             placeholder="Filtrar por Parroquia"
-            value={communityFilter}
-            onChange={setCommunityFilter}
-            options={[
-              { value: "centro", label: "Centro" },
-              { value: "fundemos", label: "Fundemos" },
-              { value: "la-pica", label: "La Pica" },
-            ]}
-            className="w-64"
+            value={parroquiaFilter}
+            onChange={setParroquiaFilter}
+            options={parroquias.map((p) => ({
+              value: p.id_parroquia.toString(),
+              label: `${p.nombre_parroquia} (${p.nombre_municipio})`,
+            }))}
+            className="w-80"
           />
           <FilterSelect
             placeholder="Filtrar por Condición Laboral"
-            value={statusFilter}
-            onChange={setStatusFilter}
-            options={[
-              { value: "activo", label: "Activo" },
-              { value: "inactivo", label: "Inactivo" },
-              { value: "busca-trabajo", label: "Busca Trabajo" },
-            ]}
+            value={trabajoFilter}
+            onChange={setTrabajoFilter}
+            options={trabajos.map((t) => ({
+              value: t.id_trabajo.toString(),
+              label: t.condicion_trabajo,
+            }))}
             className="w-72"
           />
 
@@ -344,7 +368,7 @@ export default function ApplicantsClient() {
             <div className="text-center py-12">
               <span className="icon-[mdi--account-search] text-6xl text-sky-950/30 mb-4 block"></span>
               <p className="text-sky-950 text-xl font-semibold">
-                {searchTerm || communityFilter || statusFilter
+                {searchTerm || parroquiaFilter || trabajoFilter
                   ? "No se encontraron solicitantes con los filtros aplicados"
                   : "No hay solicitantes registrados"}
               </p>
@@ -376,12 +400,12 @@ export default function ApplicantsClient() {
             Total de solicitantes:{" "}
             <span className="text-[#3E7DBB]">{filteredApplicants.length}</span>
           </p>
-          {(searchTerm || communityFilter || statusFilter) && (
+          {(searchTerm || parroquiaFilter || trabajoFilter) && (
             <button
               onClick={() => {
                 setSearchTerm("");
-                setCommunityFilter("");
-                setStatusFilter("");
+                setParroquiaFilter("");
+                setTrabajoFilter("");
               }}
               className="text-[#3E7DBB] text-lg font-semibold hover:text-[#2d5f8f] transition-colors cursor-pointer"
             >

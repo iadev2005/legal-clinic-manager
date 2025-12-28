@@ -89,6 +89,63 @@ export async function createSolicitante(data: Partial<Solicitante>) {
     }
 }
 
+export async function updateSolicitante(cedula: string, data: Partial<Solicitante>) {
+    try {
+        const result = await query(
+            `UPDATE Solicitantes SET
+        nombres = $1,
+        apellidos = $2,
+        telefono_local = $3,
+        telefono_celular = $4,
+        correo_electronico = $5,
+        sexo = $6,
+        nacionalidad = $7,
+        estado_civil = $8,
+        en_concubinato = $9,
+        fecha_nacimiento = $10,
+        buscando_trabajo = $11,
+        tipo_periodo_educacion = $12,
+        cantidad_tiempo_educacion = $13,
+        id_parroquia = $14,
+        id_actividad_solicitante = $15,
+        id_trabajo = $16,
+        id_nivel_educativo = $17
+      WHERE cedula_solicitante = $18
+      RETURNING *`,
+            [
+                data.nombres,
+                data.apellidos,
+                data.telefono_local || null,
+                data.telefono_celular || null,
+                data.correo_electronico || null,
+                data.sexo || null,
+                data.nacionalidad || 'V',
+                data.estado_civil || null,
+                data.en_concubinato || false,
+                data.fecha_nacimiento,
+                data.buscando_trabajo || false,
+                data.tipo_periodo_educacion || null,
+                data.cantidad_tiempo_educacion || null,
+                data.id_parroquia,
+                data.id_actividad_solicitante || null,
+                data.id_trabajo || null,
+                data.id_nivel_educativo || null,
+                cedula
+            ]
+        );
+
+        revalidatePath('/dev');
+        revalidatePath('/applicants');
+        return { success: true, data: result.rows[0] };
+    } catch (error: any) {
+        console.error('Error al actualizar solicitante:', error);
+        return {
+            success: false,
+            error: error.message || 'Error al actualizar solicitante'
+        };
+    }
+}
+
 export async function deleteSolicitante(cedula: string) {
     try {
         await query(
@@ -97,6 +154,7 @@ export async function deleteSolicitante(cedula: string) {
         );
 
         revalidatePath('/dev');
+        revalidatePath('/applicants');
         return { success: true };
     } catch (error: any) {
         console.error('Error al eliminar solicitante:', error);
@@ -169,5 +227,47 @@ export async function getParroquias() {
     } catch (error) {
         console.error('Error al obtener parroquias:', error);
         return { success: false, error: 'Error al obtener parroquias' };
+    }
+}
+
+export async function getNivelesEducativos() {
+    try {
+        const result = await query(`
+      SELECT id_nivel_educativo, descripcion
+      FROM Niveles_Educativos
+      ORDER BY id_nivel_educativo
+    `);
+        return { success: true, data: result.rows };
+    } catch (error) {
+        console.error('Error al obtener niveles educativos:', error);
+        return { success: false, error: 'Error al obtener niveles educativos' };
+    }
+}
+
+export async function getTrabajos() {
+    try {
+        const result = await query(`
+      SELECT id_trabajo, condicion_trabajo
+      FROM Trabajos
+      ORDER BY id_trabajo
+    `);
+        return { success: true, data: result.rows };
+    } catch (error) {
+        console.error('Error al obtener trabajos:', error);
+        return { success: false, error: 'Error al obtener trabajos' };
+    }
+}
+
+export async function getActividadesSolicitantes() {
+    try {
+        const result = await query(`
+      SELECT id_actividad_solicitante, condicion_actividad
+      FROM Actividades_Solicitantes
+      ORDER BY id_actividad_solicitante
+    `);
+        return { success: true, data: result.rows };
+    } catch (error) {
+        console.error('Error al obtener actividades:', error);
+        return { success: false, error: 'Error al obtener actividades' };
     }
 }
