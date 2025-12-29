@@ -118,9 +118,15 @@ export async function getSocioEconomicStats(filters: FilterParams = {}) {
             gender: genderStats.rows,
             age: ageStats.rows
         };
-    } catch (error) {
+    } catch (error: any) {
         console.error("Error fetching socio-economic stats:", error);
-        throw new Error("Failed to fetch statistics");
+        return {
+            housing: [],
+            education: [],
+            employment: [],
+            gender: [],
+            age: []
+        };
     }
 }
 

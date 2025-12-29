@@ -17,12 +17,14 @@ import { cn } from "@/lib/utils";
 interface AdministrationModalProps {
     open: boolean;
     onClose: () => void;
-    onSave: (data: any) => void;
+    onSave: (data: any) => Promise<void> | void;
     item?: any;
     mode: "create" | "edit";
     type: "users" | "catalogs" | "formalities" | "centers";
     parishes?: { id: string; nombre: string }[];
     participations?: any[];
+    materias?: { id: string; nombre: string }[];
+    categorias?: { id: string; nombre: string; legalfieldid: string }[];
 }
 
 interface CustomSelectProps {
@@ -47,7 +49,7 @@ const CustomSelect = ({ value, onChange, options, className }: CustomSelectProps
         return () => document.removeEventListener("mousedown", handleClickOutside);
     }, []);
 
-    const selectedOption = options.find(opt => opt.value === value);
+    const selectedOption = options.find(opt => String(opt.value) === String(value));
 
     return (
         <div className={cn("relative", className)} ref={containerRef}>
@@ -66,12 +68,12 @@ const CustomSelect = ({ value, onChange, options, className }: CustomSelectProps
 
             {isOpen && (
                 <div className="absolute top-[110%] left-0 w-full rounded-md border bg-white shadow-md z-50 overflow-hidden max-h-40 overflow-y-auto">
-                    {options.map((option) => (
+                    {options.map((option, index) => (
                         <div
-                            key={option.value}
+                            key={option.value || `option-${index}`}
                             className={cn(
                                 "px-3 py-2 text-sm cursor-pointer transition-colors hover:bg-blue-50 text-sky-950",
-                                value === option.value && "bg-blue-100 font-semibold"
+                                String(value) === String(option.value) && "bg-blue-100 font-semibold"
                             )}
                             onClick={() => {
                                 onChange(option.value);
@@ -97,6 +99,8 @@ export default function AdministrationModal({
     type,
     parishes = [],
     participations = [],
+    materias = [],
+    categorias = [],
 }: AdministrationModalProps) {
     const [formData, setFormData] = useState<any>({});
     const [loading, setLoading] = useState(false);
@@ -112,7 +116,9 @@ export default function AdministrationModal({
                     ...item,
                     cedulaPrefix: item.cedulaPrefix || "V",
                     cedulaNumber: item.cedulaNumber || item.id?.split("-")[1] || "",
-                    parishId: item.parishId || "",
+                    parishId: item.parishId || item.id_parroquia?.toString() || "",
+                    legalfieldid: item.legalfieldid || "",
+                    categorylegalfieldid: item.categorylegalfieldid || "",
                 });
             } else {
                 setFormData({
@@ -128,13 +134,16 @@ export default function AdministrationModal({
                     telefonoCelular: "",
                     password: "",
                     parishId: "",
+                    legalfieldid: "",
+                    categorylegalfieldid: "",
+                    nombre: "",
                 });
             }
             setShowPassword(false);
         }
     }, [item, mode, open]);
 
-    const handleSubmit = (e: React.FormEvent) => {
+    const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
         setError(null);
 
@@ -153,6 +162,38 @@ export default function AdministrationModal({
             }
         }
 
+        // Validación para categorías
+        if (type === "catalogs" && mode === "create") {
+            if (!formData.legalfieldid) {
+                setError("Debe seleccionar una materia");
+                return;
+            }
+            if (!formData.nombre || formData.nombre.trim() === "") {
+                setError("El nombre es requerido");
+                return;
+            }
+        }
+
+        // Validación para subcategorías
+        if (type === "formalities" && mode === "create") {
+            if (!formData.categorylegalfieldid) {
+                setError("Debe seleccionar una categoría");
+                return;
+            }
+            if (!formData.nombre || formData.nombre.trim() === "") {
+                setError("El nombre es requerido");
+                return;
+            }
+        }
+
+        // Validación para núcleos
+        if (type === "centers" && mode === "create") {
+            if (!formData.nombre || formData.nombre.trim() === "") {
+                setError("El nombre es requerido");
+                return;
+            }
+        }
+
         setLoading(true);
 
         const finalData = { ...formData };
@@ -160,16 +201,49 @@ export default function AdministrationModal({
             finalData.id = `${formData.cedulaPrefix}-${formData.cedulaNumber}`;
             finalData.user = `${formData.nombres} ${formData.apellidos}`;
         }
+        if (type === "catalogs") {
+            // Asegurar que legalfieldid esté presente y sea válido
+            const legalfieldid = String(formData.legalfieldid || '').trim();
+            if (!legalfieldid || legalfieldid === "" || legalfieldid === "undefined" || legalfieldid === "null") {
+                setError("Debe seleccionar una materia");
+                setLoading(false);
+                return;
+            }
+            // Normalizar el valor a string
+            finalData.legalfieldid = legalfieldid;
+        }
+        if (type === "formalities") {
+            // Asegurar que categorylegalfieldid esté presente y sea válido
+            if (!formData.categorylegalfieldid || formData.categorylegalfieldid.trim() === "") {
+                setError("Debe seleccionar una categoría");
+                setLoading(false);
+                return;
+            }
+            finalData.categorylegalfieldid = String(formData.categorylegalfieldid).trim();
+        }
+        if (type === "centers" && formData.parishId) {
+            const parsed = parseInt(formData.parishId);
+            if (!isNaN(parsed)) {
+                finalData.id_parroquia = parsed;
+            }
+        }
 
-        setTimeout(() => {
-            onSave(finalData);
+        // Llamar a onSave de forma asíncrona
+        try {
+            const result = await Promise.resolve(onSave(finalData));
+            // Si onSave no lanza error, asumimos éxito y cerramos
             setLoading(false);
             onClose();
-        }, 500);
+        } catch (err) {
+            setLoading(false);
+            // El error ya fue manejado por el componente padre, no cerramos el modal
+        }
     };
 
     const handleChange = (field: string, value: string) => {
-        setFormData((prev: any) => ({ ...prev, [field]: value }));
+        // Normalizar el valor a string para consistencia
+        const normalizedValue = String(value);
+        setFormData((prev: any) => ({ ...prev, [field]: normalizedValue }));
         if (error) setError(null);
     };
 
@@ -183,7 +257,7 @@ export default function AdministrationModal({
 
     return (
         <Dialog open={open} onOpenChange={onClose}>
-            <DialogContent className={type === "users" ? "w-[95vw] sm:max-w-3xl" : "w-[95vw] sm:max-w-md"}>
+            <DialogContent className="w-[95vw] sm:max-w-3xl">
                 <DialogHeader>
                     <DialogTitle className="text-sky-950 text-2xl font-semibold">{getTitle()}</DialogTitle>
                     <DialogDescription className="text-[#325B84]">
@@ -344,11 +418,50 @@ export default function AdministrationModal({
                                         required
                                     />
                                 </div>
+                                {type === "catalogs" && (
+                                    <div className="space-y-2">
+                                        <Label htmlFor="materia">Materia <span className="text-red-500">*</span></Label>
+                                        <CustomSelect
+                                            value={formData.legalfieldid || ""}
+                                            onChange={(val) => {
+                                                console.log('Materia seleccionada:', val);
+                                                handleChange("legalfieldid", val);
+                                            }}
+                                            options={materias
+                                                .map((m: any) => {
+                                                    // Intentar obtener el ID de diferentes formas posibles
+                                                    const id = String(m.id || m.id_materia || '');
+                                                    if (!id || id === 'undefined' || id === 'null') {
+                                                        console.error('Materia sin ID válido:', m);
+                                                        return null;
+                                                    }
+                                                    return { value: id, label: m.nombre || m.nombre_materia || 'Sin nombre' };
+                                                })
+                                                .filter((opt: any): opt is { value: string; label: string } => opt !== null)}
+                                        />
+                                        {!formData.legalfieldid && mode === "create" && (
+                                            <p className="text-xs text-red-500">Debe seleccionar una materia</p>
+                                        )}
+                                    </div>
+                                )}
+                                {type === "formalities" && (
+                                    <div className="space-y-2">
+                                        <Label htmlFor="categoria">Categoría <span className="text-red-500">*</span></Label>
+                                        <CustomSelect
+                                            value={formData.categorylegalfieldid || ""}
+                                            onChange={(val) => handleChange("categorylegalfieldid", val)}
+                                            options={categorias.map(c => ({ value: c.id, label: c.nombre }))}
+                                        />
+                                        {!formData.categorylegalfieldid && mode === "create" && (
+                                            <p className="text-xs text-red-500">Debe seleccionar una categoría</p>
+                                        )}
+                                    </div>
+                                )}
                                 {type === "centers" && (
                                     <div className="space-y-2">
                                         <Label htmlFor="parish">Parroquia</Label>
                                         <CustomSelect
-                                            value={formData.parishId}
+                                            value={formData.parishId || ""}
                                             onChange={(val) => handleChange("parishId", val)}
                                             options={parishes.map(p => ({ value: p.id, label: p.nombre }))}
                                         />
