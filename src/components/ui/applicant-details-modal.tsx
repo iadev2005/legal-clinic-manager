@@ -234,7 +234,7 @@ export default function ApplicantDetailsModal({
                     Nivel Educativo
                   </label>
                   <p className="text-sky-950 text-lg font-semibold">
-                    {solicitante.id_nivel_educativo ? `Nivel ${solicitante.id_nivel_educativo}` : "N/A"}
+                    {solicitante.nivel_educativo_desc || "N/A"}
                   </p>
                 </div>
                 <div>
@@ -252,7 +252,7 @@ export default function ApplicantDetailsModal({
                     Condición Laboral
                   </label>
                   <p className="text-sky-950 text-lg font-semibold">
-                    {solicitante.id_trabajo ? `Trabajo ID: ${solicitante.id_trabajo}` : "N/A"}
+                    {solicitante.condicion_trabajo || "N/A"}
                   </p>
                 </div>
                 <div>
@@ -260,7 +260,7 @@ export default function ApplicantDetailsModal({
                     Actividad
                   </label>
                   <p className="text-sky-950 text-lg font-semibold">
-                    {solicitante.id_actividad_solicitante ? `Actividad ID: ${solicitante.id_actividad_solicitante}` : "N/A"}
+                    {solicitante.condicion_actividad || "N/A"}
                   </p>
                 </div>
                 <div>
@@ -421,9 +421,7 @@ export default function ApplicantDetailsModal({
                       Nivel Educativo del Jefe
                     </label>
                     <p className="text-sky-950 text-lg font-semibold">
-                      {solicitante.familia.id_nivel_educativo_jefe
-                        ? `Nivel ${solicitante.familia.id_nivel_educativo_jefe}`
-                        : "N/A"}
+                      {solicitante.familia.nivel_educativo_jefe_desc || solicitante.nivel_educativo_jefe_desc || "N/A"}
                     </p>
                   </div>
                 </div>
@@ -475,7 +473,7 @@ export default function ApplicantDetailsModal({
                       key={caso.nro_caso}
                       className="bg-white p-4 rounded-xl border border-indigo-200 hover:border-indigo-400 transition-colors cursor-pointer"
                       onClick={() => {
-                        router.push(`/cases`);
+                        router.push(`/cases?caseId=${caso.nro_caso}`);
                         onClose();
                       }}
                     >

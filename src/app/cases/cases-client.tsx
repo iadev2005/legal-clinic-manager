@@ -101,6 +101,20 @@ export default function CasesClient({ userRole, userCedula }: CasesClientProps) 
     loadCatalogs();
   }, [applicantIdFilter]);
 
+  // Abrir modal de detalles si hay caseId en la URL
+  useEffect(() => {
+    const caseIdFromUrl = searchParams.get("caseId");
+    if (caseIdFromUrl && cases.length > 0) {
+      const caso = cases.find((c) => c.id === caseIdFromUrl || c.nro_caso.toString() === caseIdFromUrl);
+      if (caso && !detailsModalOpen) {
+        setSelectedCase(caso);
+        setDetailsModalOpen(true);
+        // Limpiar el parámetro de la URL
+        router.replace("/cases" + (applicantIdFilter ? `?applicantId=${applicantIdFilter}` : ""));
+      }
+    }
+  }, [searchParams, cases, applicantIdFilter]);
+
   const loadData = async () => {
     setLoading(true);
     try {

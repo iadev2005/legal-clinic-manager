@@ -698,17 +698,23 @@ export async function updateBienesSolicitante(cedulaSolicitante: string, bienesI
 
 export async function getSolicitanteCompleto(cedulaSolicitante: string) {
     try {
-        const [solicitante, vivienda, familia, bienes] = await Promise.all([
+        const [solicitanteResult, vivienda, familia, bienes] = await Promise.all([
             query(`
                 SELECT 
                     s.*,
                     p.nombre_parroquia,
                     m.nombre_municipio,
-                    e.nombre_estado
+                    e.nombre_estado,
+                    ne.descripcion as nivel_educativo_desc,
+                    t.condicion_trabajo,
+                    a.condicion_actividad
                 FROM Solicitantes s
                 LEFT JOIN Parroquias p ON s.id_parroquia = p.id_parroquia
                 LEFT JOIN Municipios m ON p.id_municipio = m.id_municipio
                 LEFT JOIN Estados e ON m.id_estado = e.id_estado
+                LEFT JOIN Niveles_Educativos ne ON s.id_nivel_educativo = ne.id_nivel_educativo
+                LEFT JOIN Trabajos t ON s.id_trabajo = t.id_trabajo
+                LEFT JOIN Actividades_Solicitantes a ON s.id_actividad_solicitante = a.id_actividad_solicitante
                 WHERE s.cedula_solicitante = $1
             `, [cedulaSolicitante]),
             getVivienda(cedulaSolicitante),
@@ -716,16 +722,31 @@ export async function getSolicitanteCompleto(cedulaSolicitante: string) {
             getBienesSolicitante(cedulaSolicitante),
         ]);
 
-        if (solicitante.rows.length === 0) {
+        if (solicitanteResult.rows.length === 0) {
             return { success: false, error: 'Solicitante no encontrado' };
+        }
+
+        // Obtener nivel educativo del jefe si existe familia
+        let nivelEducativoJefeDesc = null;
+        if (familia.data && familia.data.id_nivel_educativo_jefe) {
+            const nivelResult = await query(
+                'SELECT descripcion FROM Niveles_Educativos WHERE id_nivel_educativo = $1',
+                [familia.data.id_nivel_educativo_jefe]
+            );
+            if (nivelResult.rows.length > 0) {
+                nivelEducativoJefeDesc = nivelResult.rows[0].descripcion;
+            }
         }
 
         return {
             success: true,
             data: {
-                ...solicitante.rows[0],
+                ...solicitanteResult.rows[0],
                 vivienda: vivienda.data,
-                familia: familia.data,
+                familia: familia.data ? {
+                    ...familia.data,
+                    nivel_educativo_jefe_desc: nivelEducativoJefeDesc
+                } : null,
                 bienes: bienes.data || [],
             }
         };
