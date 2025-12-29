@@ -7,11 +7,12 @@ export default async function Cases() {
 
   // Mapear el rol del usuario desde la sesión
   // El cliente espera 'ADMIN', 'PROFESSOR' o 'STUDENT'
+  // Los roles en BD son: 'Administrador', 'Coordinador', 'Profesor', 'Estudiante'
   let userRole: "ADMIN" | "PROFESSOR" | "STUDENT" = "STUDENT";
 
-  if (session?.rol === "ADMIN" || session?.rol === "COORDINATOR") {
+  if (session?.rol === "Administrador" || session?.rol === "Coordinador" || session?.rol === "ADMIN" || session?.rol === "COORDINATOR") {
     userRole = "ADMIN";
-  } else if (session?.rol === "PROFESSOR") {
+  } else if (session?.rol === "Profesor" || session?.rol === "PROFESSOR") {
     userRole = "PROFESSOR";
   } else {
     userRole = "STUDENT";

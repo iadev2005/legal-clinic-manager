@@ -16,6 +16,7 @@ import CaseDetailsModal from "@/components/ui/case-details-modal";
 import CaseEditModal, {
   type CaseEditData,
 } from "@/components/ui/case-edit-modal";
+import CaseCreateModal from "@/components/ui/case-create-modal";
 import {
   getCasos,
   getCasosBySolicitante,
@@ -88,6 +89,7 @@ export default function CasesClient({ userRole, userCedula }: CasesClientProps) 
   // Estados para los modales
   const [detailsModalOpen, setDetailsModalOpen] = useState(false);
   const [editModalOpen, setEditModalOpen] = useState(false);
+  const [createModalOpen, setCreateModalOpen] = useState(false);
   const [selectedCase, setSelectedCase] = useState<Case | null>(null);
 
   // Estado para la vista (tabla o gráficas)
@@ -244,9 +246,11 @@ export default function CasesClient({ userRole, userCedula }: CasesClientProps) 
   }, [filteredCases, effectiveCurrentPage]);
 
   const handleNewCase = () => {
-    // TODO: Abrir modal de nuevo caso (se implementará después)
-    console.log("Crear nuevo caso");
-    alert("Funcionalidad de crear caso próximamente");
+    setCreateModalOpen(true);
+  };
+
+  const handleCreateSuccess = () => {
+    loadData(); // Recargar la lista de casos
   };
 
   const handleValidateCase = () => {
@@ -481,7 +485,7 @@ export default function CasesClient({ userRole, userCedula }: CasesClientProps) 
           </p>
         </div>
         <div className="flex gap-4">
-          {userRole === "ADMIN" && (
+          {(userRole === "ADMIN" || userRole === "PROFESSOR") && (
             <PrimaryButton onClick={handleNewCase} icon="icon-[mdi--plus]">
               Crear Nuevo Caso
             </PrimaryButton>
@@ -725,6 +729,12 @@ export default function CasesClient({ userRole, userCedula }: CasesClientProps) 
       )}
 
       {/* Modales */}
+      <CaseCreateModal
+        open={createModalOpen}
+        onClose={() => setCreateModalOpen(false)}
+        onSuccess={handleCreateSuccess}
+      />
+
       <CaseDetailsModal
         open={detailsModalOpen}
         onClose={() => {
