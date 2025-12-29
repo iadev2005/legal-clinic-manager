@@ -581,3 +581,253 @@ export async function getMaterias() {
     }
 }
 
+// ============================================================================
+// SEMESTRES
+// ============================================================================
+
+export async function getSemestres() {
+    try {
+        const result = await query(`
+            SELECT term, fecha_inicio, fecha_final
+            FROM Semestres
+            ORDER BY fecha_inicio DESC
+        `);
+        return { success: true, data: result.rows };
+    } catch (error) {
+        console.error('Error al obtener semestres:', error);
+        return { success: false, error: 'Error al obtener semestres' };
+    }
+}
+
+// ============================================================================
+// CARGA MASIVA
+// ============================================================================
+
+export interface BulkUploadUser {
+    cedula: string;
+    nombres: string;
+    apellidos: string;
+    correo: string;
+    telefonoLocal?: string;
+    telefonoCelular?: string;
+    nrc?: string;
+    tipo?: string;
+}
+
+export interface BulkUploadResult {
+    success: boolean;
+    created: number;
+    updated: number;
+    errors: Array<{ row: number; cedula: string; error: string }>;
+    message?: string;
+}
+
+export async function processBulkUpload(
+    users: BulkUploadUser[],
+    tipo: 'Estudiante' | 'Profesor',
+    term: string
+): Promise<BulkUploadResult> {
+    const errors: Array<{ row: number; cedula: string; error: string }> = [];
+    let created = 0;
+    let updated = 0;
+
+    try {
+        await query('BEGIN');
+
+        // Verificar que el semestre existe
+        const termCheck = await query('SELECT term FROM Semestres WHERE term = $1', [term]);
+        if (termCheck.rows.length === 0) {
+            await query('ROLLBACK');
+            return {
+                success: false,
+                created: 0,
+                updated: 0,
+                errors: [{ row: 0, cedula: '', error: `El semestre ${term} no existe` }],
+                message: 'El semestre especificado no existe en la base de datos'
+            };
+        }
+
+        for (let i = 0; i < users.length; i++) {
+            const user = users[i];
+            const row = i + 2; // +2 porque la fila 1 es el encabezado y empezamos desde 0
+
+            try {
+                // Normalizar cédula (formato: V-12345678 o E-12345678)
+                let cedula = user.cedula.trim();
+                if (!cedula.includes('-')) {
+                    // Si no tiene guion, asumir que empieza con V o E
+                    if (cedula.startsWith('V') || cedula.startsWith('E')) {
+                        cedula = cedula.substring(0, 1) + '-' + cedula.substring(1);
+                    } else {
+                        cedula = 'V-' + cedula;
+                    }
+                }
+
+                // Validaciones básicas
+                if (!user.nombres || !user.apellidos || !user.correo) {
+                    errors.push({
+                        row,
+                        cedula,
+                        error: 'Faltan campos obligatorios (nombres, apellidos o correo)'
+                    });
+                    continue;
+                }
+
+                // Verificar si el usuario ya existe
+                const existingUser = await query(
+                    'SELECT cedula_usuario, rol FROM Usuarios_Sistema WHERE cedula_usuario = $1',
+                    [cedula]
+                );
+
+                const crypto = await import('crypto');
+                // Generar contraseña temporal (primeros 8 caracteres de la cédula + "123")
+                const tempPassword = cedula.replace('-', '').substring(0, 8) + '123';
+                const contrasena_hash = crypto.createHash('sha256').update(tempPassword).digest('hex');
+
+                if (existingUser.rows.length > 0) {
+                    // Usuario existe, solo crear/actualizar el perfil
+                    const existingCedula = existingUser.rows[0].cedula_usuario;
+                    const existingRol = existingUser.rows[0].rol;
+
+                    // Verificar si ya tiene perfil en este semestre
+                    if (tipo === 'Estudiante') {
+                        const existingProfile = await query(
+                            'SELECT * FROM Alumnos WHERE cedula_alumno = $1 AND term = $2',
+                            [existingCedula, term]
+                        );
+
+                        if (existingProfile.rows.length === 0) {
+                            await query(
+                                'INSERT INTO Alumnos (cedula_alumno, term, nrc, tipo) VALUES ($1, $2, $3, $4)',
+                                [
+                                    existingCedula,
+                                    term,
+                                    user.nrc || null,
+                                    user.tipo || 'Inscrito'
+                                ]
+                            );
+                            updated++;
+                        } else {
+                            // Actualizar perfil existente
+                            await query(
+                                'UPDATE Alumnos SET nrc = $1, tipo = $2 WHERE cedula_alumno = $3 AND term = $4',
+                                [
+                                    user.nrc || null,
+                                    user.tipo || 'Inscrito',
+                                    existingCedula,
+                                    term
+                                ]
+                            );
+                            updated++;
+                        }
+                    } else if (tipo === 'Profesor') {
+                        const existingProfile = await query(
+                            'SELECT * FROM Profesores WHERE cedula_profesor = $1 AND term = $2',
+                            [existingCedula, term]
+                        );
+
+                        if (existingProfile.rows.length === 0) {
+                            await query(
+                                'INSERT INTO Profesores (cedula_profesor, term, nrc, tipo) VALUES ($1, $2, $3, $4)',
+                                [
+                                    existingCedula,
+                                    term,
+                                    user.nrc || null,
+                                    user.tipo || 'Titular'
+                                ]
+                            );
+                            updated++;
+                        } else {
+                            // Actualizar perfil existente
+                            await query(
+                                'UPDATE Profesores SET nrc = $1, tipo = $2 WHERE cedula_profesor = $3 AND term = $4',
+                                [
+                                    user.nrc || null,
+                                    user.tipo || 'Titular',
+                                    existingCedula,
+                                    term
+                                ]
+                            );
+                            updated++;
+                        }
+                    }
+                } else {
+                    // Usuario no existe, crear usuario y perfil
+                    // Insertar usuario base
+                    await query(
+                        `INSERT INTO Usuarios_Sistema 
+                        (cedula_usuario, correo_electronico, contrasena_hash, nombres, apellidos, 
+                         telefono_local, telefono_celular, rol, activo)
+                        VALUES ($1, $2, $3, $4, $5, $6, $7, $8, true)`,
+                        [
+                            cedula,
+                            user.correo,
+                            contrasena_hash,
+                            user.nombres,
+                            user.apellidos,
+                            user.telefonoLocal || null,
+                            user.telefonoCelular || null,
+                            tipo
+                        ]
+                    );
+
+                    // Crear perfil según tipo
+                    if (tipo === 'Estudiante') {
+                        await query(
+                            'INSERT INTO Alumnos (cedula_alumno, term, nrc, tipo) VALUES ($1, $2, $3, $4)',
+                            [
+                                cedula,
+                                term,
+                                user.nrc || null,
+                                user.tipo || 'Inscrito'
+                            ]
+                        );
+                    } else if (tipo === 'Profesor') {
+                        await query(
+                            'INSERT INTO Profesores (cedula_profesor, term, nrc, tipo) VALUES ($1, $2, $3, $4)',
+                            [
+                                cedula,
+                                term,
+                                user.nrc || null,
+                                user.tipo || 'Titular'
+                            ]
+                        );
+                    }
+
+                    created++;
+                }
+            } catch (error: any) {
+                console.error(`Error procesando fila ${row}:`, error);
+                errors.push({
+                    row,
+                    cedula: user.cedula || 'N/A',
+                    error: error.message || 'Error desconocido'
+                });
+            }
+        }
+
+        await query('COMMIT');
+        revalidatePath('/administration');
+
+        return {
+            success: errors.length === 0,
+            created,
+            updated,
+            errors,
+            message: errors.length === 0
+                ? `Proceso completado: ${created} usuarios creados, ${updated} perfiles creados/actualizados`
+                : `Proceso completado con errores: ${created} usuarios creados, ${updated} perfiles creados/actualizados, ${errors.length} errores`
+        };
+    } catch (error: any) {
+        await query('ROLLBACK');
+        console.error('Error en carga masiva:', error);
+        return {
+            success: false,
+            created,
+            updated,
+            errors: [...errors, { row: 0, cedula: '', error: error.message || 'Error general en la transacción' }],
+            message: 'Error al procesar la carga masiva'
+        };
+    }
+}
+

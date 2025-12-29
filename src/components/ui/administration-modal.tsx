@@ -119,6 +119,14 @@ export default function AdministrationModal({
                     parishId: item.parishId || item.id_parroquia?.toString() || "",
                     legalfieldid: item.legalfieldid || "",
                     categorylegalfieldid: item.categorylegalfieldid || "",
+                    // Asegurar que los valores de string nunca sean null o undefined
+                    nombres: item.nombres || "",
+                    apellidos: item.apellidos || "",
+                    correo: item.correo || "",
+                    telefonoLocal: item.telefonoLocal ?? "",
+                    telefonoCelular: item.telefonoCelular ?? "",
+                    password: "",
+                    nombre: item.nombre || "",
                 });
             } else {
                 setFormData({
@@ -280,7 +288,7 @@ export default function AdministrationModal({
                                     <div className="space-y-2">
                                         <Label htmlFor="role">Rol en el Sistema</Label>
                                         <CustomSelect
-                                            value={formData.role}
+                                            value={formData.role ?? "Estudiante"}
                                             onChange={(val) => handleChange("role", val)}
                                             options={[
                                                 { value: "Estudiante", label: "Estudiante" },
@@ -295,7 +303,7 @@ export default function AdministrationModal({
                                         <div className="flex gap-2">
                                             <div className="w-24">
                                                 <CustomSelect
-                                                    value={formData.cedulaPrefix}
+                                                    value={formData.cedulaPrefix ?? "V"}
                                                     onChange={(val) => handleChange("cedulaPrefix", val)}
                                                     options={[
                                                         { value: "V", label: "V" },
@@ -304,7 +312,7 @@ export default function AdministrationModal({
                                                 />
                                             </div>
                                             <Input
-                                                value={formData.cedulaNumber}
+                                                value={formData.cedulaNumber ?? ""}
                                                 onChange={(e) => handleChange("cedulaNumber", e.target.value)}
                                                 placeholder="12.345.678"
                                                 required
@@ -316,7 +324,7 @@ export default function AdministrationModal({
                                         <Label htmlFor="nombres">Nombres</Label>
                                         <Input
                                             id="nombres"
-                                            value={formData.nombres}
+                                            value={formData.nombres ?? ""}
                                             onChange={(e) => handleChange("nombres", e.target.value)}
                                             placeholder="Nombres"
                                             required
@@ -327,7 +335,7 @@ export default function AdministrationModal({
                                         <Label htmlFor="apellidos">Apellidos</Label>
                                         <Input
                                             id="apellidos"
-                                            value={formData.apellidos}
+                                            value={formData.apellidos ?? ""}
                                             onChange={(e) => handleChange("apellidos", e.target.value)}
                                             placeholder="Apellidos"
                                             required
@@ -342,7 +350,7 @@ export default function AdministrationModal({
                                         <Input
                                             id="correo"
                                             type="email"
-                                            value={formData.correo}
+                                            value={formData.correo ?? ""}
                                             onChange={(e) => handleChange("correo", e.target.value)}
                                             placeholder="@universidad.edu"
                                             required
@@ -352,7 +360,7 @@ export default function AdministrationModal({
                                     <div className="space-y-2">
                                         <Label htmlFor="sexo">Sexo</Label>
                                         <CustomSelect
-                                            value={formData.sexo}
+                                            value={formData.sexo ?? "M"}
                                             onChange={(val) => handleChange("sexo", val)}
                                             options={[
                                                 { value: "M", label: "Masculino" },
@@ -366,7 +374,7 @@ export default function AdministrationModal({
                                             <Label htmlFor="tlf_local">Tlf. Local</Label>
                                             <Input
                                                 id="tlf_local"
-                                                value={formData.telefonoLocal}
+                                                value={formData.telefonoLocal ?? ""}
                                                 onChange={(e) => handleChange("telefonoLocal", e.target.value)}
                                                 placeholder="(0212) ..."
                                             />
@@ -375,7 +383,7 @@ export default function AdministrationModal({
                                             <Label htmlFor="tlf_celular">Tlf. Celular</Label>
                                             <Input
                                                 id="tlf_celular"
-                                                value={formData.telefonoCelular}
+                                                value={formData.telefonoCelular ?? ""}
                                                 onChange={(e) => handleChange("telefonoCelular", e.target.value)}
                                                 placeholder="(0414) ..."
                                                 required
@@ -391,7 +399,7 @@ export default function AdministrationModal({
                                             <Input
                                                 id="password"
                                                 type={showPassword ? "text" : "password"}
-                                                value={formData.password}
+                                                value={formData.password ?? ""}
                                                 onChange={(e) => handleChange("password", e.target.value)}
                                                 placeholder={mode === "create" ? "******" : "(Opcional)"}
                                                 required={mode === "create"}

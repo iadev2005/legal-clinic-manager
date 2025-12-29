@@ -4,12 +4,13 @@ import { CustomTable, type Column } from "@/components/ui/custom-table";
 import { useState, useEffect } from "react";
 import AdministrationModal from "@/components/ui/administration-modal";
 import DeleteConfirmationModal from "@/components/ui/delete-confirmation-modal";
+import BulkUploadModal from "@/components/ui/bulk-upload-modal";
 import {
     getUsuarios, createUsuario, updateUsuario, deleteUsuario, getParticipacionesUsuario,
     getCategorias, createCategoria, updateCategoria, deleteCategoria,
     getSubCategorias, createSubCategoria, updateSubCategoria, deleteSubCategoria,
     getNucleos, createNucleo, updateNucleo, deleteNucleo,
-    getMaterias
+    getMaterias, getSemestres
 } from "@/actions/administracion";
 import { getParroquias, getEstados, getMunicipiosByEstado } from "@/actions/solicitantes";
 
@@ -24,6 +25,7 @@ export default function Administration() {
     const [subcategorylegalfield, setsubcategorylegalfield] = useState<any[]>([]);
     const [centers, setCenters] = useState<any[]>([]);
     const [parishes, setParishes] = useState<any[]>([]);
+    const [semestres, setSemestres] = useState<any[]>([]);
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState<string | null>(null);
 
@@ -107,6 +109,12 @@ export default function Administration() {
             if (estadosRes.success) {
                 setEstados(estadosRes.data || []);
             }
+
+            // Cargar semestres
+            const semestresRes = await getSemestres();
+            if (semestresRes.success) {
+                setSemestres(semestresRes.data || []);
+            }
         } catch (err: any) {
             setError(err.message || 'Error al cargar datos');
             console.error('Error al cargar datos:', err);
@@ -149,6 +157,7 @@ export default function Administration() {
     // Modal States
     const [adminModalOpen, setAdminModalOpen] = useState(false);
     const [deleteModalOpen, setDeleteModalOpen] = useState(false);
+    const [bulkUploadModalOpen, setBulkUploadModalOpen] = useState(false);
     const [currentMode, setCurrentMode] = useState<"create" | "edit">("create");
     const [currentItem, setCurrentItem] = useState<any>(null);
 
@@ -798,7 +807,18 @@ export default function Administration() {
                                 Eliminar ({selectedItems.length})
                             </button>
                         ) : (
-                            <button onClick={handleCreate} className="bg-sky-950 text-white px-4 py-2 rounded-lg font-semibold hover:bg-[#325B84] transition-colors cursor-pointer">Agregar</button>
+                            <div className="flex gap-2">
+                                {activeTab === "users" && (
+                                    <button 
+                                        onClick={() => setBulkUploadModalOpen(true)} 
+                                        className="bg-green-600 text-white px-4 py-2 rounded-lg font-semibold hover:bg-green-700 transition-colors cursor-pointer flex items-center gap-2"
+                                    >
+                                        <span className="icon-[mdi--upload] text-xl"></span>
+                                        Carga Masiva
+                                    </button>
+                                )}
+                                <button onClick={handleCreate} className="bg-sky-950 text-white px-4 py-2 rounded-lg font-semibold hover:bg-[#325B84] transition-colors cursor-pointer">Agregar</button>
+                            </div>
                         )}
                     </div>
                     
@@ -844,6 +864,13 @@ export default function Administration() {
                 open={deleteModalOpen}
                 onClose={() => setDeleteModalOpen(false)}
                 onConfirm={confirmDelete}
+            />
+
+            <BulkUploadModal
+                open={bulkUploadModalOpen}
+                onClose={() => setBulkUploadModalOpen(false)}
+                onSuccess={loadData}
+                semestres={semestres}
             />
 
         </div>
