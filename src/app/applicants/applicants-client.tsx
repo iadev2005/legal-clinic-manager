@@ -9,6 +9,7 @@ import FilterSelect from "@/components/ui/filter-select";
 import ApplicantModal, {
   type ApplicantFormData,
 } from "@/components/ui/applicant-modal";
+import ApplicantDetailsModal from "@/components/ui/applicant-details-modal";
 import Pagination from "@/components/ui/pagination";
 import DeleteConfirmationModal from "@/components/ui/delete-confirmation-modal";
 import {
@@ -67,6 +68,8 @@ export default function ApplicantsClient() {
   const [selectedApplicant, setSelectedApplicant] =
     useState<Solicitante | null>(null);
   const [deleteModalOpen, setDeleteModalOpen] = useState(false);
+  const [detailsModalOpen, setDetailsModalOpen] = useState(false);
+  const [selectedApplicantCedula, setSelectedApplicantCedula] = useState<string | null>(null);
 
   // Selection state
   const [selectedItems, setSelectedItems] = useState<Solicitante[]>([]);
@@ -173,8 +176,8 @@ export default function ApplicantsClient() {
   };
 
   const handleViewDetails = (cedula: string) => {
-    // Redirigir a la página de casos del solicitante
-    router.push(`/cases?applicantId=${cedula}`);
+    setSelectedApplicantCedula(cedula);
+    setDetailsModalOpen(true);
   };
 
   const handleDelete = (applicant: Solicitante) => {
@@ -287,7 +290,7 @@ export default function ApplicantsClient() {
           <button
             onClick={() => handleViewDetails(applicant.cedula_solicitante)}
             className="w-10 h-10 flex justify-center items-center hover:bg-blue-100 rounded-lg transition-colors group cursor-pointer"
-            title="Ver casos relacionados"
+            title="Ver detalles"
           >
             <span className="icon-[mdi--file-document-outline] text-3xl text-[#3E7DBB] group-hover:scale-110 transition-transform"></span>
           </button>
@@ -455,7 +458,16 @@ export default function ApplicantsClient() {
 
       </div>
 
-      {/* Modal */}
+      {/* Modales */}
+      <ApplicantDetailsModal
+        open={detailsModalOpen}
+        onClose={() => {
+          setDetailsModalOpen(false);
+          setSelectedApplicantCedula(null);
+        }}
+        cedulaSolicitante={selectedApplicantCedula}
+      />
+
       <ApplicantModal
         open={modalOpen}
         onClose={() => setModalOpen(false)}

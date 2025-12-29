@@ -1,5 +1,6 @@
 "use client";
 
+import { useState, useEffect } from "react";
 import {
   Dialog,
   DialogContent,
@@ -8,6 +9,8 @@ import {
 } from "@/components/shadcn/dialog";
 import StatusBadge from "./status-badge";
 import PrintButton from "@/app/cases/report/PrintButton";
+import { getCaseReportData } from "@/lib/actions/cases";
+import { getHistorialEstatus } from "@/actions/casos";
 
 interface CaseDetailsModalProps {
   open: boolean;
@@ -32,11 +35,63 @@ export default function CaseDetailsModal({
   onClose,
   caseData,
 }: CaseDetailsModalProps) {
+  const [loading, setLoading] = useState(false);
+  const [caseDetails, setCaseDetails] = useState<any>(null);
+  const [historialEstatus, setHistorialEstatus] = useState<any[]>([]);
+  const [error, setError] = useState<string | null>(null);
+  const [activeTab, setActiveTab] = useState<"general" | "beneficiarios" | "soportes" | "citas" | "bitacora" | "historial">("general");
+
+  useEffect(() => {
+    if (open && caseData) {
+      loadCaseDetails();
+    }
+  }, [open, caseData]);
+
+  const loadCaseDetails = async () => {
+    if (!caseData) return;
+
+    setLoading(true);
+    setError(null);
+
+    try {
+      const [details, historial] = await Promise.all([
+        getCaseReportData(caseData.id),
+        getHistorialEstatus(parseInt(caseData.id)),
+      ]);
+
+      if (details) {
+        setCaseDetails(details);
+      } else {
+        setError("No se pudieron cargar los detalles del caso");
+      }
+
+      if (historial.success && historial.data) {
+        setHistorialEstatus(historial.data);
+      }
+    } catch (err: any) {
+      setError(err.message || "Error al cargar los detalles del caso");
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const calcularEdad = (fechaNacimiento: string) => {
+    if (!fechaNacimiento) return null;
+    const hoy = new Date();
+    const nacimiento = new Date(fechaNacimiento);
+    let edad = hoy.getFullYear() - nacimiento.getFullYear();
+    const mes = hoy.getMonth() - nacimiento.getMonth();
+    if (mes < 0 || (mes === 0 && hoy.getDate() < nacimiento.getDate())) {
+      edad--;
+    }
+    return edad;
+  };
+
   if (!caseData) return null;
 
   return (
     <Dialog open={open} onOpenChange={onClose}>
-      <DialogContent className="max-w-3xl max-h-[90vh] overflow-y-auto">
+      <DialogContent className="max-w-6xl max-h-[90vh] overflow-y-auto">
         <DialogHeader>
           <DialogTitle className="text-sky-950 text-3xl font-semibold flex items-center gap-3">
             <span className="icon-[mdi--file-document] text-4xl text-[#3E7DBB]"></span>
@@ -44,129 +99,544 @@ export default function CaseDetailsModal({
           </DialogTitle>
         </DialogHeader>
 
-        <div className="space-y-6 py-4">
-          {/* Información del Caso */}
-          <div className="bg-gradient-to-r from-blue-50 to-blue-100 rounded-2xl p-6 border-2 border-[#3E7DBB]/20">
-            <h3 className="text-sky-950 text-xl font-semibold mb-4 flex items-center gap-2">
-              <span className="icon-[mdi--information] text-2xl text-[#3E7DBB]"></span>
-              Información General
-            </h3>
-            <div className="grid grid-cols-2 gap-4">
-              <div>
-                <label className="text-sky-950/70 text-sm font-semibold">
-                  Número de Caso
-                </label>
-                <p className="text-sky-950 text-lg font-bold">
-                  {caseData.caseNumber}
-                </p>
-              </div>
-              <div>
-                <label className="text-sky-950/70 text-sm font-semibold">
-                  Fecha de Creación
-                </label>
-                <p className="text-sky-950 text-lg font-semibold">
-                  {new Date(caseData.createdAt).toLocaleDateString("es-ES", {
-                    year: "numeric",
-                    month: "long",
-                    day: "numeric",
-                  })}
-                </p>
-              </div>
-              <div>
-                <label className="text-sky-950/70 text-sm font-semibold">
-                  Estatus
-                </label>
-                <div className="mt-1">
-                  <StatusBadge status={caseData.status} />
+        {loading ? (
+          <div className="flex items-center justify-center py-12">
+            <div className="text-sky-950 text-lg">Cargando información...</div>
+          </div>
+        ) : error ? (
+          <div className="bg-red-50 border-2 border-red-400 rounded-xl p-4">
+            <p className="text-red-800 font-semibold">{error}</p>
+          </div>
+        ) : caseDetails ? (
+          <div className="space-y-6 py-4">
+            {/* Tabs de navegación */}
+            <div className="flex gap-2 border-b border-gray-200">
+              {[
+                { id: "general", label: "General", icon: "icon-[mdi--information]" },
+                { id: "beneficiarios", label: "Beneficiarios", icon: "icon-[mdi--account-group]" },
+                { id: "soportes", label: "Soportes", icon: "icon-[mdi--file-document]" },
+                { id: "citas", label: "Citas", icon: "icon-[mdi--calendar]" },
+                { id: "bitacora", label: "Bitácora", icon: "icon-[mdi--notebook]" },
+                { id: "historial", label: "Historial", icon: "icon-[mdi--history]" },
+              ].map((tab) => (
+                <button
+                  key={tab.id}
+                  onClick={() => setActiveTab(tab.id as any)}
+                  className={`px-4 py-2 font-semibold transition-colors border-b-2 ${
+                    activeTab === tab.id
+                      ? "border-[#3E7DBB] text-[#3E7DBB]"
+                      : "border-transparent text-gray-500 hover:text-sky-950"
+                  }`}
+                >
+                  <span className={`${tab.icon} mr-2`}></span>
+                  {tab.label}
+                </button>
+              ))}
+            </div>
+
+            {/* Tab: General */}
+            {activeTab === "general" && (
+              <div className="space-y-6">
+                {/* Información del Caso */}
+                <div className="bg-gradient-to-r from-blue-50 to-blue-100 rounded-2xl p-6 border-2 border-[#3E7DBB]/20">
+                  <h3 className="text-sky-950 text-xl font-semibold mb-4 flex items-center gap-2">
+                    <span className="icon-[mdi--information] text-2xl text-[#3E7DBB]"></span>
+                    Información General
+                  </h3>
+                  <div className="grid grid-cols-2 gap-4">
+                    <div>
+                      <label className="text-sky-950/70 text-sm font-semibold">
+                        Número de Caso
+                      </label>
+                      <p className="text-sky-950 text-lg font-bold">
+                        {caseData.caseNumber}
+                      </p>
+                    </div>
+                    <div>
+                      <label className="text-sky-950/70 text-sm font-semibold">
+                        Fecha de Inicio
+                      </label>
+                      <p className="text-sky-950 text-lg font-semibold">
+                        {caseDetails.caseInfo.fecha_caso_inicio
+                          ? new Date(caseDetails.caseInfo.fecha_caso_inicio).toLocaleDateString("es-ES", {
+                              year: "numeric",
+                              month: "long",
+                              day: "numeric",
+                            })
+                          : "N/A"}
+                      </p>
+                    </div>
+                    <div>
+                      <label className="text-sky-950/70 text-sm font-semibold">
+                        Fecha de Finalización
+                      </label>
+                      <p className="text-sky-950 text-lg font-semibold">
+                        {caseDetails.caseInfo.fecha_caso_final
+                          ? new Date(caseDetails.caseInfo.fecha_caso_final).toLocaleDateString("es-ES", {
+                              year: "numeric",
+                              month: "long",
+                              day: "numeric",
+                            })
+                          : "En proceso"}
+                      </p>
+                    </div>
+                    <div>
+                      <label className="text-sky-950/70 text-sm font-semibold">
+                        Estatus Actual
+                      </label>
+                      <div className="mt-1">
+                        <StatusBadge status={caseData.status} />
+                      </div>
+                    </div>
+                    {caseDetails.caseInfo.sintesis_caso && (
+                      <div className="col-span-2">
+                        <label className="text-sky-950/70 text-sm font-semibold">
+                          Síntesis del Caso
+                        </label>
+                        <p className="text-sky-950 text-base mt-1 bg-white p-3 rounded-lg">
+                          {caseDetails.caseInfo.sintesis_caso}
+                        </p>
+                      </div>
+                    )}
+                  </div>
+                </div>
+
+                {/* Información del Solicitante */}
+                <div className="bg-gradient-to-r from-green-50 to-green-100 rounded-2xl p-6 border-2 border-green-500/20">
+                  <h3 className="text-sky-950 text-xl font-semibold mb-4 flex items-center gap-2">
+                    <span className="icon-[mdi--account] text-2xl text-green-600"></span>
+                    Solicitante
+                  </h3>
+                  <div className="grid grid-cols-2 gap-4">
+                    <div>
+                      <label className="text-sky-950/70 text-sm font-semibold">
+                        Nombre Completo
+                      </label>
+                      <p className="text-sky-950 text-lg font-bold">
+                        {caseDetails.caseInfo.solicitante_nombres} {caseDetails.caseInfo.solicitante_apellidos}
+                      </p>
+                    </div>
+                    <div>
+                      <label className="text-sky-950/70 text-sm font-semibold">
+                        Cédula de Identidad
+                      </label>
+                      <p className="text-sky-950 text-lg font-semibold">
+                        {caseDetails.caseInfo.cedula_solicitante}
+                      </p>
+                    </div>
+                    <div>
+                      <label className="text-sky-950/70 text-sm font-semibold">
+                        Teléfono
+                      </label>
+                      <p className="text-sky-950 text-lg font-semibold">
+                        {caseDetails.caseInfo.telefono_celular || "N/A"}
+                      </p>
+                    </div>
+                    <div>
+                      <label className="text-sky-950/70 text-sm font-semibold">
+                        Correo Electrónico
+                      </label>
+                      <p className="text-sky-950 text-lg font-semibold">
+                        {caseDetails.caseInfo.correo_electronico || "N/A"}
+                      </p>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Detalles Legales */}
+                <div className="bg-gradient-to-r from-purple-50 to-purple-100 rounded-2xl p-6 border-2 border-purple-500/20">
+                  <h3 className="text-sky-950 text-xl font-semibold mb-4 flex items-center gap-2">
+                    <span className="icon-[mdi--gavel] text-2xl text-purple-600"></span>
+                    Detalles Legales
+                  </h3>
+                  <div className="grid grid-cols-2 gap-4">
+                    <div>
+                      <label className="text-sky-950/70 text-sm font-semibold">
+                        Materia
+                      </label>
+                      <p className="text-sky-950 text-lg font-bold">
+                        {caseDetails.caseInfo.nombre_materia}
+                      </p>
+                    </div>
+                    <div>
+                      <label className="text-sky-950/70 text-sm font-semibold">
+                        Categoría
+                      </label>
+                      <p className="text-sky-950 text-lg font-semibold">
+                        {caseDetails.caseInfo.nombre_categoria}
+                      </p>
+                    </div>
+                    <div>
+                      <label className="text-sky-950/70 text-sm font-semibold">
+                        Subcategoría
+                      </label>
+                      <p className="text-sky-950 text-lg font-semibold">
+                        {caseDetails.caseInfo.nombre_subcategoria}
+                      </p>
+                    </div>
+                    <div>
+                      <label className="text-sky-950/70 text-sm font-semibold">
+                        Ámbito Legal
+                      </label>
+                      <p className="text-sky-950 text-lg font-semibold">
+                        {caseDetails.caseInfo.nombre_ambito_legal}
+                      </p>
+                    </div>
+                    <div>
+                      <label className="text-sky-950/70 text-sm font-semibold">
+                        Trámite
+                      </label>
+                      <p className="text-sky-950 text-lg font-semibold">
+                        {caseDetails.caseInfo.nombre_tramite}
+                      </p>
+                    </div>
+                    <div>
+                      <label className="text-sky-950/70 text-sm font-semibold">
+                        Núcleo
+                      </label>
+                      <p className="text-sky-950 text-lg font-semibold">
+                        {caseDetails.caseInfo.nombre_nucleo}
+                      </p>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Asignaciones */}
+                <div className="bg-gradient-to-r from-orange-50 to-orange-100 rounded-2xl p-6 border-2 border-orange-500/20">
+                  <h3 className="text-sky-950 text-xl font-semibold mb-4 flex items-center gap-2">
+                    <span className="icon-[mdi--school] text-2xl text-orange-600"></span>
+                    Asignaciones
+                  </h3>
+                  <div className="grid grid-cols-2 gap-4">
+                    <div>
+                      <label className="text-sky-950/70 text-sm font-semibold">
+                        Alumno Asignado
+                      </label>
+                      <p className="text-sky-950 text-lg font-bold">
+                        {caseDetails.students && caseDetails.students.length > 0
+                          ? `${caseDetails.students[0].nombres} ${caseDetails.students[0].apellidos}`
+                          : "Sin asignar"}
+                      </p>
+                      {caseDetails.students && caseDetails.students.length > 0 && (
+                        <p className="text-sm text-sky-950/60">
+                          {caseDetails.students[0].correo_electronico}
+                        </p>
+                      )}
+                    </div>
+                    <div>
+                      <label className="text-sky-950/70 text-sm font-semibold">
+                        Profesor Supervisor
+                      </label>
+                      <p className="text-sky-950 text-lg font-bold">
+                        {caseDetails.supervisors && caseDetails.supervisors.length > 0
+                          ? `${caseDetails.supervisors[0].nombres} ${caseDetails.supervisors[0].apellidos}`
+                          : "Sin asignar"}
+                      </p>
+                      {caseDetails.supervisors && caseDetails.supervisors.length > 0 && (
+                        <p className="text-sm text-sky-950/60">
+                          {caseDetails.supervisors[0].correo_electronico}
+                        </p>
+                      )}
+                    </div>
+                  </div>
                 </div>
               </div>
-              <div>
-                <label className="text-sky-950/70 text-sm font-semibold">
-                  Periodo
-                </label>
-                <p className="text-sky-950 text-lg font-semibold">
-                  {caseData.period}
-                </p>
-              </div>
-            </div>
-          </div>
+            )}
 
-          {/* Información del Solicitante */}
-          <div className="bg-gradient-to-r from-green-50 to-green-100 rounded-2xl p-6 border-2 border-green-500/20">
-            <h3 className="text-sky-950 text-xl font-semibold mb-4 flex items-center gap-2">
-              <span className="icon-[mdi--account] text-2xl text-green-600"></span>
-              Solicitante
-            </h3>
-            <div className="grid grid-cols-2 gap-4">
-              <div>
-                <label className="text-sky-950/70 text-sm font-semibold">
-                  Nombre Completo
-                </label>
-                <p className="text-sky-950 text-lg font-bold">
-                  {caseData.applicantName}
-                </p>
+            {/* Tab: Beneficiarios */}
+            {activeTab === "beneficiarios" && (
+              <div className="bg-gradient-to-r from-pink-50 to-pink-100 rounded-2xl p-6 border-2 border-pink-500/20">
+                <h3 className="text-sky-950 text-xl font-semibold mb-4 flex items-center gap-2">
+                  <span className="icon-[mdi--account-group] text-2xl text-pink-600"></span>
+                  Beneficiarios ({caseDetails.beneficiaries?.length || 0})
+                </h3>
+                {caseDetails.beneficiaries && caseDetails.beneficiaries.length > 0 ? (
+                  <div className="space-y-4">
+                    {caseDetails.beneficiaries.map((ben: any, index: number) => (
+                      <div
+                        key={index}
+                        className="bg-white p-4 rounded-xl border border-pink-200"
+                      >
+                        <div className="grid grid-cols-2 gap-4">
+                          <div>
+                            <label className="text-sky-950/70 text-sm font-semibold">
+                              Cédula
+                            </label>
+                            <p className="text-sky-950 font-bold">
+                              {ben.cedula_beneficiario}
+                              {ben.cedula_es_propia && (
+                                <span className="ml-2 text-xs bg-green-100 text-green-700 px-2 py-1 rounded">
+                                  Propia
+                                </span>
+                              )}
+                            </p>
+                          </div>
+                          <div>
+                            <label className="text-sky-950/70 text-sm font-semibold">
+                              Tipo
+                            </label>
+                            <p className="text-sky-950 font-semibold">
+                              {ben.tipo_beneficiario}
+                            </p>
+                          </div>
+                          <div>
+                            <label className="text-sky-950/70 text-sm font-semibold">
+                              Nombre Completo
+                            </label>
+                            <p className="text-sky-950">
+                              {ben.nombres && ben.apellidos
+                                ? `${ben.nombres} ${ben.apellidos}`
+                                : "N/A"}
+                            </p>
+                          </div>
+                          <div>
+                            <label className="text-sky-950/70 text-sm font-semibold">
+                              Sexo
+                            </label>
+                            <p className="text-sky-950">
+                              {ben.sexo === "M" ? "Masculino" : ben.sexo === "F" ? "Femenino" : "N/A"}
+                            </p>
+                          </div>
+                          {ben.fecha_nacimiento && (
+                            <div>
+                              <label className="text-sky-950/70 text-sm font-semibold">
+                                Fecha de Nacimiento
+                              </label>
+                              <p className="text-sky-950">
+                                {new Date(ben.fecha_nacimiento).toLocaleDateString("es-ES")}
+                                {ben.edad && ` (${ben.edad} años)`}
+                              </p>
+                            </div>
+                          )}
+                          {ben.parentesco && (
+                            <div>
+                              <label className="text-sky-950/70 text-sm font-semibold">
+                                Parentesco
+                              </label>
+                              <p className="text-sky-950">{ben.parentesco}</p>
+                            </div>
+                          )}
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                ) : (
+                  <p className="text-sky-950/60 text-center py-8">
+                    No hay beneficiarios registrados para este caso
+                  </p>
+                )}
               </div>
-              <div>
-                <label className="text-sky-950/70 text-sm font-semibold">
-                  Cédula de Identidad
-                </label>
-                <p className="text-sky-950 text-lg font-semibold">
-                  {caseData.applicantId}
-                </p>
-              </div>
-            </div>
-          </div>
+            )}
 
-          {/* Detalles Legales */}
-          <div className="bg-gradient-to-r from-purple-50 to-purple-100 rounded-2xl p-6 border-2 border-purple-500/20">
-            <h3 className="text-sky-950 text-xl font-semibold mb-4 flex items-center gap-2">
-              <span className="icon-[mdi--gavel] text-2xl text-purple-600"></span>
-              Detalles Legales
-            </h3>
-            <div className="grid grid-cols-2 gap-4">
-              <div>
-                <label className="text-sky-950/70 text-sm font-semibold">
-                  Materia
-                </label>
-                <p className="text-sky-950 text-lg font-bold">
-                  {caseData.subject}
-                </p>
+            {/* Tab: Soportes */}
+            {activeTab === "soportes" && (
+              <div className="bg-gradient-to-r from-yellow-50 to-yellow-100 rounded-2xl p-6 border-2 border-yellow-500/20">
+                <h3 className="text-sky-950 text-xl font-semibold mb-4 flex items-center gap-2">
+                  <span className="icon-[mdi--file-document] text-2xl text-yellow-600"></span>
+                  Soportes Legales ({caseDetails.supports?.length || 0})
+                </h3>
+                {caseDetails.supports && caseDetails.supports.length > 0 ? (
+                  <div className="space-y-4">
+                    {caseDetails.supports.map((soporte: any, index: number) => (
+                      <div
+                        key={index}
+                        className="bg-white p-4 rounded-xl border border-yellow-200"
+                      >
+                        <div className="flex justify-between items-start">
+                          <div className="flex-1">
+                            <p className="font-bold text-sky-950">{soporte.descripcion}</p>
+                            <p className="text-sm text-sky-950/60 mt-1">
+                              {soporte.fecha_soporte
+                                ? new Date(soporte.fecha_soporte).toLocaleDateString("es-ES")
+                                : "N/A"}
+                            </p>
+                            {soporte.observacion && (
+                              <p className="text-sm text-sky-950/70 mt-2">{soporte.observacion}</p>
+                            )}
+                          </div>
+                          {soporte.documento_url && (
+                            <a
+                              href={soporte.documento_url}
+                              target="_blank"
+                              rel="noopener noreferrer"
+                              className="ml-4 px-4 py-2 bg-yellow-600 hover:bg-yellow-700 text-white rounded-lg font-semibold transition-colors flex items-center gap-2"
+                            >
+                              <span className="icon-[mdi--download] text-xl"></span>
+                              Ver Documento
+                            </a>
+                          )}
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                ) : (
+                  <p className="text-sky-950/60 text-center py-8">
+                    No hay soportes legales registrados para este caso
+                  </p>
+                )}
               </div>
-              <div>
-                <label className="text-sky-950/70 text-sm font-semibold">
-                  Trámite
-                </label>
-                <p className="text-sky-950 text-lg font-semibold">
-                  {caseData.procedure}
-                </p>
-              </div>
-              <div className="col-span-2">
-                <label className="text-sky-950/70 text-sm font-semibold">
-                  Tribunal Asignado
-                </label>
-                <p className="text-sky-950 text-lg font-semibold">
-                  {caseData.tribunal}
-                </p>
-              </div>
-            </div>
-          </div>
+            )}
 
-          {/* Alumno Asignado */}
-          <div className="bg-gradient-to-r from-orange-50 to-orange-100 rounded-2xl p-6 border-2 border-orange-500/20">
-            <h3 className="text-sky-950 text-xl font-semibold mb-4 flex items-center gap-2">
-              <span className="icon-[mdi--school] text-2xl text-orange-600"></span>
-              Asignación
-            </h3>
-            <div>
-              <label className="text-sky-950/70 text-sm font-semibold">
-                Alumno Responsable
-              </label>
-              <p className="text-sky-950 text-lg font-bold">
-                {caseData.assignedStudent}
-              </p>
-            </div>
+            {/* Tab: Citas */}
+            {activeTab === "citas" && (
+              <div className="bg-gradient-to-r from-indigo-50 to-indigo-100 rounded-2xl p-6 border-2 border-indigo-500/20">
+                <h3 className="text-sky-950 text-xl font-semibold mb-4 flex items-center gap-2">
+                  <span className="icon-[mdi--calendar] text-2xl text-indigo-600"></span>
+                  Citas y Entrevistas ({caseDetails.appointments?.length || 0})
+                </h3>
+                {caseDetails.appointments && caseDetails.appointments.length > 0 ? (
+                  <div className="space-y-4">
+                    {caseDetails.appointments.map((cita: any, index: number) => (
+                      <div
+                        key={index}
+                        className="bg-white p-4 rounded-xl border border-indigo-200"
+                      >
+                        <div className="flex justify-between items-start mb-2">
+                          <div>
+                            <p className="font-bold text-sky-950">
+                              {new Date(cita.fecha_atencion).toLocaleString("es-ES", {
+                                year: "numeric",
+                                month: "long",
+                                day: "numeric",
+                                hour: "2-digit",
+                                minute: "2-digit",
+                              })}
+                            </p>
+                            {cita.fecha_proxima_cita && (
+                              <p className="text-sm text-green-700 mt-1">
+                                Próxima cita:{" "}
+                                {new Date(cita.fecha_proxima_cita).toLocaleString("es-ES", {
+                                  year: "numeric",
+                                  month: "long",
+                                  day: "numeric",
+                                  hour: "2-digit",
+                                  minute: "2-digit",
+                                })}
+                              </p>
+                            )}
+                          </div>
+                        </div>
+                        {cita.observacion && (
+                          <p className="text-sm text-sky-950/70 mt-2">{cita.observacion}</p>
+                        )}
+                        {cita.atendido_por && cita.atendido_por.length > 0 && (
+                          <div className="mt-3 pt-3 border-t border-indigo-200">
+                            <p className="text-xs font-semibold text-sky-950/60 mb-1">
+                              Atendido por:
+                            </p>
+                            <p className="text-sm text-sky-950">
+                              {Array.isArray(cita.atendido_por)
+                                ? cita.atendido_por.filter(Boolean).join(", ")
+                                : cita.atendido_por}
+                            </p>
+                          </div>
+                        )}
+                      </div>
+                    ))}
+                  </div>
+                ) : (
+                  <p className="text-sky-950/60 text-center py-8">
+                    No hay citas registradas para este caso
+                  </p>
+                )}
+              </div>
+            )}
+
+            {/* Tab: Bitácora */}
+            {activeTab === "bitacora" && (
+              <div className="bg-gradient-to-r from-teal-50 to-teal-100 rounded-2xl p-6 border-2 border-teal-500/20">
+                <h3 className="text-sky-950 text-xl font-semibold mb-4 flex items-center gap-2">
+                  <span className="icon-[mdi--notebook] text-2xl text-teal-600"></span>
+                  Bitácora de Acciones ({caseDetails.actions?.length || 0})
+                </h3>
+                {caseDetails.actions && caseDetails.actions.length > 0 ? (
+                  <div className="space-y-4">
+                    {caseDetails.actions.map((accion: any, index: number) => (
+                      <div
+                        key={index}
+                        className="bg-white p-4 rounded-xl border border-teal-200"
+                      >
+                        <div className="flex justify-between items-start">
+                          <div className="flex-1">
+                            <p className="font-bold text-sky-950">{accion.titulo_accion || "Sin título"}</p>
+                            <p className="text-sm text-sky-950/60 mt-1">
+                              {accion.fecha_realizacion
+                                ? new Date(accion.fecha_realizacion).toLocaleDateString("es-ES")
+                                : "N/A"}
+                            </p>
+                            {accion.observacion && (
+                              <p className="text-sm text-sky-950/70 mt-2">{accion.observacion}</p>
+                            )}
+                          </div>
+                          {accion.nombres && accion.apellidos && (
+                            <div className="ml-4 text-right">
+                              <p className="text-xs font-semibold text-sky-950/60">Ejecutado por:</p>
+                              <p className="text-sm text-sky-950">
+                                {accion.nombres} {accion.apellidos}
+                              </p>
+                            </div>
+                          )}
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                ) : (
+                  <p className="text-sky-950/60 text-center py-8">
+                    No hay acciones registradas en la bitácora
+                  </p>
+                )}
+              </div>
+            )}
+
+            {/* Tab: Historial de Estatus */}
+            {activeTab === "historial" && (
+              <div className="bg-gradient-to-r from-gray-50 to-gray-100 rounded-2xl p-6 border-2 border-gray-500/20">
+                <h3 className="text-sky-950 text-xl font-semibold mb-4 flex items-center gap-2">
+                  <span className="icon-[mdi--history] text-2xl text-gray-600"></span>
+                  Historial de Estatus ({historialEstatus.length})
+                </h3>
+                {historialEstatus.length > 0 ? (
+                  <div className="space-y-4">
+                    {historialEstatus.map((hist: any, index: number) => (
+                      <div
+                        key={index}
+                        className="bg-white p-4 rounded-xl border border-gray-200"
+                      >
+                        <div className="flex justify-between items-start">
+                          <div className="flex-1">
+                            <p className="font-bold text-sky-950">{hist.nombre_estatus}</p>
+                            <p className="text-sm text-sky-950/60 mt-1">
+                              {new Date(hist.fecha_registro).toLocaleString("es-ES", {
+                                year: "numeric",
+                                month: "long",
+                                day: "numeric",
+                                hour: "2-digit",
+                                minute: "2-digit",
+                              })}
+                            </p>
+                            {hist.motivo && (
+                              <p className="text-sm text-sky-950/70 mt-2">{hist.motivo}</p>
+                            )}
+                          </div>
+                          {hist.usuario_nombre && (
+                            <div className="ml-4 text-right">
+                              <p className="text-xs font-semibold text-sky-950/60">Cambiado por:</p>
+                              <p className="text-sm text-sky-950">{hist.usuario_nombre}</p>
+                            </div>
+                          )}
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                ) : (
+                  <p className="text-sky-950/60 text-center py-8">
+                    No hay historial de cambios de estatus
+                  </p>
+                )}
+              </div>
+            )}
           </div>
-        </div>
+        ) : null}
 
         {/* Footer con botones de acción */}
         <div className="flex justify-end gap-3 pt-4 border-t">

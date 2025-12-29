@@ -9,24 +9,60 @@
 - ✅ Gestión de usuarios (CRUD) en `/administration`
 - ✅ Roles y permisos básicos
 
-### 2. **Solicitantes** ✅
-- ✅ CRUD completo de solicitantes
-- ✅ Gestión de viviendas, familias y bienes
-- ✅ Catálogos de localizaciones (Estados, Municipios, Parroquias)
-- ✅ Integración completa con BD
+### 2. **Solicitantes** ⚠️ PARCIAL
+- ✅ **READ**: Listar y obtener solicitantes
+- ✅ **CREATE**: Crear solicitantes (con vivienda, familia, bienes)
+- ✅ **UPDATE**: Actualizar solicitantes
+- ✅ **DELETE**: Eliminar solicitantes
+- ❌ **VISTA DETALLADA**: No existe vista detallada del solicitante
+  - Solo redirige a casos del solicitante
+  - No muestra información completa: vivienda, familia, bienes, etc.
 
-### 3. **Casos/Expedientes** ✅
-- ✅ CRUD completo de casos
-- ✅ Gestión de beneficiarios
-- ✅ Asignación de alumnos y profesores
+### 3. **Casos/Expedientes** ⚠️ PARCIAL - **CRÍTICO**
+
+**Lo que SÍ existe:**
+- ✅ **READ**: Listar y obtener casos desde BD
+- ✅ **UPDATE PARCIAL**: Editar solo estatus y alumno asignado
+- ✅ **DELETE**: Eliminar casos (existe función en acciones)
+- ✅ Gestión de beneficiarios (desde acciones)
+- ✅ Asignación de alumnos y profesores (desde acciones)
 - ✅ Cambio de estatus con historial
 - ✅ Catálogos (Materias, Categorías, Trámites, Núcleos)
-- ✅ Integración completa con BD
 
-### 4. **Soportes Legales** ✅
+**Lo que NO existe o está incompleto:**
+- ❌ **CREATE**: NO existe funcionalidad de creación de casos en el frontend
+  - Existe `createCaso()` en `src/actions/casos.ts` pero NO está conectado
+  - El botón "Crear Nuevo Caso" solo muestra un `alert()` (línea 246-250 de `cases-client.tsx`)
+  
+- ❌ **VISTA DETALLADA**: Muy básica, falta información importante
+  - Solo muestra: número, fecha, estatus, periodo, solicitante (nombre/cedula), materia, trámite, tribunal, alumno
+  - **NO muestra**: 
+    - Beneficiarios
+    - Soportes legales
+    - Citas/entrevistas
+    - Acciones/Bitácora
+    - Historial completo de estatus
+    - Profesor supervisor
+    - Síntesis del caso
+    - Fecha de finalización
+    - Información completa del solicitante
+  
+- ❌ **EDICIÓN COMPLETA**: Muy limitada
+  - Solo permite editar: estatus y alumno asignado
+  - **NO permite editar**:
+    - Solicitante
+    - Materia, Categoría, Subcategoría, Ámbito Legal
+    - Trámite
+    - Núcleo
+    - Síntesis del caso
+    - Fecha de inicio/final
+    - Beneficiarios
+    - Asignación de profesor
+
+### 4. **Soportes Legales** ⚠️ PARCIAL
 - ✅ Crear soportes legales
 - ✅ Subida de documentos a Cloudinary
-- ✅ Integración con BD
+- ❌ No hay acciones para listar, editar o eliminar soportes
 
 ### 5. **Estadísticas** ✅
 - ✅ Consultas estadísticas desde BD
@@ -37,256 +73,207 @@
 
 ## ❌ Funcionalidades FALTANTES o INCOMPLETAS
 
-### 1. **Gestión de Citas (Citations)** ❌ CRÍTICO
+### 1. **CREACIÓN DE CASOS** ❌ CRÍTICO - **BLOQUEANTE**
 
 **Estado Actual:**
-- ❌ Página `/citations` solo muestra un título, sin funcionalidad
-- ❌ No existe `citations-client.tsx`
-- ❌ Solo existe `getCitasCaso()` para leer citas de un caso específico
-- ❌ No hay acciones para crear, editar o eliminar citas
-- ❌ No hay gestión de la tabla `Atienden` (usuarios que atienden citas)
+- ❌ El botón "Crear Nuevo Caso" solo muestra un `alert("Funcionalidad de crear caso próximamente")`
+- ✅ Existe `createCaso()` en `src/actions/casos.ts` pero NO está conectado al frontend
+- ❌ No existe modal o formulario para crear casos
 
 **Lo que falta:**
-- [ ] Crear `src/actions/citas.ts` con:
-  - `getCitas()` - Obtener todas las citas (con filtros)
-  - `getCitaById()` - Obtener una cita específica
-  - `createCita()` - Crear nueva cita
-  - `updateCita()` - Actualizar cita existente
-  - `deleteCita()` - Eliminar cita
-  - `getCitasByDateRange()` - Filtrar por rango de fechas
-  - `asignarUsuariosACita()` - Asignar usuarios a una cita (tabla Atienden)
-  - `getUsuariosAtendiendoCita()` - Obtener usuarios que atendieron una cita
+- [ ] Crear `src/components/ui/case-create-modal.tsx` con formulario completo:
+  - Selección de solicitante (búsqueda/select)
+  - Selección de jerarquía legal (Materia → Categoría → Subcategoría → Ámbito)
+  - Selección de trámite
+  - Selección de núcleo
+  - Síntesis del caso (textarea)
+  - Fecha de inicio
+  - Beneficiarios (múltiples, con formulario dinámico)
+  - Asignación inicial (alumno, profesor, term) - opcional
+  - Validaciones de campos obligatorios
 
-- [ ] Crear `src/app/citations/citations-client.tsx` con:
-  - Tabla de citas con filtros
-  - Formulario para crear/editar citas
-  - Vista de calendario (opcional)
-  - Integración con casos
-  - Gestión de usuarios que atienden
+- [ ] Conectar el modal al botón "Crear Nuevo Caso" en `cases-client.tsx`
+- [ ] Implementar `handleNewCase()` para abrir el modal
+- [ ] Manejar errores y mensajes de éxito
 
-- [ ] Actualizar `src/app/citations/page.tsx` para usar el cliente
-
-**Tablas de BD relacionadas:**
-- `Citas` (id_cita, nro_caso, fecha_atencion, observacion, fecha_proxima_cita)
-- `Atienden` (cedula_usuario, nro_caso, id_cita) - Relación N:M
+**Impacto:** **BLOQUEANTE** - No se pueden crear casos desde la interfaz
 
 ---
 
-### 2. **Acciones/Bitácora** ⚠️ PARCIAL
+### 2. **VISTA DETALLADA DE CASOS** ❌ CRÍTICO
 
 **Estado Actual:**
-- ✅ Existe `getAccionesCaso()` en `src/actions/casos.ts` (solo lectura)
-- ❌ No hay acciones para crear, editar o eliminar acciones
-- ❌ No hay página dedicada para gestión de acciones
+- ⚠️ Existe `CaseDetailsModal` pero es muy básica
+- ⚠️ Solo muestra información general (número, fecha, estatus, solicitante básico, materia, trámite, tribunal, alumno)
+- ❌ **NO muestra información importante:**
+  - Beneficiarios del caso
+  - Soportes legales asociados
+  - Citas/entrevistas realizadas
+  - Acciones/Bitácora del caso
+  - Historial completo de cambios de estatus
+  - Profesor supervisor asignado
+  - Síntesis completa del caso
+  - Fecha de finalización (si aplica)
+  - Información detallada del solicitante (vivienda, familia, etc.)
 
 **Lo que falta:**
-- [ ] Agregar a `src/actions/casos.ts` o crear `src/actions/acciones.ts`:
-  - `createAccion()` - Crear nueva acción/bitácora
-  - `updateAccion()` - Actualizar acción
-  - `deleteAccion()` - Eliminar acción
-  - `getAcciones()` - Obtener todas las acciones (con filtros)
+- [ ] Mejorar `CaseDetailsModal` o crear nueva vista detallada con:
+  - **Pestañas o secciones expandibles:**
+    1. **Información General** (ya existe, mejorar)
+    2. **Solicitante Completo** (expandir con vivienda, familia, bienes)
+    3. **Beneficiarios** (tabla con todos los beneficiarios)
+    4. **Soportes Legales** (lista de documentos con enlaces)
+    5. **Citas/Entrevistas** (calendario o lista con fechas)
+    6. **Bitácora/Acciones** (historial de acciones realizadas)
+    7. **Historial de Estatus** (timeline de cambios)
+    8. **Asignaciones** (alumno y profesor actuales e históricos)
+  
+- [ ] Cargar datos completos usando `getCasoById()` y funciones relacionadas
+- [ ] Integrar con `getBeneficiariosCaso()`, `getSoportesCaso()`, `getCitasCaso()`, `getAccionesCaso()`, `getHistorialEstatus()`
 
-- [ ] Crear componente para agregar acciones desde el detalle de caso
-- [ ] (Opcional) Página dedicada `/actions` para gestión global
-
-**Tabla de BD relacionada:**
-- `Acciones` (nro_accion, nro_caso, titulo_accion, observacion, fecha_realizacion, cedula_usuario_ejecutor)
+**Nota:** Existe `getCaseReportData()` en `src/lib/actions/cases.ts` que obtiene mucha información, pero no se usa en el modal de detalles.
 
 ---
 
-### 3. **Dashboard - Datos Reales** ⚠️ PARCIAL
+### 3. **VISTA DETALLADA DE SOLICITANTES** ❌ IMPORTANTE
 
 **Estado Actual:**
-- ❌ Dashboard usa datos estáticos/mock (`stats` hardcodeados)
-- ✅ Existen funciones de estadísticas en `src/lib/actions/statistics.ts`
-- ❌ No se conectan las estadísticas al dashboard
+- ❌ `handleViewDetails()` solo redirige a `/cases?applicantId=...`
+- ❌ No existe modal o página de detalles del solicitante
+- ✅ Existe `getSolicitanteCompleto()` en acciones que obtiene toda la información
 
 **Lo que falta:**
-- [ ] Reemplazar datos estáticos en `dashboard-client.tsx` con:
-  - `getActiveCasesCount()` - Casos activos
-  - `getTotalApplicantsCount()` - Total solicitantes
-  - `getCasesInCourtCount()` - Casos en tribunal
-  - `getPendingTodayCount()` - Pendientes de hoy
-  - `getCasesByStatus()` - Distribución por estatus
+- [ ] Crear `src/components/ui/applicant-details-modal.tsx` con:
+  - **Información Personal:**
+    - Datos básicos (nombre, cédula, teléfonos, email, etc.)
+    - Fecha de nacimiento y edad
+    - Sexo, nacionalidad, estado civil
+    - Educación (nivel, tiempo, período)
+    - Condición laboral y actividad
+  
+  - **Ubicación:**
+    - Parroquia, Municipio, Estado (con cascada visual)
+  
+  - **Vivienda:**
+    - Tipo, habitaciones, baños
+    - Materiales (piso, paredes, techo)
+    - Servicios (agua, eliminación de aguas, aseo)
+  
+  - **Familia/Hogar:**
+    - Cantidad de personas, trabajadores, niños
+    - Ingreso mensual aproximado
+    - Nivel educativo del jefe de hogar
+  
+  - **Bienes:**
+    - Lista de bienes que posee
+  
+  - **Casos Relacionados:**
+    - Lista de casos del solicitante (con enlaces)
 
-- [ ] Crear `src/actions/dashboard.ts` con funciones específicas del dashboard
-- [ ] Actualizar `dashboard-client.tsx` para cargar datos reales
+- [ ] Reemplazar `handleViewDetails()` para abrir el modal en lugar de redirigir
+- [ ] Usar `getSolicitanteCompleto()` para cargar todos los datos
 
 ---
 
-### 4. **Seguimiento y Control (Follow-up)** ❌ VACÍO
+### 4. **EDICIÓN COMPLETA DE CASOS** ❌ CRÍTICO
 
 **Estado Actual:**
-- ❌ Página `/follow-up` solo muestra un título, sin funcionalidad
-- ❌ No hay cliente ni acciones relacionadas
+- ⚠️ Existe `CaseEditModal` pero es muy limitada
+- ⚠️ Solo permite editar: estatus y alumno asignado
+- ❌ **NO permite editar campos importantes:**
+  - Solicitante
+  - Materia, Categoría, Subcategoría, Ámbito Legal
+  - Trámite
+  - Núcleo
+  - Síntesis del caso
+  - Fecha de inicio/final
+  - Beneficiarios
+  - Asignación de profesor
 
 **Lo que falta:**
-- [ ] Definir qué funcionalidades debe tener esta página:
-  - ¿Seguimiento de casos por estudiante?
-  - ¿Seguimiento de tareas pendientes?
-  - ¿Reportes de actividad?
-  - ¿Control de cumplimiento de plazos?
+- [ ] Expandir `CaseEditModal` o crear nuevo modal completo con:
+  - **Campos editables:**
+    - Solicitante (select con búsqueda)
+    - Jerarquía legal completa (Materia → Categoría → Subcategoría → Ámbito)
+    - Trámite
+    - Núcleo
+    - Síntesis del caso
+    - Fecha de inicio
+    - Fecha de finalización (si aplica)
+    - Estatus
+    - Asignación de alumno y profesor
+    - Beneficiarios (agregar/eliminar/editar)
+  
+  - **Validaciones:**
+    - Campos obligatorios
+    - Fechas válidas
+    - Relaciones válidas (solicitante existe, etc.)
 
-- [ ] Crear `src/app/follow-up/follow-up-client.tsx`
-- [ ] Crear `src/actions/follow-up.ts` (si es necesario)
+- [ ] Crear función `updateCaso()` en `src/actions/casos.ts` (si no existe)
+- [ ] Manejar actualización de beneficiarios
+- [ ] Manejar actualización de asignaciones
+
+**Nota:** Actualmente `handleSaveEdit()` solo cambia estatus y asigna alumno, no actualiza otros campos del caso.
 
 ---
 
-### 5. **Reportes** ⚠️ PARCIAL
+### 5. **Gestión de Citas (Citations)** ❌ CRÍTICO
 
-**Estado Actual:**
-- ✅ Existe página `/reports` pero parece ser solo para subir soportes
-- ✅ Existe `src/app/cases/report/page.tsx` para reporte de caso individual
-- ❌ No hay reportes generales o personalizados
-
-**Lo que falta:**
-- [ ] Revisar si `/reports` debe tener más funcionalidades
-- [ ] Crear reportes personalizados:
-  - Reporte por período
-  - Reporte por materia
-  - Reporte por estudiante/profesor
-  - Reporte de actividad
+[... resto del documento igual ...]
 
 ---
 
-### 6. **Administración - Catálogos** ⚠️ PARCIAL
-
-**Estado Actual:**
-- ✅ Gestión de usuarios implementada
-- ✅ Gestión de categorías/subcategorías implementada
-- ✅ Gestión de núcleos implementada
-- ❌ No hay gestión de otros catálogos importantes:
-  - Estatus de casos
-  - Trámites
-  - Materias
-  - Niveles educativos
-  - Trabajos
-  - Actividades de solicitantes
-  - Bienes
-
-**Lo que falta:**
-- [ ] Agregar pestañas/tabs en `/administration` para:
-  - Gestión de Estatus
-  - Gestión de Trámites
-  - Gestión de Materias (y su jerarquía)
-  - Gestión de Niveles Educativos
-  - Gestión de Trabajos
-  - Gestión de Actividades
-  - Gestión de Bienes
-
-- [ ] Crear acciones CRUD para cada catálogo
-
----
-
-### 7. **Soportes Legales - Funcionalidad Completa** ⚠️ PARCIAL
-
-**Estado Actual:**
-- ✅ Crear soporte legal implementado
-- ❌ No hay acciones para:
-  - Listar todos los soportes
-  - Editar soporte
-  - Eliminar soporte
-  - Filtrar soportes por caso
-
-**Lo que falta:**
-- [ ] Agregar a `src/actions/soportes.ts`:
-  - `getSoportes()` - Listar todos (con filtros)
-  - `getSoporteById()` - Obtener uno específico
-  - `updateSoporte()` - Actualizar
-  - `deleteSoporte()` - Eliminar
-
-- [ ] (Opcional) Página dedicada `/supports` para gestión global
-
----
-
-### 8. **Variables de Entorno** ⚠️ IMPORTANTE
-
-**Estado Actual:**
-- ❌ No existe archivo `.env.example`
-- ❌ No hay documentación de variables requeridas
-
-**Lo que falta:**
-- [ ] Crear `.env.example` con:
-  ```env
-  DATABASE_URL=postgresql://...
-  JWT_SECRET=tu_secret_key_aqui
-  CLOUDINARY_CLOUD_NAME=...
-  CLOUDINARY_API_KEY=...
-  CLOUDINARY_API_SECRET=...
-  NODE_ENV=development
-  ```
-
-- [ ] Actualizar README.md con instrucciones de configuración
-
----
-
-### 9. **Validaciones y Manejo de Errores** ⚠️ MEJORA
-
-**Estado Actual:**
-- ✅ Manejo básico de errores en acciones
-- ⚠️ Validaciones pueden mejorarse
-
-**Lo que falta:**
-- [ ] Validaciones más robustas en formularios
-- [ ] Mensajes de error más descriptivos
-- [ ] Validación de permisos por rol
-- [ ] Validación de datos antes de insertar en BD
-
----
-
-### 10. **Actualización de README** ⚠️ DOCUMENTACIÓN
-
-**Estado Actual:**
-- ❌ README dice "No requiere conexión a base de datos" (INCORRECTO)
-- ❌ No documenta las funcionalidades implementadas
-- ❌ No documenta cómo configurar el proyecto
-
-**Lo que falta:**
-- [ ] Actualizar README.md con:
-  - Estado real del proyecto
-  - Instrucciones de configuración de BD
-  - Variables de entorno necesarias
-  - Scripts disponibles
-  - Funcionalidades implementadas
-
----
-
-## 📊 Resumen de Prioridades
+## 📊 Resumen de Prioridades ACTUALIZADO
 
 ### 🔴 CRÍTICO (Bloquea funcionalidad principal)
-1. **Gestión de Citas** - Página completamente vacía
-2. **Dashboard con datos reales** - Actualmente muestra datos falsos
+1. **Creación de Casos** - NO existe, solo alert
+2. **Vista Detallada de Casos** - Muy básica, falta información importante
+3. **Edición Completa de Casos** - Solo permite editar estatus y alumno
+4. **Gestión de Citas** - Página completamente vacía
+5. **Dashboard con datos reales** - Actualmente muestra datos falsos
 
 ### 🟡 IMPORTANTE (Mejora experiencia)
-3. **Acciones/Bitácora CRUD** - Solo lectura actualmente
-4. **Soportes Legales CRUD completo** - Solo crear
-5. **Seguimiento y Control** - Página vacía
+6. **Vista Detallada de Solicitantes** - No existe, solo redirige
+7. **Acciones/Bitácora CRUD** - Solo lectura actualmente
+8. **Soportes Legales CRUD completo** - Solo crear
+9. **Seguimiento y Control** - Página vacía
 
 ### 🟢 MEJORAS (Nice to have)
-6. **Gestión de catálogos en Administración**
-7. **Reportes personalizados**
-8. **Documentación (.env.example, README actualizado)**
-9. **Validaciones mejoradas**
+10. **Gestión de catálogos en Administración**
+11. **Reportes personalizados**
+12. **Documentación (.env.example, README actualizado)**
+13. **Validaciones mejoradas**
 
 ---
 
-## 🛠️ Recomendaciones de Implementación
+## 🛠️ Recomendaciones de Implementación ACTUALIZADAS
 
-### Orden sugerido:
-1. **Citas** (más crítico, página completamente vacía)
-2. **Dashboard con datos reales** (primera impresión del usuario)
-3. **Acciones CRUD** (completar funcionalidad de casos)
-4. **Soportes CRUD completo** (completar funcionalidad)
-5. **Seguimiento y Control** (definir funcionalidad primero)
-6. **Mejoras y documentación**
+### Orden sugerido (prioridad real):
+1. **Creación de Casos** (BLOQUEANTE - no se pueden crear casos)
+2. **Vista Detallada de Casos** (crítico para uso diario)
+3. **Edición Completa de Casos** (necesario para mantener datos)
+4. **Vista Detallada de Solicitantes** (mejora UX)
+5. **Citas** (página completamente vacía)
+6. **Dashboard con datos reales** (primera impresión)
+7. **Acciones CRUD** (completar funcionalidad)
+8. **Soportes CRUD completo** (completar funcionalidad)
+9. **Seguimiento y Control** (definir funcionalidad primero)
+10. **Mejoras y documentación**
 
 ---
 
-## 📝 Notas Adicionales
+## 📝 Notas Adicionales ACTUALIZADAS
 
-- El proyecto tiene una base sólida con muchas funcionalidades ya integradas
+- ⚠️ **IMPORTANTE:** El CRUD de casos NO está completo:
+  - CREATE: No existe en frontend (solo alert)
+  - READ: Existe pero vista muy básica
+  - UPDATE: Muy limitado (solo estatus y alumno)
+  - DELETE: Existe en acciones pero no verificado en frontend
+
+- ⚠️ **IMPORTANTE:** El CRUD de solicitantes está más completo pero falta:
+  - Vista detallada del solicitante (solo redirige a casos)
+
+- El proyecto tiene una base sólida con muchas funcionalidades ya integradas en el backend
 - La estructura de código es buena y sigue patrones consistentes
 - La mayoría de las tablas de BD están siendo utilizadas
-- Faltan principalmente funcionalidades de gestión (CRUD) para algunas entidades
-- El README está desactualizado y debe corregirse
-
+- **Faltan principalmente funcionalidades de UI/UX para completar el CRUD**

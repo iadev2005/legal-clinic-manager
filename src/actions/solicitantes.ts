@@ -699,7 +699,18 @@ export async function updateBienesSolicitante(cedulaSolicitante: string, bienesI
 export async function getSolicitanteCompleto(cedulaSolicitante: string) {
     try {
         const [solicitante, vivienda, familia, bienes] = await Promise.all([
-            query('SELECT * FROM Solicitantes WHERE cedula_solicitante = $1', [cedulaSolicitante]),
+            query(`
+                SELECT 
+                    s.*,
+                    p.nombre_parroquia,
+                    m.nombre_municipio,
+                    e.nombre_estado
+                FROM Solicitantes s
+                LEFT JOIN Parroquias p ON s.id_parroquia = p.id_parroquia
+                LEFT JOIN Municipios m ON p.id_municipio = m.id_municipio
+                LEFT JOIN Estados e ON m.id_estado = e.id_estado
+                WHERE s.cedula_solicitante = $1
+            `, [cedulaSolicitante]),
             getVivienda(cedulaSolicitante),
             getFamiliaHogar(cedulaSolicitante),
             getBienesSolicitante(cedulaSolicitante),
