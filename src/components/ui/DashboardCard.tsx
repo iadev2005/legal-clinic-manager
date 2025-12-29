@@ -16,7 +16,7 @@ export default function DashboardCard({
     iconBgColor
 }: DashboardCardProps) {
     return (
-        <div className="flex-1 self-stretch h-55 px-4 bg-neutral-50 rounded-[33px] shadow-[0px_0px_15.5px_0px_rgba(0,0,0,0.25)] inline-flex flex-col justify-center items-center gap-2.5 min-w-[200px]">
+        <div className="flex-1 self-stretch h-55 px-4 bg-neutral-50 rounded-[24px] shadow-sm border border-neutral-200/50 inline-flex flex-col justify-center items-center gap-2.5 min-w-[200px]">
             <div className={`px-3.5 aspect-square py-3 ${iconBgColor} rounded-[55px] inline-flex justify-center items-center gap-2.5`}>
                 <span className={`${icon} text-5xl ${iconColor}`}></span>
             </div>

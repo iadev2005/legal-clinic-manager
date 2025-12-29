@@ -528,7 +528,7 @@ export default function CasesClient({ userRole, userCedula }: CasesClientProps) 
         <div className="bg-neutral-200/50 p-1.5 rounded-2xl inline-flex gap-1 shadow-inner">
           <button
             onClick={() => setViewMode("table")}
-            className={`px-8 py-2.5 rounded-xl font-semibold transition-all duration-300 flex items-center gap-2 ${viewMode === "table"
+            className={`px-8 py-2.5 rounded-xl font-semibold transition-all duration-300 flex items-center gap-2 cursor-pointer ${viewMode === "table"
               ? "bg-white text-[#003366] shadow-[0_2px_8px_rgba(0,0,0,0.1)] scale-100"
               : "text-gray-500 hover:text-[#003366] hover:bg-white/50 scale-95"
               }`}
@@ -538,7 +538,7 @@ export default function CasesClient({ userRole, userCedula }: CasesClientProps) 
           </button>
           <button
             onClick={() => setViewMode("charts")}
-            className={`px-8 py-2.5 rounded-xl font-semibold transition-all duration-300 flex items-center gap-2 ${viewMode === "charts"
+            className={`px-8 py-2.5 rounded-xl font-semibold transition-all duration-300 flex items-center gap-2 cursor-pointer ${viewMode === "charts"
               ? "bg-white text-[#003366] shadow-[0_2px_8px_rgba(0,0,0,0.1)] scale-100"
               : "text-gray-500 hover:text-[#003366] hover:bg-white/50 scale-95"
               }`}
