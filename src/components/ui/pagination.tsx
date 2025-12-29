@@ -58,54 +58,57 @@ export default function Pagination({
   if (totalPages <= 1) return null;
 
   return (
-    <div className="flex items-center justify-between px-4 py-3 bg-white rounded-2xl border-2 border-[#003366]/10">
-      {/* Info de items */}
-      <div className="text-sky-950 text-sm font-medium">
-        Mostrando <span className="font-bold">{startItem}</span> a{" "}
-        <span className="font-bold">{endItem}</span> de{" "}
-        <span className="font-bold">{totalItems}</span> resultados
-      </div>
-
-      {/* Controles de paginación */}
-      <div className="flex items-center gap-2">
-        {/* Botón Anterior */}
-        <button
-          onClick={() => onPageChange(currentPage - 1)}
-          disabled={currentPage === 1}
-          className="px-4 py-2 rounded-xl bg-white border-2 border-[#003366]/20 text-sky-950 font-semibold transition-all duration-300 hover:bg-[#003366] hover:text-white hover:scale-105 disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:bg-white disabled:hover:text-sky-950 disabled:hover:scale-100 cursor-pointer"
-        >
-          <span className="icon-[mdi--chevron-left] text-xl"></span>
-        </button>
-
-        {/* Números de página */}
-        <div className="flex items-center gap-1">
-          {getPageNumbers().map((page, index) => (
-            <React.Fragment key={index}>
-              {page === "..." ? (
-                <span className="px-3 py-2 text-sky-950">...</span>
-              ) : (
-                <button
-                  onClick={() => onPageChange(page as number)}
-                  className={`px-4 py-2 rounded-xl font-semibold transition-all duration-300 hover:scale-105 cursor-pointer ${currentPage === page
-                      ? "bg-[#003366] text-white shadow-lg"
-                      : "bg-white border-2 border-[#003366]/20 text-sky-950 hover:bg-[#3E7DBB] hover:text-white"
-                    }`}
-                >
-                  {page}
-                </button>
-              )}
-            </React.Fragment>
-          ))}
+    <div className="w-full flex justify-center py-2">
+      <div className="flex items-center gap-6 px-4 py-2 bg-white rounded-full shadow-sm border border-[#003366]/10">
+        {/* Info de items */}
+        <div className="text-sky-950 text-sm font-medium whitespace-nowrap">
+          <span className="font-bold">{startItem}</span> - <span className="font-bold">{endItem}</span> de <span className="font-bold">{totalItems}</span>
         </div>
 
-        {/* Botón Siguiente */}
-        <button
-          onClick={() => onPageChange(currentPage + 1)}
-          disabled={currentPage === totalPages}
-          className="px-4 py-2 rounded-xl bg-white border-2 border-[#003366]/20 text-sky-950 font-semibold transition-all duration-300 hover:bg-[#003366] hover:text-white hover:scale-105 disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:bg-white disabled:hover:text-sky-950 disabled:hover:scale-100 cursor-pointer"
-        >
-          <span className="icon-[mdi--chevron-right] text-xl"></span>
-        </button>
+        {/* Separator */}
+        <div className="h-4 w-px bg-[#003366]/20"></div>
+
+        {/* Controles de paginación */}
+        <div className="flex items-center gap-2">
+          {/* Botón Anterior */}
+          <button
+            onClick={() => onPageChange(currentPage - 1)}
+            disabled={currentPage === 1}
+            className="w-8 h-8 flex items-center justify-center rounded-full bg-transparent text-sky-950 transition-all duration-200 hover:bg-[#003366]/10 disabled:opacity-30 disabled:hover:bg-transparent cursor-pointer"
+          >
+            <span className="icon-[mdi--chevron-left] text-2xl"></span>
+          </button>
+
+          {/* Números de página */}
+          <div className="flex items-center gap-1">
+            {getPageNumbers().map((page, index) => (
+              <React.Fragment key={index}>
+                {page === "..." ? (
+                  <span className="px-2 text-sky-950/50 text-sm">...</span>
+                ) : (
+                  <button
+                    onClick={() => onPageChange(page as number)}
+                    className={`min-w-[32px] h-8 px-2 flex items-center justify-center rounded-full text-sm font-semibold transition-all duration-200 cursor-pointer ${currentPage === page
+                      ? "bg-[#003366] text-white shadow-md scale-105"
+                      : "text-sky-950 hover:bg-[#003366]/10"
+                      }`}
+                  >
+                    {page}
+                  </button>
+                )}
+              </React.Fragment>
+            ))}
+          </div>
+
+          {/* Botón Siguiente */}
+          <button
+            onClick={() => onPageChange(currentPage + 1)}
+            disabled={currentPage === totalPages}
+            className="w-8 h-8 flex items-center justify-center rounded-full bg-transparent text-sky-950 transition-all duration-200 hover:bg-[#003366]/10 disabled:opacity-30 disabled:hover:bg-transparent cursor-pointer"
+          >
+            <span className="icon-[mdi--chevron-right] text-2xl"></span>
+          </button>
+        </div>
       </div>
     </div>
   );

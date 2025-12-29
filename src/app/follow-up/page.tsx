@@ -1,5 +1,4 @@
 import Sidebar from "@/components/layout/Sidebar";
-import FollowUpClient from "./follow-up-client";
 import { getSession } from "@/lib/auth-utils";
 
 export default async function FollowUp() {

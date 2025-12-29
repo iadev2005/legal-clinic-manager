@@ -22,7 +22,7 @@ export default function FilterSelect({
       <select
         value={value}
         onChange={(e) => onChange?.(e.target.value)}
-        className="w-full px-5 py-3 bg-white rounded-2xl border-2 border-[#003366]/20 text-sky-950 text-lg font-medium appearance-none focus:outline-none focus:border-[#3E7DBB] transition-colors cursor-pointer"
+        className="w-full pl-5 pr-12 py-3 bg-white rounded-2xl border-2 border-[#003366]/20 text-sky-950 text-lg font-medium appearance-none focus:outline-none focus:border-[#3E7DBB] transition-colors cursor-pointer"
       >
         <option value="">{placeholder}</option>
         {options.map((option) => (

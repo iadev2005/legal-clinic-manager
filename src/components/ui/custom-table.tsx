@@ -25,52 +25,68 @@ interface CustomTableProps<T> {
     className?: string
     onSelectionChange?: (selectedItems: T[]) => void
     enableSelection?: boolean
+    selectedItems?: T[]
+    keyField?: string
+    minRows?: number
 }
 
-export function CustomTable<T extends { id: string | number }>({
+export function CustomTable<T extends Record<string, any>>({
     data,
     columns,
     className,
     onSelectionChange,
-    enableSelection = false
+    selectedItems = [],
+    enableSelection = false,
+    keyField = "id",
+    minRows = 0
 }: CustomTableProps<T>) {
-    const [selectedIds, setSelectedIds] = React.useState<Set<string | number>>(new Set())
+    // Memoize the set of selected keys for O(1) lookups
+    const selectedKeys = React.useMemo(() =>
+        new Set(selectedItems.map(item => item[keyField])),
+        [selectedItems, keyField]);
 
     const handleSelectAll = (checked: boolean) => {
+        if (!onSelectionChange) return;
+
         if (checked) {
-            const allIds = new Set(data.map(item => item.id))
-            setSelectedIds(allIds)
-            if (onSelectionChange) onSelectionChange(data)
+            // Add all currently visible items to selection if not already selected
+            const newSelected = [...selectedItems];
+            data.forEach(item => {
+                if (!selectedKeys.has(item[keyField])) {
+                    newSelected.push(item);
+                }
+            });
+            onSelectionChange(newSelected);
         } else {
-            setSelectedIds(new Set())
-            if (onSelectionChange) onSelectionChange([])
+            // Remove all currently visible items from selection
+            const currentPageKeys = new Set(data.map(item => item[keyField]));
+            const newSelected = selectedItems.filter(item => !currentPageKeys.has(item[keyField]));
+            onSelectionChange(newSelected);
         }
     }
 
-    const handleSelectRow = (id: string | number, checked: boolean) => {
-        const newSelected = new Set(selectedIds)
-        if (checked) {
-            newSelected.add(id)
-        } else {
-            newSelected.delete(id)
-        }
-        setSelectedIds(newSelected)
+    const handleSelectRow = (item: T, checked: boolean) => {
+        if (!onSelectionChange) return;
 
-        if (onSelectionChange) {
-            const selectedItems = data.filter(item => newSelected.has(item.id))
-            onSelectionChange(selectedItems)
+        const itemId = item[keyField];
+        if (checked) {
+            onSelectionChange([...selectedItems, item]);
+        } else {
+            onSelectionChange(selectedItems.filter(i => i[keyField] !== itemId));
         }
     }
 
-    const isAllSelected = data.length > 0 && selectedIds.size === data.length
+    // Check if all items on the current page are selected
+    const isAllSelected = data.length > 0 && data.every(item => selectedKeys.has(item[keyField]));
+    // Check if some but not all items on the current page are selected (indeterminate state could be added later)
 
     return (
-        <div className={cn("w-full overflow-hidden rounded-[20px] border border-sky-950/20", className)}>
+        <div className={cn("w-full rounded-[20px] border border-sky-950/20 overflow-auto", className)}>
             <Table>
-                <TableHeader className="bg-[#003366]">
+                <TableHeader className="bg-[#003366] sticky top-0 z-10">
                     <TableRow className="border-b-0 hover:bg-[#003366]">
                         {enableSelection && (
-                            <TableHead className="w-[50px] border-r border-white/20 text-center py-4">
+                            <TableHead className="w-[50px] border-r border-white/20 text-center py-4 bg-[#003366]">
                                 <button
                                     onClick={() => handleSelectAll(!isAllSelected)}
                                     className="flex items-center justify-center w-full h-full focus:outline-none cursor-pointer group"
@@ -89,7 +105,7 @@ export function CustomTable<T extends { id: string | number }>({
                             <TableHead
                                 key={index}
                                 className={cn(
-                                    "text-white font-bold text-base text-center py-4 border-r border-white/20 uppercase tracking-wider h-auto last:border-r-0",
+                                    "text-white font-bold text-base text-center py-4 border-r border-white/20 uppercase tracking-wider h-auto last:border-r-0 bg-[#003366]",
                                     col.headerClassName
                                 )}
                             >
@@ -99,44 +115,65 @@ export function CustomTable<T extends { id: string | number }>({
                     </TableRow>
                 </TableHeader>
                 <TableBody>
-                    {data.map((item, rowIndex) => (
-                        <TableRow
-                            key={item.id || rowIndex}
-                            className={cn(
-                                "border-b border-sky-950/20 hover:bg-neutral-100 last:border-b-0 transition-colors",
-                                selectedIds.has(item.id) && "bg-blue-50"
-                            )}
-                        >
-                            {enableSelection && (
-                                <TableCell className="text-center py-4 border-r border-sky-950/20 align-middle">
-                                    <button
-                                        onClick={() => handleSelectRow(item.id, !selectedIds.has(item.id))}
-                                        className="flex items-center justify-center w-full h-full focus:outline-none cursor-pointer group"
+                    {data.map((item, rowIndex) => {
+                        const itemId = item[keyField];
+                        const isSelected = selectedKeys.has(itemId);
+
+                        return (
+                            <TableRow
+                                key={itemId || rowIndex}
+                                className={cn(
+                                    "border-b border-sky-950/20 hover:bg-neutral-100 last:border-b-0 transition-colors",
+                                    isSelected && "bg-blue-50"
+                                )}
+                            >
+                                {enableSelection && (
+                                    <TableCell className="text-center py-4 border-r border-sky-950/20 align-middle">
+                                        <button
+                                            onClick={() => handleSelectRow(item, !isSelected)}
+                                            className="flex items-center justify-center w-full h-full focus:outline-none cursor-pointer group"
+                                        >
+                                            <span
+                                                className={cn(
+                                                    "text-2xl transition-all duration-200",
+                                                    isSelected
+                                                        ? "icon-[mdi--checkbox-marked] text-[#003366]"
+                                                        : "icon-[mdi--checkbox-blank-outline] text-gray-400 group-hover:text-[#003366]"
+                                                )}
+                                            ></span>
+                                        </button>
+                                    </TableCell>
+                                )}
+                                {columns.map((col, colIndex) => (
+                                    <TableCell
+                                        key={colIndex}
+                                        className={cn(
+                                            "text-sky-950 text-lg border-r border-sky-950/20 py-4 align-middle last:border-r-0",
+                                            col.className
+                                        )}
                                     >
-                                        <span
-                                            className={cn(
-                                                "text-2xl transition-all duration-200",
-                                                selectedIds.has(item.id)
-                                                    ? "icon-[mdi--checkbox-marked] text-[#003366]"
-                                                    : "icon-[mdi--checkbox-blank-outline] text-gray-400 group-hover:text-[#003366]"
-                                            )}
-                                        ></span>
-                                    </button>
-                                </TableCell>
+                                        {col.render
+                                            ? col.render(item)
+                                            : col.accessorKey
+                                                ? (item[col.accessorKey] as React.ReactNode)
+                                                : null}
+                                    </TableCell>
+                                ))}
+                            </TableRow>
+                        );
+                    })}
+                    {/* Empty Rows Filler */}
+                    {Array.from({ length: Math.max(0, (minRows || 0) - data.length) }).map((_, index) => (
+                        <TableRow key={`empty-${index}`} className="border-b border-sky-950/20 last:border-b-0 hover:bg-transparent">
+                            {enableSelection && (
+                                <TableCell className="py-4 border-r border-sky-950/20" />
                             )}
-                            {columns.map((col, colIndex) => (
+                            {columns.map((_, colIndex) => (
                                 <TableCell
-                                    key={colIndex}
-                                    className={cn(
-                                        "text-sky-950 text-lg border-r border-sky-950/20 py-4 align-middle last:border-r-0",
-                                        col.className
-                                    )}
+                                    key={`empty-col-${colIndex}`}
+                                    className="py-4 border-r border-sky-950/20 last:border-r-0"
                                 >
-                                    {col.render
-                                        ? col.render(item)
-                                        : col.accessorKey
-                                            ? (item[col.accessorKey] as React.ReactNode)
-                                            : null}
+                                    &nbsp;
                                 </TableCell>
                             ))}
                         </TableRow>

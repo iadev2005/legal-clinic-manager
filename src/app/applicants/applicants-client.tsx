@@ -322,7 +322,7 @@ export default function ApplicantsClient() {
 
   return (
     <>
-      <div className="w-full h-full p-11 inline-flex flex-col justify-start items-start gap-6 overflow-y-auto">
+      <div className="w-full h-full p-11 inline-flex flex-col justify-start items-start gap-6 overflow-hidden">
         {/* Header */}
         <div className="self-stretch inline-flex justify-between items-start">
           <div className="flex flex-col justify-start items-start">
@@ -367,13 +367,12 @@ export default function ApplicantsClient() {
               value: t.id_trabajo.toString(),
               label: t.condicion_trabajo,
             }))}
-            className="w-72"
+            className="w-96"
           />
-
           {selectedItems.length > 0 && (
             <button
               onClick={handleBulkDelete}
-              className="bg-red-600 text-white px-4 py-2 rounded-lg font-semibold hover:bg-red-700 transition-colors cursor-pointer flex items-center gap-2 h-[42px]"
+              className="bg-red-600 text-white px-4 py-2 rounded-lg font-semibold hover:bg-red-700 transition-colors cursor-pointer flex items-center gap-2 h-[42px] shadow-sm whitespace-nowrap"
             >
               <span className="icon-[mdi--trash-can-outline] text-xl"></span>
               Eliminar ({selectedItems.length})
@@ -381,10 +380,14 @@ export default function ApplicantsClient() {
           )}
         </div>
 
+
+
+
+
         {/* Table */}
-        <div className="self-stretch bg-neutral-50 rounded-[30px] shadow-[0px_0px_15.5px_0px_rgba(0,0,0,0.25)] p-8">
+        <div className="self-stretch flex-1 min-h-0 bg-neutral-50 rounded-[30px] shadow-[0px_0px_15.5px_0px_rgba(0,0,0,0.25)] p-8 overflow-hidden flex flex-col">
           {filteredApplicants.length === 0 ? (
-            <div className="text-center py-12">
+            <div className="flex flex-col items-center justify-center flex-1 h-full text-center py-12">
               <span className="icon-[mdi--account-search] text-6xl text-sky-950/30 mb-4 block"></span>
               <p className="text-sky-950 text-xl font-semibold">
                 {searchTerm || parroquiaFilter || trabajoFilter
@@ -397,41 +400,59 @@ export default function ApplicantsClient() {
               data={paginatedApplicants}
               columns={columns}
               enableSelection={true}
+              selectedItems={selectedItems}
               onSelectionChange={setSelectedItems}
+              keyField="cedula_solicitante"
+              className="h-full"
+              minRows={10}
             />
           )}
         </div>
 
-        {/* Pagination */}
-        {filteredApplicants.length > 0 && (
-          <Pagination
-            currentPage={currentPage}
-            totalPages={totalPages}
-            onPageChange={setCurrentPage}
-            itemsPerPage={ITEMS_PER_PAGE}
-            totalItems={filteredApplicants.length}
-          />
-        )}
-
-        {/* Stats Footer */}
-        <div className="self-stretch inline-flex justify-between items-center px-4">
-          <p className="text-sky-950 text-lg font-semibold">
-            Total de solicitantes:{" "}
-            <span className="text-[#3E7DBB]">{filteredApplicants.length}</span>
-          </p>
-          {(searchTerm || parroquiaFilter || trabajoFilter) && (
-            <button
-              onClick={() => {
-                setSearchTerm("");
-                setParroquiaFilter("");
-                setTrabajoFilter("");
-              }}
-              className="text-[#3E7DBB] text-lg font-semibold hover:text-[#2d5f8f] transition-colors cursor-pointer"
-            >
-              Limpiar filtros
-            </button>
+        {/* Footer Area: Pagination + Status Bar */}
+        <div className="self-stretch flex flex-col gap-2">
+          {/* Pagination */}
+          {filteredApplicants.length > 0 && (
+            <Pagination
+              currentPage={currentPage}
+              totalPages={totalPages}
+              onPageChange={setCurrentPage}
+              itemsPerPage={ITEMS_PER_PAGE}
+              totalItems={filteredApplicants.length}
+            />
           )}
+
+          {/* Status Bar (Footer) */}
+          <div className="self-stretch flex justify-between items-center min-h-[30px] pt-2">
+            {/* Left: Clear Filters */}
+            <div className="flex-1 flex justify-start">
+              {(searchTerm || parroquiaFilter || trabajoFilter) && (
+                <button
+                  onClick={() => {
+                    setSearchTerm("");
+                    setParroquiaFilter("");
+                    setTrabajoFilter("");
+                  }}
+                  className="text-[#3E7DBB] font-semibold hover:text-[#2d5f8f] transition-colors cursor-pointer flex items-center gap-1 text-sm"
+                >
+                  <span className="icon-[mdi--filter-off-outline] text-lg"></span>
+                  Limpiar filtros
+                </button>
+              )}
+            </div>
+
+            {/* Center: Total Count */}
+            <div className="flex items-center justify-center bg-white px-4 py-1.5 rounded-full border border-[#003366]/10 shadow-sm">
+              <p className="text-sky-950 text-sm font-semibold">
+                Total de solicitantes: <span className="text-[#3E7DBB] font-bold">{filteredApplicants.length}</span>
+              </p>
+            </div>
+
+            {/* Right: Spacer to keep center alignment true */}
+            <div className="flex-1"></div>
+          </div>
         </div>
+
       </div>
 
       {/* Modal */}

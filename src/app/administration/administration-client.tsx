@@ -344,6 +344,7 @@ export default function AdministrationClient() {
                     columns={columns as any}
                     enableSelection={true}
                     onSelectionChange={setSelectedItems}
+                    selectedItems={selectedItems}
                 />
             </div>
 
