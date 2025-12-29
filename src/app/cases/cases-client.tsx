@@ -70,7 +70,7 @@ export default function CasesClient({ userRole, userCedula }: CasesClientProps) 
 
   const [cases, setCases] = useState<Case[]>([]);
   const [loading, setLoading] = useState(true);
-  
+
   // Catálogos para filtros
   const [estatusList, setEstatusList] = useState<any[]>([]);
   const [materiasList, setMateriasList] = useState<any[]>([]);
@@ -89,6 +89,9 @@ export default function CasesClient({ userRole, userCedula }: CasesClientProps) 
   const [detailsModalOpen, setDetailsModalOpen] = useState(false);
   const [editModalOpen, setEditModalOpen] = useState(false);
   const [selectedCase, setSelectedCase] = useState<Case | null>(null);
+
+  // Estado para la vista (tabla o gráficas)
+  const [viewMode, setViewMode] = useState<"table" | "charts">("table");
 
   // Cargar datos al montar el componente
   useEffect(() => {
@@ -180,21 +183,21 @@ export default function CasesClient({ userRole, userCedula }: CasesClientProps) 
         caso.applicantId.toLowerCase().includes(searchTerm.toLowerCase());
 
       // Comparar estatus (puede venir de BD con formato diferente)
-      const matchesStatus = !statusFilter || 
+      const matchesStatus = !statusFilter ||
         caso.status === statusFilter ||
         (statusFilter && caso.status === mapEstatusToFrontend(statusFilter));
 
-      const matchesSubject = !subjectFilter || 
+      const matchesSubject = !subjectFilter ||
         caso.subject.toLowerCase().includes(subjectFilter.toLowerCase());
-      
+
       const matchesProcedure =
-        !procedureFilter || 
+        !procedureFilter ||
         caso.procedure.toLowerCase().includes(procedureFilter.toLowerCase());
-      
+
       const matchesSemester = !semesterFilter || caso.period === semesterFilter;
-      
+
       const matchesTribunal =
-        !tribunalFilter || 
+        !tribunalFilter ||
         caso.tribunal.toLowerCase().includes(tribunalFilter.toLowerCase());
 
       // Filtro por fecha
@@ -313,7 +316,7 @@ export default function CasesClient({ userRole, userCedula }: CasesClientProps) 
   const handleSaveEdit = async (data: CaseEditData) => {
     try {
       const nroCaso = parseInt(data.id);
-      
+
       // 1. Cambiar estatus si es diferente
       const casoActual = cases.find(c => c.id === data.id);
       if (casoActual && casoActual.status !== data.status) {
@@ -328,7 +331,7 @@ export default function CasesClient({ userRole, userCedula }: CasesClientProps) 
           };
           return nombre.includes(statusMap[data.status] || "");
         });
-        
+
         if (estatusObj) {
           await cambiarEstatus(nroCaso, estatusObj.id_estatus, "Cambio de estatus desde la interfaz", userCedula);
         }
@@ -358,11 +361,7 @@ export default function CasesClient({ userRole, userCedula }: CasesClientProps) 
           <div className="text-center">
             <div className="font-bold text-sky-950">{caso.caseNumber}</div>
             <div className="text-sm text-sky-950/60">
-              {typeof caso.createdAt === 'string' 
-                ? caso.createdAt 
-                : caso.createdAt instanceof Date 
-                  ? caso.createdAt.toISOString().split('T')[0]
-                  : new Date().toISOString().split('T')[0]}
+              {caso.createdAt}
             </div>
           </div>
         ),
@@ -468,7 +467,8 @@ export default function CasesClient({ userRole, userCedula }: CasesClientProps) 
   }
 
   return (
-    <div className="w-full h-full p-11 inline-flex flex-col justify-start items-start gap-6 overflow-y-auto">
+
+    <div className="w-full h-full p-6 inline-flex flex-col justify-start items-stretch gap-4 overflow-hidden">
       {/* Header */}
       <div className="self-stretch inline-flex justify-between items-start">
         <div className="flex flex-col justify-start items-start">
@@ -480,21 +480,24 @@ export default function CasesClient({ userRole, userCedula }: CasesClientProps) 
             clínica.
           </p>
         </div>
-        {userRole === "ADMIN" && (
-          <PrimaryButton onClick={handleNewCase} icon="icon-[mdi--plus]">
-            Crear Nuevo Caso
-          </PrimaryButton>
-        )}
-        {userRole === "PROFESSOR" && (
-          <PrimaryButton
-            onClick={handleValidateCase}
-            icon="icon-[mdi--check-circle]"
-            variant="secondary"
-            className="bg-green-600 hover:bg-green-700"
-          >
-            Validar/Asignar Caso
-          </PrimaryButton>
-        )}
+        <div className="flex gap-4">
+          {userRole === "ADMIN" && (
+            <PrimaryButton onClick={handleNewCase} icon="icon-[mdi--plus]">
+              Crear Nuevo Caso
+            </PrimaryButton>
+          )}
+
+          {userRole === "PROFESSOR" && (
+            <PrimaryButton
+              onClick={handleValidateCase}
+              icon="icon-[mdi--check-circle]"
+              variant="secondary"
+              className="bg-green-600 hover:bg-green-700"
+            >
+              Validar/Asignar Caso
+            </PrimaryButton>
+          )}
+        </div>
       </div>
 
       {/* Banner informativo cuando se filtra por solicitante */}
@@ -520,146 +523,206 @@ export default function CasesClient({ userRole, userCedula }: CasesClientProps) 
         </div>
       )}
 
-      {/* Filters */}
-      <div className="self-stretch grid grid-cols-3 gap-4">
-        <SearchInput
-          placeholder="Buscar caso por N°"
-          value={searchTerm}
-          onChange={setSearchTerm}
-        />
-        <FilterSelect
-          placeholder="Filtrar por Estatus"
-          value={statusFilter}
-          onChange={setStatusFilter}
-          options={estatusList.map((e: any) => ({
-            value: e.nombre_estatus,
-            label: e.nombre_estatus,
-          }))}
-        />
-        <FilterSelect
-          placeholder="Filtrar por Materia"
-          value={subjectFilter}
-          onChange={setSubjectFilter}
-          options={materiasList.map((m: any) => ({
-            value: m.nombre_materia,
-            label: m.nombre_materia,
-          }))}
-        />
-      </div>
-
-      {/* Filtros adicionales para Admin */}
-      {userRole === "ADMIN" && (
-        <div className="self-stretch grid grid-cols-3 gap-4">
-          <FilterSelect
-            placeholder="Filtrar por Trámite"
-            value={procedureFilter}
-            onChange={setProcedureFilter}
-            options={tramitesList.map((t: any) => ({
-              value: t.nombre,
-              label: t.nombre,
-            }))}
-          />
-          <FilterSelect
-            placeholder="Filtrar por Semestre"
-            value={semesterFilter}
-            onChange={setSemesterFilter}
-            options={[
-              { value: "2024-I", label: "2024-I" },
-              { value: "2023-II", label: "2023-II" },
-              { value: "2023-I", label: "2023-I" },
-            ]}
-          />
-          <DateInput
-            placeholder="Desde: 01/01/2025"
-            value={dateFilter}
-            onChange={setDateFilter}
-          />
-          <FilterSelect
-            placeholder="Filtrar por Tribunal"
-            value={tribunalFilter}
-            onChange={setTribunalFilter}
-            options={[
-              { value: "Tribunal de Familia", label: "Tribunal de Familia" },
-              { value: "Tribunal Penal", label: "Tribunal Penal" },
-              { value: "Sin asignar", label: "Sin asignar" },
-            ]}
-          />
-        </div>
-      )}
-
-      {/* Table */}
-      <div className="self-stretch bg-neutral-50 rounded-[30px] shadow-[0px_0px_15.5px_0px_rgba(0,0,0,0.25)] p-8">
-        {filteredCases.length === 0 ? (
-          <div className="text-center py-12">
-            <span className="icon-[mdi--gavel] text-6xl text-sky-950/30 mb-4 block"></span>
-            <p className="text-sky-950 text-xl font-semibold">
-              {searchTerm || statusFilter || subjectFilter
-                ? "No se encontraron casos con los filtros aplicados"
-                : "No hay casos registrados"}
-            </p>
-          </div>
-        ) : (
-          <CustomTable data={paginatedCases} columns={getColumns()} />
-        )}
-      </div>
-
-      {/* Pagination */}
-      {filteredCases.length > 0 && (
-        <Pagination
-          currentPage={effectiveCurrentPage}
-          totalPages={totalPages}
-          onPageChange={setCurrentPage}
-          itemsPerPage={ITEMS_PER_PAGE}
-          totalItems={filteredCases.length}
-        />
-      )}
-
-      {/* Charts */}
-      <div className="self-stretch grid grid-cols-2 gap-6">
-        <div className="bg-neutral-50 rounded-[30px] shadow-[0px_0px_15.5px_0px_rgba(0,0,0,0.25)] p-8">
-          <PieChart
-            title="Casos por Materia:"
-            data={pieChartData}
-            config={pieChartConfig}
-            dataKey="cases"
-            nameKey="subject"
-            innerRadius={55}
-          />
-        </div>
-        <div className="bg-neutral-50 rounded-[30px] shadow-[0px_0px_15.5px_0px_rgba(0,0,0,0.25)] p-8">
-          <BarChart
-            title="Casos por Trámite:"
-            data={barChartData}
-            config={barChartConfig}
-            dataKey="count"
-            nameKey="procedure"
-          />
-        </div>
-      </div>
-
-      {/* Stats Footer */}
-      <div className="self-stretch inline-flex justify-between items-center px-4">
-        <p className="text-sky-950 text-lg font-semibold">
-          Total de casos:{" "}
-          <span className="text-[#3E7DBB]">{filteredCases.length}</span>
-        </p>
-        {(searchTerm || statusFilter || subjectFilter || procedureFilter) && (
+      {/* View Toggle (Segmented Control) */}
+      <div className="self-stretch flex justify-center">
+        <div className="bg-neutral-200/50 p-1.5 rounded-2xl inline-flex gap-1 shadow-inner">
           <button
-            onClick={() => {
-              setSearchTerm("");
-              setStatusFilter("");
-              setSubjectFilter("");
-              setProcedureFilter("");
-              setSemesterFilter("");
-              setTribunalFilter("");
-              setDateFilter("");
-            }}
-            className="text-[#3E7DBB] text-lg font-semibold hover:text-[#2d5f8f] transition-colors"
+            onClick={() => setViewMode("table")}
+            className={`px-8 py-2.5 rounded-xl font-semibold transition-all duration-300 flex items-center gap-2 ${viewMode === "table"
+              ? "bg-white text-[#003366] shadow-[0_2px_8px_rgba(0,0,0,0.1)] scale-100"
+              : "text-gray-500 hover:text-[#003366] hover:bg-white/50 scale-95"
+              }`}
           >
-            Limpiar filtros
+            <span className="icon-[mdi--table] text-xl"></span>
+            Listado de Casos
           </button>
-        )}
+          <button
+            onClick={() => setViewMode("charts")}
+            className={`px-8 py-2.5 rounded-xl font-semibold transition-all duration-300 flex items-center gap-2 ${viewMode === "charts"
+              ? "bg-white text-[#003366] shadow-[0_2px_8px_rgba(0,0,0,0.1)] scale-100"
+              : "text-gray-500 hover:text-[#003366] hover:bg-white/50 scale-95"
+              }`}
+          >
+            <span className="icon-[mdi--chart-pie] text-xl"></span>
+            Estadísticas
+          </button>
+        </div>
       </div>
+
+      {/* Filters (only visible in table mode) */}
+      {viewMode === "table" && (
+        <div className="animate-in fade-in slide-in-from-top-4 duration-500 w-full">
+          <div className="w-full grid grid-cols-3 gap-4">
+            <SearchInput
+              placeholder="Buscar caso por N°"
+              value={searchTerm}
+              onChange={setSearchTerm}
+              className="w-full"
+            />
+            <FilterSelect
+              placeholder="Filtrar por Estatus"
+              value={statusFilter}
+              onChange={setStatusFilter}
+              options={estatusList.map((e: any) => ({
+                value: e.nombre_estatus,
+                label: e.nombre_estatus,
+              }))}
+              className="w-full"
+            />
+            <FilterSelect
+              placeholder="Filtrar por Materia"
+              value={subjectFilter}
+              onChange={setSubjectFilter}
+              options={materiasList.map((m: any) => ({
+                value: m.nombre_materia,
+                label: m.nombre_materia,
+              }))}
+              className="w-full"
+            />
+          </div>
+
+          {userRole === "ADMIN" && (
+            <div className="w-full grid grid-cols-3 gap-4 mt-4">
+              <FilterSelect
+                placeholder="Filtrar por Trámite"
+                value={procedureFilter}
+                onChange={setProcedureFilter}
+                options={tramitesList.map((t: any) => ({
+                  value: t.nombre,
+                  label: t.nombre,
+                }))}
+                className="w-full"
+              />
+              <FilterSelect
+                placeholder="Filtrar por Semestre"
+                value={semesterFilter}
+                onChange={setSemesterFilter}
+                options={[
+                  { value: "2024-I", label: "2024-I" },
+                  { value: "2023-II", label: "2023-II" },
+                  { value: "2023-I", label: "2023-I" },
+                ]}
+                className="w-full"
+              />
+              <DateInput
+                placeholder="Desde: 01/01/2025"
+                value={dateFilter}
+                onChange={setDateFilter}
+                className="w-full"
+              />
+              <FilterSelect
+                placeholder="Filtrar por Tribunal"
+                value={tribunalFilter}
+                onChange={setTribunalFilter}
+                options={[
+                  { value: "Tribunal de Familia", label: "Tribunal de Familia" },
+                  { value: "Tribunal Penal", label: "Tribunal Penal" },
+                  { value: "Sin asignar", label: "Sin asignar" },
+                ]}
+                className="w-full"
+              />
+            </div>
+          )}
+        </div>
+      )}
+
+      {/* Content Area: Table/Footer OR Charts */}
+      {viewMode === "table" ? (
+        <>
+          {/* Table Container - takes remaining space */}
+          <div className="self-stretch flex-1 min-h-0 bg-neutral-50 rounded-[30px] shadow-[0px_0px_15.5px_0px_rgba(0,0,0,0.25)] p-8 overflow-hidden flex flex-col">
+            {filteredCases.length === 0 ? (
+              <div className="flex flex-col items-center justify-center flex-1 h-full text-center py-12">
+                <span className="icon-[mdi--gavel] text-6xl text-sky-950/30 mb-4 block"></span>
+                <p className="text-sky-950 text-xl font-semibold">
+                  {searchTerm || statusFilter || subjectFilter
+                    ? "No se encontraron casos con los filtros aplicados"
+                    : "No hay casos registrados"}
+                </p>
+              </div>
+            ) : (
+              <CustomTable
+                data={paginatedCases}
+                columns={getColumns()}
+                keyField="id"
+                className="h-full"
+                minRows={10}
+              />
+            )}
+          </div>
+
+          {/* Footer Area: Pagination + Status Bar */}
+          <div className="self-stretch flex flex-col gap-2">
+            {/* Pagination */}
+            {filteredCases.length > 0 && (
+              <Pagination
+                currentPage={effectiveCurrentPage}
+                totalPages={totalPages}
+                onPageChange={setCurrentPage}
+                itemsPerPage={ITEMS_PER_PAGE}
+                totalItems={filteredCases.length}
+              />
+            )}
+
+            {/* Status Bar (Footer) */}
+            <div className="self-stretch flex justify-between items-center min-h-[30px] pt-2">
+              {/* Left: Clear Filters */}
+              <div className="flex-1 flex justify-start">
+                {(searchTerm || statusFilter || subjectFilter || procedureFilter || semesterFilter || tribunalFilter || dateFilter) && (
+                  <button
+                    onClick={() => {
+                      setSearchTerm("");
+                      setStatusFilter("");
+                      setSubjectFilter("");
+                      setProcedureFilter("");
+                      setSemesterFilter("");
+                      setTribunalFilter("");
+                      setDateFilter("");
+                    }}
+                    className="text-[#3E7DBB] font-semibold hover:text-[#2d5f8f] transition-colors cursor-pointer flex items-center gap-1 text-sm"
+                  >
+                    <span className="icon-[mdi--filter-off-outline] text-lg"></span>
+                    Limpiar filtros
+                  </button>
+                )}
+              </div>
+
+              {/* Center: Total Count */}
+              <div className="flex items-center justify-center bg-white px-4 py-1.5 rounded-full border border-[#003366]/10 shadow-sm">
+                <p className="text-sky-950 text-sm font-semibold">
+                  Total de casos: <span className="text-[#3E7DBB] font-bold">{filteredCases.length}</span>
+                </p>
+              </div>
+
+              {/* Right: Spacer */}
+              <div className="flex-1"></div>
+            </div>
+          </div>
+        </>
+      ) : (
+        /* Charts View */
+        <div className="self-stretch flex-1 min-h-0 grid grid-cols-2 gap-8 overflow-hidden animate-in fade-in zoom-in-95 duration-500">
+          <div className="bg-white rounded-[32px] shadow-sm border border-neutral-100 p-8 flex flex-col h-full hover:shadow-lg transition-shadow duration-300">
+            <PieChart
+              title="Distribución por Materia"
+              data={pieChartData}
+              config={pieChartConfig}
+              dataKey="cases"
+              nameKey="subject"
+              innerRadius={60}
+            />
+          </div>
+          <div className="bg-white rounded-[32px] shadow-sm border border-neutral-100 p-8 flex flex-col h-full hover:shadow-lg transition-shadow duration-300">
+            <BarChart
+              title="Distribución por Trámite"
+              data={barChartData}
+              config={barChartConfig}
+              dataKey="count"
+              nameKey="procedure"
+            />
+          </div>
+        </div>
+      )}
 
       {/* Modales */}
       <CaseDetailsModal
