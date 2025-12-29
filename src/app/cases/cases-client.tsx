@@ -437,17 +437,17 @@ export default function CasesClient({ userRole, userCedula }: CasesClientProps) 
         <div className="flex justify-center items-center gap-2">
           <button
             onClick={() => handleViewDetails(caso.id)}
-            className="w-10 h-10 flex justify-center items-center hover:bg-blue-100 rounded-lg transition-colors group"
+            className="w-10 h-10 flex justify-center items-center hover:bg-blue-100 rounded-lg transition-colors group cursor-pointer"
             title="Ver detalles"
           >
             <span className="icon-[mdi--file-document-outline] text-3xl text-[#3E7DBB] group-hover:scale-110 transition-transform"></span>
           </button>
           <button
             onClick={() => handleEdit(caso.id)}
-            className="w-10 h-10 flex justify-center items-center hover:bg-green-100 rounded-lg transition-colors group"
+            className="w-10 h-10 flex justify-center items-center hover:bg-blue-100 rounded-lg transition-colors group cursor-pointer"
             title="Editar"
           >
-            <span className="icon-[mdi--pencil] text-3xl text-green-600 group-hover:scale-110 transition-transform"></span>
+            <span className="icon-[uil--pen] text-3xl text-[#003366] group-hover:scale-110 transition-transform"></span>
           </button>
         </div>
       ),
