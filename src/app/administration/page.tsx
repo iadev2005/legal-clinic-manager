@@ -810,11 +810,12 @@ export default function Administration() {
                     )}
                     
                     <CustomTable
-                        key={activeTab} // Forzar remount al cambiar de tabla para limpiar selección interna
+                        key={activeTab}
                         data={data as any}
                         columns={columns as any}
                         enableSelection={true}
                         onSelectionChange={setSelectedItems}
+                        selectedItems={selectedItems}
                     />
                 </div>
             </div>
