@@ -25,6 +25,7 @@ interface AdministrationModalProps {
     participations?: any[];
     materias?: { id: string; nombre: string }[];
     categorias?: { id: string; nombre: string; legalfieldid: string }[];
+    subcategorias?: { id: string; nombre: string; categorymateriaid: string }[];
 }
 
 interface CustomSelectProps {
@@ -101,6 +102,7 @@ export default function AdministrationModal({
     participations = [],
     materias = [],
     categorias = [],
+    subcategorias = [],
 }: AdministrationModalProps) {
     const [formData, setFormData] = useState<any>({});
     const [loading, setLoading] = useState(false);
@@ -118,7 +120,8 @@ export default function AdministrationModal({
                     cedulaNumber: item.cedulaNumber || item.id?.split("-")[1] || "",
                     parishId: item.parishId || item.id_parroquia?.toString() || "",
                     legalfieldid: item.legalfieldid || "",
-                    categorylegalfieldid: item.categorylegalfieldid || "",
+                    categorylegalfieldid: item.categorylegalfieldid || item.categorymateriaid || "",
+                    longid: item.longid || "",
                     // Asegurar que los valores de string nunca sean null o undefined
                     nombres: item.nombres || "",
                     apellidos: item.apellidos || "",
@@ -428,40 +431,30 @@ export default function AdministrationModal({
                                 </div>
                                 {type === "catalogs" && (
                                     <div className="space-y-2">
-                                        <Label htmlFor="materia">Materia <span className="text-red-500">*</span></Label>
+                                        <Label htmlFor="categoria">Categoría <span className="text-red-500">*</span></Label>
                                         <CustomSelect
-                                            value={formData.legalfieldid || ""}
+                                            value={formData.categorylegalfieldid || ""}
                                             onChange={(val) => {
-                                                console.log('Materia seleccionada:', val);
-                                                handleChange("legalfieldid", val);
+                                                console.log('Categoría seleccionada:', val);
+                                                handleChange("categorylegalfieldid", val);
                                             }}
-                                            options={materias
-                                                .map((m: any) => {
-                                                    // Intentar obtener el ID de diferentes formas posibles
-                                                    const id = String(m.id || m.id_materia || '');
-                                                    if (!id || id === 'undefined' || id === 'null') {
-                                                        console.error('Materia sin ID válido:', m);
-                                                        return null;
-                                                    }
-                                                    return { value: id, label: m.nombre || m.nombre_materia || 'Sin nombre' };
-                                                })
-                                                .filter((opt: any): opt is { value: string; label: string } => opt !== null)}
+                                            options={categorias.map(c => ({ value: c.id, label: c.nombre }))}
                                         />
-                                        {!formData.legalfieldid && mode === "create" && (
-                                            <p className="text-xs text-red-500">Debe seleccionar una materia</p>
+                                        {!formData.categorylegalfieldid && mode === "create" && (
+                                            <p className="text-xs text-red-500">Debe seleccionar una categoría</p>
                                         )}
                                     </div>
                                 )}
                                 {type === "formalities" && (
                                     <div className="space-y-2">
-                                        <Label htmlFor="categoria">Categoría <span className="text-red-500">*</span></Label>
+                                        <Label htmlFor="subcategoria">Subcategoría <span className="text-red-500">*</span></Label>
                                         <CustomSelect
-                                            value={formData.categorylegalfieldid || ""}
-                                            onChange={(val) => handleChange("categorylegalfieldid", val)}
-                                            options={categorias.map(c => ({ value: c.id, label: c.nombre }))}
+                                            value={formData.longid || ""}
+                                            onChange={(val) => handleChange("longid", val)}
+                                            options={subcategorias.map(s => ({ value: s.id, label: s.nombre }))}
                                         />
-                                        {!formData.categorylegalfieldid && mode === "create" && (
-                                            <p className="text-xs text-red-500">Debe seleccionar una categoría</p>
+                                        {!formData.longid && mode === "create" && (
+                                            <p className="text-xs text-red-500">Debe seleccionar una subcategoría</p>
                                         )}
                                     </div>
                                 )}

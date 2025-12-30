@@ -203,7 +203,7 @@ export async function getParticipacionesUsuario(cedula: string) {
 export interface Categoria {
     id: string; // num_categoria-id_materia
     nombre: string;
-    legalfieldid: string; // id_materia
+    materiaid: string; // id_materia
     num_categoria?: number;
     id_materia?: number;
 }
@@ -214,7 +214,7 @@ export async function getCategorias() {
             SELECT 
                 num_categoria || '-' || id_materia as id,
                 nombre_categoria as nombre,
-                id_materia::text as "legalfieldid",
+                id_materia::text as "materiaid",
                 num_categoria,
                 id_materia
             FROM Categorias
@@ -229,16 +229,16 @@ export async function getCategorias() {
 
 export async function createCategoria(data: Partial<Categoria>) {
     try {
-        if (!data.legalfieldid || String(data.legalfieldid).trim() === '') {
+        if (!data.materiaid || String(data.materiaid).trim() === '') {
             return { success: false, error: 'Se requiere id_materia' };
         }
 
-        const idMateriaStr = String(data.legalfieldid).trim();
+        const idMateriaStr = String(data.materiaid).trim();
         const idMateria = parseInt(idMateriaStr);
         
         if (isNaN(idMateria) || idMateria <= 0) {
-            console.error('ID materia inválido:', data.legalfieldid, 'Tipo:', typeof data.legalfieldid);
-            return { success: false, error: `El id_materia no es válido: "${data.legalfieldid}"` };
+            console.error('ID materia inválido:', data.materiaid, 'Tipo:', typeof data.materiaid);
+            return { success: false, error: `El id_materia no es válido: "${data.materiaid}"` };
         }
 
         const result = await query(`
@@ -336,7 +336,7 @@ export async function getSubCategorias() {
             SELECT 
                 num_subcategoria || '-' || num_categoria || '-' || id_materia as id,
                 nombre_subcategoria as nombre,
-                num_categoria || '-' || id_materia as "categorylegalfieldid",
+                num_categoria || '-' || id_materia as "categorymateriaid",
                 num_subcategoria,
                 num_categoria,
                 id_materia
@@ -598,6 +598,152 @@ export async function getSemestres() {
         return { success: false, error: 'Error al obtener semestres' };
     }
 }
+
+// ============================================================================
+// AMBITO LEGAL
+// ============================================================================
+
+export interface LegalField {
+    id: string; 
+    nombre: string;
+    longid: string; // num_subcategoria-num_categoria-id_materia
+    num_legalfield?: number
+    num_subcategoria?: number;
+    num_categoria?: number;
+    id_materia?: number;
+}
+
+export async function getLegalField() {
+    try {
+        const result = await query(`
+            SELECT 
+                num_ambito_legal || '-' || num_subcategoria || '-' || num_categoria || '-' || id_materia as id,
+                nombre_ambito_legal as nombre,
+                num_subcategoria || '-' || num_categoria || '-' || id_materia  as "longid",
+                num_subcategoria,
+                num_categoria,
+                id_materia
+            FROM Ambitos_Legales
+            ORDER BY num_ambito_legal,id_materia, num_categoria, num_subcategoria
+        `);
+        return { success: true, data: result.rows };
+    } catch (error) {
+        console.error('Error al obtener subcategorías:', error);
+        return { success: false, error: 'Error al obtener subcategorías' };
+    }
+}
+
+export async function createLegalField(data: Partial<LegalField>) {
+    try {
+        if (!data.longid) {
+            return { success: false, error: 'Se requiere longid (formato: num_subcategoria-num_categoria-id_materia)' };
+        }
+
+        const parts = data.longid.split('-');
+        if (parts.length !== 3) {
+            return { success: false, error: 'El longid debe tener el formato: num_subcategoria-num_categoria-id_materia' };
+        }
+        
+        const num_subcategoria = parseInt(parts[0]);
+        const num_categoria = parseInt(parts[1]);
+        const id_materia = parseInt(parts[2]);
+
+        if (isNaN(num_subcategoria) || isNaN(num_categoria) || isNaN(id_materia)) {
+            return { success: false, error: 'Los valores de subcategoría, categoría o materia no son válidos' };
+        }
+
+        // Calcular el siguiente num_ambito_legal disponible para esta combinación
+        const maxResult = await query(`
+            SELECT COALESCE(MAX(num_ambito_legal), 0) as max_num
+            FROM Ambitos_Legales
+            WHERE num_subcategoria = $1 AND num_categoria = $2 AND id_materia = $3
+        `, [num_subcategoria, num_categoria, id_materia]);
+
+        const nextNumAmbitoLegal = (maxResult.rows[0]?.max_num || 0) + 1;
+
+        const result = await query(`
+            INSERT INTO Ambitos_Legales (num_ambito_legal, num_subcategoria, num_categoria, id_materia, nombre_ambito_legal)
+            VALUES ($1, $2, $3, $4, $5)
+            RETURNING num_ambito_legal, num_subcategoria, num_categoria, id_materia, nombre_ambito_legal
+        `, [nextNumAmbitoLegal, num_subcategoria, num_categoria, id_materia, data.nombre]);
+
+        revalidatePath('/administration');
+        return {
+            success: true,
+            data: {
+                id: `${result.rows[0].num_ambito_legal}-${result.rows[0].num_subcategoria}-${result.rows[0].num_categoria}-${result.rows[0].id_materia}`,
+                nombre: result.rows[0].nombre_ambito_legal,
+                longid: data.longid
+            }
+        };
+    } catch (error: any) {
+        console.error('Error al crear ámbito legal:', error);
+        if (error.code === '23505') { // unique_violation
+            return { success: false, error: 'Ya existe un ámbito legal con ese identificador' };
+        }
+        return { success: false, error: error.message || 'Error al crear ámbito legal' };
+    }
+}
+
+export async function updateLegalField(id: string, data: Partial<LegalField>) {
+    try {
+        const parts = id.split('-');
+        if (parts.length !== 4) {
+            return { success: false, error: 'El ID debe tener el formato: num_ambito_legal-num_subcategoria-num_categoria-id_materia' };
+        }
+
+        const num_ambito_legal = parseInt(parts[0]);
+        const num_subcategoria = parseInt(parts[1]);
+        const num_categoria = parseInt(parts[2]);
+        const id_materia = parseInt(parts[3]);
+
+        if (isNaN(num_ambito_legal) || isNaN(num_subcategoria) || isNaN(num_categoria) || isNaN(id_materia)) {
+            return { success: false, error: 'Los valores del ID no son válidos' };
+        }
+        
+        const result = await query(`
+            UPDATE Ambitos_Legales
+            SET nombre_ambito_legal = $1
+            WHERE num_ambito_legal = $2 AND num_subcategoria = $3 AND num_categoria = $4 AND id_materia = $5
+            RETURNING *
+        `, [data.nombre, num_ambito_legal, num_subcategoria, num_categoria, id_materia]);
+
+        revalidatePath('/administration');
+        return { success: true, data: result.rows[0] };
+    } catch (error: any) {
+        console.error('Error al actualizar ámbito legal:', error);
+        return { success: false, error: error.message || 'Error al actualizar ámbito legal' };
+    }
+}
+
+export async function deleteLegalField(id: string) {
+    try {
+        const parts = id.split('-');
+        if (parts.length !== 4) {
+            return { success: false, error: 'El ID debe tener el formato: num_ambito_legal-num_subcategoria-num_categoria-id_materia' };
+        }
+
+        const num_ambito_legal = parseInt(parts[0]);
+        const num_subcategoria = parseInt(parts[1]);
+        const num_categoria = parseInt(parts[2]);
+        const id_materia = parseInt(parts[3]);
+
+        if (isNaN(num_ambito_legal) || isNaN(num_subcategoria) || isNaN(num_categoria) || isNaN(id_materia)) {
+            return { success: false, error: 'Los valores del ID no son válidos' };
+        }
+
+        await query(`
+            DELETE FROM Ambitos_Legales
+            WHERE num_ambito_legal = $1 AND num_subcategoria = $2 AND num_categoria = $3 AND id_materia = $4
+        `, [num_ambito_legal, num_subcategoria, num_categoria, id_materia]);
+        revalidatePath('/administration');
+        return { success: true };
+    } catch (error: any) {
+        console.error('Error al eliminar ámbito legal:', error);
+        return { success: false, error: error.message || 'Error al eliminar ámbito legal' };
+    }
+}
+
 
 // ============================================================================
 // CARGA MASIVA
