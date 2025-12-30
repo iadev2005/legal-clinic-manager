@@ -9,6 +9,7 @@ import {
     getUsuarios, createUsuario, updateUsuario, deleteUsuario, getParticipacionesUsuario,
     getCategorias, createCategoria, updateCategoria, deleteCategoria,
     getSubCategorias, createSubCategoria, updateSubCategoria, deleteSubCategoria,
+    getLegalField, createLegalField, updateLegalField, deleteLegalField,
     getNucleos, createNucleo, updateNucleo, deleteNucleo,
     getMaterias, getSemestres
 } from "@/actions/administracion";
@@ -23,6 +24,7 @@ export default function Administration() {
     const [legalfield, setlegalfield] = useState<any[]>([]);
     const [categorylegalfield, setcategorylegalfield] = useState<any[]>([]);
     const [subcategorylegalfield, setsubcategorylegalfield] = useState<any[]>([]);
+    const [ambitoslegales, setambitoslegales] = useState<any[]>([]);
     const [centers, setCenters] = useState<any[]>([]);
     const [parishes, setParishes] = useState<any[]>([]);
     const [semestres, setSemestres] = useState<any[]>([]);
@@ -74,6 +76,12 @@ export default function Administration() {
             const subcategoriasRes = await getSubCategorias();
             if (subcategoriasRes.success) {
                 setsubcategorylegalfield(subcategoriasRes.data || []);
+            }
+
+            // Cargar ámbitos legales
+            const legalfieldRes = await getLegalField();
+            if(legalfieldRes.success){
+                setambitoslegales(legalfieldRes.data || []);
             }
 
             // Cargar núcleos
@@ -210,20 +218,20 @@ export default function Administration() {
                         throw new Error(result.error || 'Error al crear usuario');
                     }
                 } else if (activeTab === "catalogs") {
-                    const result = await createCategoria(formData);
-                    if (result.success) {
-                        await loadData();
-                        setAdminModalOpen(false);
-                    } else {
-                        throw new Error(result.error || 'Error al crear categoría');
-                    }
-                } else if (activeTab === "formalities") {
                     const result = await createSubCategoria(formData);
                     if (result.success) {
                         await loadData();
                         setAdminModalOpen(false);
                     } else {
                         throw new Error(result.error || 'Error al crear subcategoría');
+                    }
+                } else if (activeTab === "formalities") {
+                    const result = await createLegalField(formData);
+                    if (result.success) {
+                        await loadData();
+                        setAdminModalOpen(false);
+                    } else {
+                        throw new Error(result.error || 'Error al crear ámbito legal');
                     }
                 } else if (activeTab === "centers") {
                     const result = await createNucleo(formData);
@@ -245,20 +253,20 @@ export default function Administration() {
                         throw new Error(result.error || 'Error al actualizar usuario');
                     }
             } else if (activeTab === "catalogs") {
-                    const result = await updateCategoria(currentItem.id, formData);
-                    if (result.success) {
-                        await loadData();
-                        setAdminModalOpen(false);
-                    } else {
-                        throw new Error(result.error || 'Error al actualizar categoría');
-                    }
-            } else if (activeTab === "formalities") {
                     const result = await updateSubCategoria(currentItem.id, formData);
                     if (result.success) {
                         await loadData();
                         setAdminModalOpen(false);
                     } else {
                         throw new Error(result.error || 'Error al actualizar subcategoría');
+                    }
+            } else if (activeTab === "formalities") {
+                    const result = await updateLegalField(currentItem.id, formData);
+                    if (result.success) {
+                        await loadData();
+                        setAdminModalOpen(false);
+                    } else {
+                        throw new Error(result.error || 'Error al actualizar ámbito legal');
                     }
             } else if (activeTab === "centers") {
                     const result = await updateNucleo(currentItem.id, formData);
@@ -285,9 +293,9 @@ export default function Administration() {
                     if (activeTab === "users") {
                         await deleteUsuario(item.id);
                     } else if (activeTab === "catalogs") {
-                        await deleteCategoria(item.id);
-                    } else if (activeTab === "formalities") {
                         await deleteSubCategoria(item.id);
+                    } else if (activeTab === "formalities") {
+                        await deleteLegalField(item.id);
                     } else if (activeTab === "centers") {
                         await deleteNucleo(item.id);
                     }
@@ -305,15 +313,15 @@ export default function Administration() {
                         return;
                     }
                 } else if (activeTab === "catalogs") {
-                    const result = await deleteCategoria(id);
-                    if (!result.success) {
-                        alert(result.error || 'Error al eliminar categoría');
-                        return;
-                    }
-                } else if (activeTab === "formalities") {
                     const result = await deleteSubCategoria(id);
                     if (!result.success) {
                         alert(result.error || 'Error al eliminar subcategoría');
+                        return;
+                    }
+                } else if (activeTab === "formalities") {
+                    const result = await deleteLegalField(id);
+                    if (!result.success) {
+                        alert(result.error || 'Error al eliminar ámbito legal');
                         return;
                     }
                 } else if (activeTab === "centers") {
@@ -487,11 +495,11 @@ export default function Administration() {
                         searchInField(item.nombre, searchLower)
                     );
                 }
-                // Filtro por materia
+                // Filtro por categoría (categorymateriaid es num_categoria-id_materia, igual que el id de categoría)
                 if (filtroMateria) {
                     filtered = filtered.filter((item) => 
-                        item.legalfieldid === filtroMateria || 
-                        item.id_materia?.toString() === filtroMateria
+                        item.categorymateriaid === filtroMateria || 
+                        item.id?.includes(filtroMateria)
                     );
                 }
                 break;
@@ -505,10 +513,10 @@ export default function Administration() {
                         searchInField(item.nombre, searchLower)
                     );
                 }
-                // Filtro por categoría
+                // Filtro por subcategoría (longid contiene num_subcategoria-num_categoria-id_materia)
                 if (filtroCategoria) {
                     filtered = filtered.filter((item) => 
-                        item.categorylegalfieldid === filtroCategoria
+                        item.longid === filtroCategoria
                     );
                 }
                 break;
@@ -557,11 +565,11 @@ export default function Administration() {
                 columns = ManagementUserColumns;
                 break;
             case "catalogs":
-                rawData = categorylegalfield;
+                rawData = subcategorylegalfield;
                 columns = GenericColumns;
                 break;
             case "formalities":
-                rawData = subcategorylegalfield;
+                rawData = ambitoslegales;
                 columns = GenericColumns;
                 break;
             case "centers":
@@ -635,7 +643,7 @@ export default function Administration() {
                             }}
                             className={`px-4 py-2 rounded-lg font-semibold transition-colors cursor-pointer ${activeTab === "catalogs" ? "bg-sky-950 text-white" : "bg-gray-200 text-sky-950 hover:bg-gray-300"}`}
                         >
-                            Catálogos
+                            SubCatálogos
                         </button>
                         <button
                             onClick={() => { 
@@ -646,7 +654,7 @@ export default function Administration() {
                             }}
                             className={`px-4 py-2 rounded-lg font-semibold transition-colors cursor-pointer ${activeTab === "formalities" ? "bg-sky-950 text-white" : "bg-gray-200 text-sky-950 hover:bg-gray-300"}`}
                         >
-                            Trámites
+                            Ambitos Legales
                         </button>
                         <button
                             onClick={() => { 
@@ -708,16 +716,16 @@ export default function Administration() {
 
                         {activeTab === "catalogs" && (
                             <div className="flex items-center gap-2">
-                                <span className="text-sky-950 font-semibold whitespace-nowrap">Materia:</span>
+                                <span className="text-sky-950 font-semibold whitespace-nowrap">Categoría:</span>
                                 <select
                                     value={filtroMateria}
                                     onChange={(e) => setFiltroMateria(e.target.value)}
                                     className="bg-white border border-gray-300 text-sky-950 text-sm rounded-lg focus:ring-sky-950 focus:border-sky-950 block p-2.5 min-w-[200px]"
                                 >
-                                    <option value="">Todas las materias</option>
-                                    {legalfield.map((materia) => (
-                                        <option key={materia.id} value={materia.id}>
-                                            {materia.nombre}
+                                    <option value="">Todas las categorías</option>
+                                    {categorylegalfield.map((categoria) => (
+                                        <option key={categoria.id} value={categoria.id}>
+                                            {categoria.nombre}
                                         </option>
                                     ))}
                                 </select>
@@ -726,16 +734,16 @@ export default function Administration() {
 
                         {activeTab === "formalities" && (
                             <div className="flex items-center gap-2">
-                                <span className="text-sky-950 font-semibold whitespace-nowrap">Categoría:</span>
+                                <span className="text-sky-950 font-semibold whitespace-nowrap">Subcategoría:</span>
                                 <select
                                     value={filtroCategoria}
                                     onChange={(e) => setFiltroCategoria(e.target.value)}
                                     className="bg-white border border-gray-300 text-sky-950 text-sm rounded-lg focus:ring-sky-950 focus:border-sky-950 block p-2.5 min-w-[200px]"
                                 >
-                                    <option value="">Todas las categorías</option>
-                                    {categorylegalfield.map((categoria) => (
-                                        <option key={categoria.id} value={categoria.id}>
-                                            {categoria.nombre}
+                                    <option value="">Todas las subcategorías</option>
+                                    {subcategorylegalfield.map((subcategoria) => (
+                                        <option key={subcategoria.id} value={subcategoria.id}>
+                                            {subcategoria.nombre}
                                         </option>
                                     ))}
                                 </select>
@@ -850,6 +858,7 @@ export default function Administration() {
                 parishes={parishes}
                 materias={legalfield}
                 categorias={categorylegalfield}
+                subcategorias={subcategorylegalfield}
                 participations={
                     activeTab === "users" && currentItem
                         ? [
