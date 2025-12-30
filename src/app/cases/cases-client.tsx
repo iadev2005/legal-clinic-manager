@@ -95,6 +95,9 @@ export default function CasesClient({ userRole, userCedula }: CasesClientProps) 
   // Estado para la vista (tabla o gráficas)
   const [viewMode, setViewMode] = useState<"table" | "charts">("table");
 
+  // Estado para el panel de filtros
+  const [isFilterPanelOpen, setIsFilterPanelOpen] = useState(false);
+
   // Cargar datos al montar el componente
   useEffect(() => {
     loadData();
@@ -377,36 +380,36 @@ export default function CasesClient({ userRole, userCedula }: CasesClientProps) 
         header: "N° Caso",
         render: (caso) => (
           <div className="text-center">
-            <div className="font-bold text-sky-950">{caso.caseNumber}</div>
-            <div className="text-sm text-sky-950/60">
+            <div className="font-bold text-sky-950 text-sm">{caso.caseNumber}</div>
+            <div className="text-xs text-sky-950/60">
               {caso.createdAt}
             </div>
           </div>
         ),
         className: "text-center",
-        headerClassName: "w-[12%]",
+        headerClassName: "w-[10%]",
       },
       {
         header: "Solicitante",
         render: (caso) => (
           <div>
-            <div className="font-bold text-sky-950">{caso.applicantName}</div>
-            <div className="text-sm text-sky-950/60">{caso.applicantId}</div>
+            <div className="font-bold text-sky-950 text-sm break-words">{caso.applicantName}</div>
+            <div className="text-xs text-sky-950/60">{caso.applicantId}</div>
           </div>
         ),
-        headerClassName: "w-[18%]",
+        headerClassName: "w-[15%]",
       },
       {
         header: "Materia",
         accessorKey: "subject",
-        className: "text-center font-semibold",
+        className: "text-center font-semibold text-sm break-words leading-tight",
         headerClassName: "w-[12%]",
       },
       {
         header: "Trámite",
         accessorKey: "procedure",
-        className: "text-center",
-        headerClassName: "w-[15%]",
+        className: "text-center text-sm break-words leading-tight",
+        headerClassName: "w-[13%]",
       },
     ];
 
@@ -416,13 +419,13 @@ export default function CasesClient({ userRole, userCedula }: CasesClientProps) 
         {
           header: "Tribunal",
           accessorKey: "tribunal",
-          className: "text-center text-sm",
-          headerClassName: "w-[15%]",
+          className: "text-center text-sm break-words leading-tight",
+          headerClassName: "w-[13%]",
         },
         {
           header: "Periodo",
           accessorKey: "period",
-          className: "text-center font-semibold",
+          className: "text-center font-semibold text-sm",
           headerClassName: "w-[8%]",
         }
       );
@@ -432,7 +435,7 @@ export default function CasesClient({ userRole, userCedula }: CasesClientProps) 
     baseColumns.push({
       header: "Alumno Asignado",
       accessorKey: "assignedStudent",
-      className: "text-center font-semibold",
+      className: "text-center font-semibold text-sm break-words leading-tight",
       headerClassName: "w-[12%]",
     });
 
@@ -567,78 +570,158 @@ export default function CasesClient({ userRole, userCedula }: CasesClientProps) 
         </div>
       </div>
 
-      {/* Filters (only visible in table mode) */}
+      {/* Modern Filter Section (only visible in table mode) */}
       {viewMode === "table" && (
-        <div className="animate-in fade-in slide-in-from-top-4 duration-500 w-full">
-          <div className="w-full grid grid-cols-3 gap-4">
-            <SearchInput
-              placeholder="Buscar caso por N°"
-              value={searchTerm}
-              onChange={setSearchTerm}
-              className="w-full"
-            />
-            <FilterSelect
-              placeholder="Filtrar por Estatus"
-              value={statusFilter}
-              onChange={setStatusFilter}
-              options={estatusList.map((e: any) => ({
-                value: e.nombre_estatus,
-                label: e.nombre_estatus,
-              }))}
-              className="w-full"
-            />
-            <FilterSelect
-              placeholder="Filtrar por Materia"
-              value={subjectFilter}
-              onChange={setSubjectFilter}
-              options={materiasList.map((m: any) => ({
-                value: m.nombre_materia,
-                label: m.nombre_materia,
-              }))}
-              className="w-full"
-            />
+        <div className="animate-in fade-in slide-in-from-top-4 duration-500 w-full space-y-3">
+          {/* Compact Filter Bar */}
+          <div className="flex items-center gap-3">
+            {/* Search - Always Visible */}
+            <div className="flex-1">
+              <SearchInput
+                placeholder="Buscar caso por N°"
+                value={searchTerm}
+                onChange={setSearchTerm}
+                className="w-full"
+              />
+            </div>
+
+            {/* Filter Toggle Button */}
+            <button
+              onClick={() => setIsFilterPanelOpen(!isFilterPanelOpen)}
+              className={`px-4 py-2.5 rounded-xl font-semibold transition-all duration-300 flex items-center gap-2 cursor-pointer border-2 ${isFilterPanelOpen
+                ? "bg-[#003366] text-white border-[#003366]"
+                : "bg-white text-[#003366] border-neutral-200 hover:border-[#003366]"
+                }`}
+            >
+              <span className="icon-[mdi--filter-variant] text-lg"></span>
+              Filtros
+              {(() => {
+                const activeCount = [
+                  statusFilter,
+                  subjectFilter,
+                  procedureFilter,
+                  semesterFilter,
+                  tribunalFilter,
+                  dateFilter,
+                ].filter(Boolean).length;
+                return activeCount > 0 ? (
+                  <span className="ml-1 px-2 py-0.5 bg-red-500 text-white text-xs font-bold rounded-full">
+                    {activeCount}
+                  </span>
+                ) : null;
+              })()}
+              <span className={`icon-[mdi--chevron-down] text-lg transition-transform duration-300 ${isFilterPanelOpen ? "rotate-180" : ""
+                }`}></span>
+            </button>
           </div>
 
-          {userRole === "ADMIN" && (
-            <div className="w-full grid grid-cols-3 gap-4 mt-4">
-              <FilterSelect
-                placeholder="Filtrar por Trámite"
-                value={procedureFilter}
-                onChange={setProcedureFilter}
-                options={tramitesList.map((t: any) => ({
-                  value: t.nombre,
-                  label: t.nombre,
-                }))}
-                className="w-full"
-              />
-              <FilterSelect
-                placeholder="Filtrar por Semestre"
-                value={semesterFilter}
-                onChange={setSemesterFilter}
-                options={[
-                  { value: "2024-I", label: "2024-I" },
-                  { value: "2023-II", label: "2023-II" },
-                  { value: "2023-I", label: "2023-I" },
-                ]}
-                className="w-full"
-              />
-              <DateInput
-                placeholder="Desde: 01/01/2025"
-                value={dateFilter}
-                onChange={setDateFilter}
-                className="w-full"
-              />
-              <FilterSelect
-                placeholder="Filtrar por Tribunal"
-                value={tribunalFilter}
-                onChange={setTribunalFilter}
-                options={[
-                  { value: "Tribunal de Familia", label: "Tribunal de Familia" },
-                  { value: "Tribunal Penal", label: "Tribunal Penal" },
-                  { value: "Sin asignar", label: "Sin asignar" },
-                ]}
-                className="w-full"
-              />
+          {/* Active Filter Chips */}
+          {[
+            { value: statusFilter, label: "Estatus", setter: setStatusFilter },
+            { value: subjectFilter, label: "Materia", setter: setSubjectFilter },
+            { value: procedureFilter, label: "Trámite", setter: setProcedureFilter },
+            { value: semesterFilter, label: "Semestre", setter: setSemesterFilter },
+            { value: tribunalFilter, label: "Tribunal", setter: setTribunalFilter },
+            { value: dateFilter, label: "Fecha", setter: setDateFilter },
+          ].some((f) => f.value) && (
+              <div className="flex flex-wrap gap-2">
+                {[
+                  { value: statusFilter, label: "Estatus", setter: setStatusFilter },
+                  { value: subjectFilter, label: "Materia", setter: setSubjectFilter },
+                  { value: procedureFilter, label: "Trámite", setter: setProcedureFilter },
+                  { value: semesterFilter, label: "Semestre", setter: setSemesterFilter },
+                  { value: tribunalFilter, label: "Tribunal", setter: setTribunalFilter },
+                  { value: dateFilter, label: "Fecha", setter: setDateFilter },
+                ]
+                  .filter((f) => f.value)
+                  .map((filter, idx) => (
+                    <div
+                      key={idx}
+                      className="inline-flex items-center gap-2 px-3 py-1.5 bg-blue-50 text-[#003366] rounded-lg text-sm font-semibold border border-blue-200"
+                    >
+                      <span className="text-xs text-blue-600">{filter.label}:</span>
+                      <span>{filter.value}</span>
+                      <button
+                        onClick={() => filter.setter("")}
+                        className="hover:bg-blue-100 rounded-full p-0.5 transition-colors cursor-pointer"
+                      >
+                        <span className="icon-[mdi--close] text-sm"></span>
+                      </button>
+                    </div>
+                  ))}
+              </div>
+            )}
+
+          {/* Collapsible Filter Panel */}
+          {isFilterPanelOpen && (
+            <div className="bg-neutral-50 border border-neutral-200 rounded-2xl p-6 animate-in slide-in-from-top-2 fade-in duration-300">
+              <div className="grid grid-cols-3 gap-4">
+                <FilterSelect
+                  placeholder="Filtrar por Estatus"
+                  value={statusFilter}
+                  onChange={setStatusFilter}
+                  options={estatusList.map((e: any) => ({
+                    value: e.nombre_estatus,
+                    label: e.nombre_estatus,
+                  }))}
+                  className="w-full"
+                />
+                <FilterSelect
+                  placeholder="Filtrar por Materia"
+                  value={subjectFilter}
+                  onChange={setSubjectFilter}
+                  options={materiasList.map((m: any) => ({
+                    value: m.nombre_materia,
+                    label: m.nombre_materia,
+                  }))}
+                  className="w-full"
+                />
+                {userRole === "ADMIN" && (
+                  <FilterSelect
+                    placeholder="Filtrar por Trámite"
+                    value={procedureFilter}
+                    onChange={setProcedureFilter}
+                    options={tramitesList.map((t: any) => ({
+                      value: t.nombre,
+                      label: t.nombre,
+                    }))}
+                    className="w-full"
+                  />
+                )}
+              </div>
+
+              {userRole === "ADMIN" && (
+                <div className="grid grid-cols-3 gap-4 mt-4">
+                  <FilterSelect
+                    placeholder="Filtrar por Semestre"
+                    value={semesterFilter}
+                    onChange={setSemesterFilter}
+                    options={[
+                      { value: "2024-I", label: "2024-I" },
+                      { value: "2023-II", label: "2023-II" },
+                      { value: "2023-I", label: "2023-I" },
+                    ]}
+                    className="w-full"
+                  />
+                  <FilterSelect
+                    placeholder="Filtrar por Tribunal"
+                    value={tribunalFilter}
+                    onChange={setTribunalFilter}
+                    options={[
+                      { value: "Tribunal de Familia", label: "Tribunal de Familia" },
+                      { value: "Tribunal Penal", label: "Tribunal Penal" },
+                      { value: "Sin asignar", label: "Sin asignar" },
+                    ]}
+                    className="w-full"
+                  />
+                  <DateInput
+                    placeholder="Desde: 01/01/2025"
+                    value={dateFilter}
+                    onChange={setDateFilter}
+                    className="w-full"
+                  />
+                </div>
+              )}
             </div>
           )}
         </div>

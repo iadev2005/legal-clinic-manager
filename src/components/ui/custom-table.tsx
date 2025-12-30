@@ -81,7 +81,7 @@ export function CustomTable<T extends Record<string, any>>({
     // Check if some but not all items on the current page are selected (indeterminate state could be added later)
 
     return (
-        <div className={cn("w-full rounded-[20px] border border-sky-950/20 overflow-auto", className)}>
+        <div className={cn("w-full rounded-[20px] border border-sky-950/20 overflow-x-hidden overflow-y-auto", className)}>
             <Table>
                 <TableHeader className="bg-[#003366] sticky top-0 z-10">
                     <TableRow className="border-b-0 hover:bg-[#003366]">
@@ -148,7 +148,7 @@ export function CustomTable<T extends Record<string, any>>({
                                     <TableCell
                                         key={colIndex}
                                         className={cn(
-                                            "text-sky-950 text-lg border-r border-sky-950/20 py-4 align-middle last:border-r-0",
+                                            "text-sky-950 text-lg border-r border-sky-950/20 py-4 align-middle last:border-r-0 break-words",
                                             col.className
                                         )}
                                     >
