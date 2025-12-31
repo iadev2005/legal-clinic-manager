@@ -547,6 +547,13 @@ export default function DashboardClient({ user }: DashboardClientProps) {
             iconColor: "text-[#16A34A]",
             iconBgColor: "bg-[#DCFCE7]",
         },
+        //{
+        //    label: "En Tribunales:",
+        //    value: stats.casesInCourt.toString(),
+        //    icon: "icon-[mdi--justice]",
+        //    iconColor: "text-[#CB8C06]",
+        //    iconBgColor: "bg-[#FEF9C3]",
+        // },
         {
             label: "Pendientes Hoy",
             value: todayAppointments.toString(),

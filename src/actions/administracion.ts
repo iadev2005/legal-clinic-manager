@@ -2,6 +2,7 @@
 
 import { query } from '@/lib/db';
 import { revalidatePath } from 'next/cache';
+import { hashPassword } from '@/lib/auth-utils';
 
 // ============================================================================
 // USUARIOS
@@ -59,10 +60,9 @@ export async function getUsuarios() {
 export async function createUsuario(data: Partial<Usuario> & { password: string }) {
     try {
         const cedula = `${data.cedulaPrefix}-${data.cedulaNumber}`;
-        
-        // Hash simple de contraseña usando crypto nativo
-        const crypto = await import('crypto');
-        const contrasena_hash = crypto.createHash('sha256').update(data.password).digest('hex');
+
+        // Hash de contraseña usando la utilidad del sistema (bcrypt)
+        const contrasena_hash = await hashPassword(data.password);
 
         const result = await query(`
             INSERT INTO Usuarios_Sistema (
@@ -129,8 +129,7 @@ export async function updateUsuario(id: string, data: Partial<Usuario> & { passw
             values.push(data.status === 'Activo');
         }
         if (data.password) {
-            const crypto = await import('crypto');
-            const contrasena_hash = crypto.createHash('sha256').update(data.password).digest('hex');
+            const contrasena_hash = await hashPassword(data.password);
             updates.push(`contrasena_hash = $${paramCount++}`);
             values.push(contrasena_hash);
         }
@@ -235,7 +234,7 @@ export async function createCategoria(data: Partial<Categoria>) {
 
         const idMateriaStr = String(data.materiaid).trim();
         const idMateria = parseInt(idMateriaStr);
-        
+
         if (isNaN(idMateria) || idMateria <= 0) {
             console.error('ID materia inválido:', data.materiaid, 'Tipo:', typeof data.materiaid);
             return { success: false, error: `El id_materia no es válido: "${data.materiaid}"` };
@@ -275,7 +274,7 @@ export async function updateCategoria(id: string, data: Partial<Categoria>) {
         if (isNaN(num_categoria) || isNaN(id_materia)) {
             return { success: false, error: 'Los valores del ID no son válidos' };
         }
-        
+
         const result = await query(`
             UPDATE Categorias
             SET nombre_categoria = $1
@@ -415,7 +414,7 @@ export async function updateSubCategoria(id: string, data: Partial<SubCategoria>
         if (isNaN(num_subcategoria) || isNaN(num_categoria) || isNaN(id_materia)) {
             return { success: false, error: 'Los valores del ID no son válidos' };
         }
-        
+
         const result = await query(`
             UPDATE Sub_Categorias
             SET nombre_subcategoria = $1
@@ -604,7 +603,7 @@ export async function getSemestres() {
 // ============================================================================
 
 export interface LegalField {
-    id: string; 
+    id: string;
     nombre: string;
     longid: string; // num_subcategoria-num_categoria-id_materia
     num_legalfield?: number
@@ -643,7 +642,7 @@ export async function createLegalField(data: Partial<LegalField>) {
         if (parts.length !== 3) {
             return { success: false, error: 'El longid debe tener el formato: num_subcategoria-num_categoria-id_materia' };
         }
-        
+
         const num_subcategoria = parseInt(parts[0]);
         const num_categoria = parseInt(parts[1]);
         const id_materia = parseInt(parts[2]);
@@ -700,7 +699,7 @@ export async function updateLegalField(id: string, data: Partial<LegalField>) {
         if (isNaN(num_ambito_legal) || isNaN(num_subcategoria) || isNaN(num_categoria) || isNaN(id_materia)) {
             return { success: false, error: 'Los valores del ID no son válidos' };
         }
-        
+
         const result = await query(`
             UPDATE Ambitos_Legales
             SET nombre_ambito_legal = $1
@@ -826,9 +825,9 @@ export async function processBulkUpload(
                 );
 
                 const crypto = await import('crypto');
-                // Generar contraseña temporal (primeros 8 caracteres de la cédula + "123")
-                const tempPassword = cedula.replace('-', '').substring(0, 8) + '123';
-                const contrasena_hash = crypto.createHash('sha256').update(tempPassword).digest('hex');
+                //ejemplo ucabVXXXXXXXX
+                const tempPassword = 'ucab' + cedula.replace('-', '');
+                const contrasena_hash = await hashPassword(tempPassword);
 
                 if (existingUser.rows.length > 0) {
                     // Usuario existe, solo crear/actualizar el perfil
