@@ -96,8 +96,8 @@ function DayDetailsModal({ open, onClose, selectedDate, appointments }: DayDetai
     const dayAppointments = appointments.filter(apt => {
         const aptDate = new Date(apt.date);
         return aptDate.getDate() === selectedDate.getDate() &&
-               aptDate.getMonth() === selectedDate.getMonth() &&
-               aptDate.getFullYear() === selectedDate.getFullYear();
+            aptDate.getMonth() === selectedDate.getMonth() &&
+            aptDate.getFullYear() === selectedDate.getFullYear();
     });
 
     const formatDate = (date: Date) => {
@@ -154,13 +154,13 @@ function DayDetailsModal({ open, onClose, selectedDate, appointments }: DayDetai
                                         <h3 className="text-sky-950 text-xl font-bold flex items-center gap-2">
                                             <span className="icon-[mdi--clock-outline] text-2xl text-[#3E7DBB]"></span>
                                             {apt.time === "08:00" ? "8:00 AM" :
-                                             apt.time === "09:00" ? "9:00 AM" :
-                                             apt.time === "10:00" ? "10:00 AM" :
-                                             apt.time === "11:00" ? "11:00 AM" :
-                                             apt.time === "13:00" ? "1:00 PM" :
-                                             apt.time === "14:00" ? "2:00 PM" :
-                                             apt.time === "15:00" ? "3:00 PM" :
-                                             apt.time === "16:00" ? "4:00 PM" : apt.time}
+                                                apt.time === "09:00" ? "9:00 AM" :
+                                                    apt.time === "10:00" ? "10:00 AM" :
+                                                        apt.time === "11:00" ? "11:00 AM" :
+                                                            apt.time === "13:00" ? "1:00 PM" :
+                                                                apt.time === "14:00" ? "2:00 PM" :
+                                                                    apt.time === "15:00" ? "3:00 PM" :
+                                                                        apt.time === "16:00" ? "4:00 PM" : apt.time}
                                         </h3>
                                     </div>
                                     <span className={cn(
@@ -370,15 +370,15 @@ function AppointmentModal({ open, onClose, onSave }: AppointmentModalProps) {
                     </div>
 
                     <DialogFooter className="pt-2 gap-2 sm:gap-0">
-                        <button 
-                            type="button" 
-                            onClick={onClose} 
+                        <button
+                            type="button"
+                            onClick={onClose}
                             className="px-4 py-2.5 text-sm font-bold text-gray-600 hover:text-gray-800 hover:bg-gray-100 rounded-xl transition-colors w-full sm:w-auto cursor-pointer"
                         >
                             Cancelar
                         </button>
-                        <button 
-                            type="submit" 
+                        <button
+                            type="submit"
                             className="px-6 py-2.5 text-sm font-bold text-white bg-[#003366] hover:bg-[#002244] rounded-xl shadow-lg shadow-blue-900/10 transition-all transform active:scale-95 flex items-center justify-center gap-2 w-full sm:w-auto cursor-pointer"
                         >
                             <span className="icon-[mdi--check]"></span>
@@ -431,9 +431,9 @@ function Calendar({ appointments, currentMonth, currentYear, onPrevMonth, onNext
         if (!day) return [];
         return appointments.filter(apt => {
             const aptDate = new Date(apt.date);
-            return aptDate.getDate() === day && 
-                   aptDate.getMonth() === currentMonth && 
-                   aptDate.getFullYear() === currentYear;
+            return aptDate.getDate() === day &&
+                aptDate.getMonth() === currentMonth &&
+                aptDate.getFullYear() === currentYear;
         });
     };
 
@@ -443,19 +443,19 @@ function Calendar({ appointments, currentMonth, currentYear, onPrevMonth, onNext
             <div className="flex justify-between items-center mb-6">
                 <h2 className="text-sky-950 text-2xl font-bold">{monthNames[currentMonth]} {currentYear}</h2>
                 <div className="flex items-center gap-2">
-                    <button 
+                    <button
                         onClick={onPrevMonth}
                         className="p-2 hover:bg-blue-50 rounded-lg transition-colors cursor-pointer"
                     >
                         <span className="icon-[mdi--chevron-left] text-2xl text-[#3E7DBB]"></span>
                     </button>
-                    <button 
+                    <button
                         onClick={onToday}
                         className="px-4 py-2 text-sm font-bold text-[#3E7DBB] hover:bg-blue-50 rounded-lg transition-colors cursor-pointer"
                     >
                         Hoy
                     </button>
-                    <button 
+                    <button
                         onClick={onNextMonth}
                         className="p-2 hover:bg-blue-50 rounded-lg transition-colors cursor-pointer"
                     >
@@ -477,9 +477,9 @@ function Calendar({ appointments, currentMonth, currentYear, onPrevMonth, onNext
             <div className="grid grid-cols-7 gap-2">
                 {calendarDays.map((day, index) => {
                     const dayAppointments = getAppointmentsForDay(day);
-                    const isToday = day && 
-                        day === new Date().getDate() && 
-                        currentMonth === new Date().getMonth() && 
+                    const isToday = day &&
+                        day === new Date().getDate() &&
+                        currentMonth === new Date().getMonth() &&
                         currentYear === new Date().getFullYear();
 
                     return (
@@ -627,14 +627,14 @@ export default function CitationsClient() {
         appointments.forEach(apt => {
             const hour = apt.time;
             const hourLabel = hour === "08:00" ? "8:00 AM" :
-                             hour === "09:00" ? "9:00 AM" :
-                             hour === "10:00" ? "10:00 AM" :
-                             hour === "11:00" ? "11:00 AM" :
-                             hour === "13:00" ? "1:00 PM" :
-                             hour === "14:00" ? "2:00 PM" :
-                             hour === "15:00" ? "3:00 PM" :
-                             hour === "16:00" ? "4:00 PM" : "";
-            
+                hour === "09:00" ? "9:00 AM" :
+                    hour === "10:00" ? "10:00 AM" :
+                        hour === "11:00" ? "11:00 AM" :
+                            hour === "13:00" ? "1:00 PM" :
+                                hour === "14:00" ? "2:00 PM" :
+                                    hour === "15:00" ? "3:00 PM" :
+                                        hour === "16:00" ? "4:00 PM" : "";
+
             if (hourLabel && distribution[hourLabel] !== undefined) {
                 distribution[hourLabel]++;
             }
@@ -669,6 +669,18 @@ export default function CitationsClient() {
                     Programar Cita
                 </PrimaryButton>
             </div>
+            {/* Calendar Section */}
+            <div className="flex-1 min-h-0 overflow-y-auto">
+                <Calendar
+                    appointments={appointments}
+                    currentMonth={currentMonth}
+                    currentYear={currentYear}
+                    onPrevMonth={handlePrevMonth}
+                    onNextMonth={handleNextMonth}
+                    onToday={handleToday}
+                    onDayClick={handleDayClick}
+                />
+            </div>
 
             {/* Chart Section */}
             <div className="flex-none bg-white rounded-2xl border border-neutral-200 shadow-sm p-6">
@@ -684,18 +696,7 @@ export default function CitationsClient() {
                 />
             </div>
 
-            {/* Calendar Section */}
-            <div className="flex-1 min-h-0 overflow-y-auto">
-                <Calendar
-                    appointments={appointments}
-                    currentMonth={currentMonth}
-                    currentYear={currentYear}
-                    onPrevMonth={handlePrevMonth}
-                    onNextMonth={handleNextMonth}
-                    onToday={handleToday}
-                    onDayClick={handleDayClick}
-                />
-            </div>
+
 
             {/* Appointment Modal */}
             <AppointmentModal
