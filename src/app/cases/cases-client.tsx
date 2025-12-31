@@ -336,36 +336,8 @@ export default function CasesClient({ userRole, userCedula }: CasesClientProps) 
 
   const handleSaveEdit = async (data: CaseEditData) => {
     try {
-      const nroCaso = parseInt(data.id);
-
-      // 1. Cambiar estatus si es diferente
-      const casoActual = cases.find(c => c.id === data.id);
-      if (casoActual && casoActual.status !== data.status) {
-        // Buscar el ID del estatus
-        const estatusObj = estatusList.find((e: any) => {
-          const nombre = e.nombre_estatus?.toUpperCase() || "";
-          const statusMap: Record<string, string> = {
-            "EN_PROCESO": "EN PROCESO",
-            "ARCHIVADO": "ARCHIVADO",
-            "ENTREGADO": "ENTREGADO",
-            "ASESORIA": "ASESORÍA",
-          };
-          return nombre.includes(statusMap[data.status] || "");
-        });
-
-        if (estatusObj) {
-          await cambiarEstatus(nroCaso, estatusObj.id_estatus, "Cambio de estatus desde la interfaz", userCedula);
-        }
-      }
-
-      // 2. Asignar alumno si es diferente
-      if (casoActual && casoActual.assignedStudent !== data.assignedStudent) {
-        if (data.assignedStudentCedula && data.assignedStudentTerm) {
-          await asignarAlumno(nroCaso, data.assignedStudentCedula, data.assignedStudentTerm);
-        }
-      }
-
-      // Recargar datos para asegurar sincronización
+      // El modal ahora maneja todas las actualizaciones internamente
+      // Solo necesitamos recargar los datos
       await loadData();
     } catch (error) {
       console.error("Error saving case:", error);
@@ -850,6 +822,7 @@ export default function CasesClient({ userRole, userCedula }: CasesClientProps) 
         onSave={handleSaveEdit}
         caseData={selectedCase}
         estatusList={estatusList}
+        userCedula={userCedula}
       />
     </div>
   );
