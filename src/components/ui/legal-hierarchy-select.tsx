@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { Label } from "@/components/shadcn/label";
 import FilterSelect from "./filter-select";
 import {
@@ -70,21 +70,90 @@ export default function LegalHierarchySelect({
     const [selectedAmbito, setSelectedAmbito] = useState<string>("");
 
     const [loading, setLoading] = useState(false);
+    const lastProcessedValue = useRef<string>("");
 
     // Cargar materias al montar
     useEffect(() => {
         loadMaterias();
     }, []);
 
-    // Si hay un valor inicial, establecerlo
+    // Si hay un valor inicial, establecerlo y cargar datos dependientes
     useEffect(() => {
-        if (value && materias.length > 0) {
-            if (value.id_materia) setSelectedMateria(value.id_materia.toString());
-            if (value.num_categoria) setSelectedCategoria(value.num_categoria.toString());
-            if (value.num_subcategoria) setSelectedSubcategoria(value.num_subcategoria.toString());
-            if (value.num_ambito_legal) setSelectedAmbito(value.num_ambito_legal.toString());
+        if (!value || materias.length === 0) {
+            // Si no hay valor o las materias no están cargadas, limpiar
+            if (!value) {
+                setSelectedMateria("");
+                setSelectedCategoria("");
+                setSelectedSubcategoria("");
+                setSelectedAmbito("");
+                setCategorias([]);
+                setSubcategorias([]);
+                setAmbitos([]);
+                lastProcessedValue.current = "";
+            }
+            return;
         }
-    }, [value, materias]);
+
+        // Crear una clave única para este valor
+        const valueKey = `${value.id_materia}-${value.num_categoria}-${value.num_subcategoria}-${value.num_ambito_legal}`;
+        
+        // Solo procesar si el valor cambió
+        if (valueKey === lastProcessedValue.current) {
+            return;
+        }
+
+        const loadInitialData = async () => {
+            // Establecer materia y cargar categorías
+            if (value.id_materia) {
+                setSelectedMateria(value.id_materia.toString());
+                setLoading(true);
+                const categoriasResult = await getCategoriasByMateria(value.id_materia);
+                if (categoriasResult.success && categoriasResult.data) {
+                    setCategorias(categoriasResult.data);
+                    
+                    // Establecer categoría y cargar subcategorías
+                    if (value.num_categoria) {
+                        setSelectedCategoria(value.num_categoria.toString());
+                        const subcategoriasResult = await getSubCategoriasByCategoria(
+                            value.num_categoria,
+                            value.id_materia
+                        );
+                        if (subcategoriasResult.success && subcategoriasResult.data) {
+                            setSubcategorias(subcategoriasResult.data);
+                            
+                            // Establecer subcategoría y cargar ámbitos
+                            if (value.num_subcategoria) {
+                                setSelectedSubcategoria(value.num_subcategoria.toString());
+                                const ambitosResult = await getAmbitosBySubCategoria(
+                                    value.num_subcategoria,
+                                    value.num_categoria,
+                                    value.id_materia
+                                );
+                                if (ambitosResult.success && ambitosResult.data) {
+                                    setAmbitos(ambitosResult.data);
+                                    
+                                    // Establecer ámbito y notificar cambio completo
+                                    if (value.num_ambito_legal) {
+                                        setSelectedAmbito(value.num_ambito_legal.toString());
+                                        onChange({
+                                            id_materia: value.id_materia,
+                                            num_categoria: value.num_categoria,
+                                            num_subcategoria: value.num_subcategoria,
+                                            num_ambito_legal: value.num_ambito_legal,
+                                        });
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+                setLoading(false);
+                lastProcessedValue.current = valueKey;
+            }
+        };
+        
+        loadInitialData();
+    }, [value, materias, onChange]);
 
     const loadMaterias = async () => {
         setLoading(true);
@@ -104,6 +173,7 @@ export default function LegalHierarchySelect({
         setSubcategorias([]);
         setAmbitos([]);
         onChange(undefined);
+        lastProcessedValue.current = ""; // Reset para permitir recarga si se vuelve a seleccionar
 
         if (materiaId) {
             setLoading(true);
