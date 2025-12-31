@@ -8,7 +8,7 @@ import {
     getCaseGrowthStats,
     getStateStats,
     getMateriaDetailsStats
-} from "@/lib/actions/statistics";
+} from "@/actions/statistics";
 
 interface FilterParams {
     materia?: string;

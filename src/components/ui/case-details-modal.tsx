@@ -9,7 +9,7 @@ import {
 } from "@/components/shadcn/dialog";
 import StatusBadge from "./status-badge";
 import PrintButton from "@/app/cases/report/PrintButton";
-import { getCaseReportData } from "@/lib/actions/cases";
+import { getCaseReportData } from "@/actions/cases";
 import { getHistorialEstatus } from "@/actions/casos";
 
 interface CaseDetailsModalProps {
@@ -122,11 +122,10 @@ export default function CaseDetailsModal({
                 <button
                   key={tab.id}
                   onClick={() => setActiveTab(tab.id as any)}
-                  className={`px-4 py-2 font-semibold transition-colors border-b-2 ${
-                    activeTab === tab.id
+                  className={`px-4 py-2 font-semibold transition-colors border-b-2 ${activeTab === tab.id
                       ? "border-[#3E7DBB] text-[#3E7DBB]"
                       : "border-transparent text-gray-500 hover:text-sky-950"
-                  }`}
+                    }`}
                 >
                   <span className={`${tab.icon} mr-2`}></span>
                   {tab.label}
@@ -159,10 +158,10 @@ export default function CaseDetailsModal({
                       <p className="text-sky-950 text-lg font-semibold">
                         {caseDetails.caseInfo.fecha_caso_inicio
                           ? new Date(caseDetails.caseInfo.fecha_caso_inicio).toLocaleDateString("es-ES", {
-                              year: "numeric",
-                              month: "long",
-                              day: "numeric",
-                            })
+                            year: "numeric",
+                            month: "long",
+                            day: "numeric",
+                          })
                           : "N/A"}
                       </p>
                     </div>
@@ -173,10 +172,10 @@ export default function CaseDetailsModal({
                       <p className="text-sky-950 text-lg font-semibold">
                         {caseDetails.caseInfo.fecha_caso_final
                           ? new Date(caseDetails.caseInfo.fecha_caso_final).toLocaleDateString("es-ES", {
-                              year: "numeric",
-                              month: "long",
-                              day: "numeric",
-                            })
+                            year: "numeric",
+                            month: "long",
+                            day: "numeric",
+                          })
                           : "En proceso"}
                       </p>
                     </div>

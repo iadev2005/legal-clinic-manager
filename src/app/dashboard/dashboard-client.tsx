@@ -3,6 +3,12 @@
 import { useState, useRef, useEffect } from "react";
 import DashboardCard from "@/components/ui/DashboardCard";
 import { PieChart } from "@/components/ui/pie-chart";
+import {
+    getCaseStatusStats,
+    getHistoryofchanges,
+    getTotalSolicitantesCount,
+    getTodayAppointmentsCount,
+} from "@/actions/dashboard";
 import { type ChartConfig } from "@/components/shadcn/chart";
 import { CustomTable, type Column } from "@/components/ui/custom-table";
 import { cn } from "@/lib/utils";
@@ -396,11 +402,63 @@ function ActivityLogModal({ open, onClose, data }: ActivityLogModalProps) {
 
 // --- Main Client Component ---
 
-export default function DashboardClient() {
+interface DashboardClientProps {
+    user: any;
+}
+
+export default function DashboardClient({ user }: DashboardClientProps) {
+    const [actions, setActions] = useState<any[]>([]);
+    const [caseStatusData, setCaseStatusData] = useState<any[]>([]);
+    const [totalSolicitantes, setTotalSolicitantes] = useState<number | string>("---");
+    const [todayAppointments, setTodayAppointments] = useState<number | string>("---");
+    const [loading, setLoading] = useState(true);
+    const [error, setError] = useState<string | null>(null);
     const [viewMode, setViewMode] = useState<"overview" | "metrics">("overview");
     const [isActivityModalOpen, setIsActivityModalOpen] = useState(false);
 
-    // --- Task State Management ---
+    useEffect(() => {
+        loadData();
+    }, []);
+
+    const loadData = async () => {
+        if (!user?.cedula) return;
+
+        setLoading(true);
+        setError(null);
+        try {
+            // Cargar estadísticas globales de estatus (para la gráfica y la tarjeta de resumen)
+            const casesRes = await getCaseStatusStats();
+            if (casesRes.success) {
+                setCaseStatusData(casesRes.data || []);
+            }
+
+            // Cargar historial de cambios (acciones relacionadas al usuario)
+            const historyRes = await getHistoryofchanges(user.cedula);
+            if (historyRes.success) {
+                setActions(historyRes.data || []);
+            }
+
+            // Cargar total de solicitantes
+            const solicitantesRes = await getTotalSolicitantesCount();
+            if (solicitantesRes.success) {
+                setTotalSolicitantes(solicitantesRes.count);
+            }
+
+            // Cargar citas de hoy
+            const appointmentsRes = await getTodayAppointmentsCount(user.cedula);
+            if (appointmentsRes.success) {
+                setTodayAppointments(appointmentsRes.count);
+            }
+
+        } catch (err: any) {
+            setError(err.message || 'Error al cargar datos');
+            console.error('Error al cargar datos:', err);
+        } finally {
+            setLoading(false);
+        }
+    };
+
+    const [isModalOpen, setIsModalOpen] = useState(false);
     const [tasks, setTasks] = useState<Task[]>([
         {
             id: 1,
@@ -411,53 +469,37 @@ export default function DashboardClient() {
         },
         {
             id: 2,
-            title: "Entrevista con Solicitante",
+            title: "Revisión de Evidencia",
             caseNumber: "2024-049",
-            dueDate: new Date(new Date().setDate(new Date().getDate() + 5)),
+            dueDate: new Date(new Date().setDate(new Date().getDate() + 2)),
             completed: false,
         },
         {
             id: 3,
-            title: "Revisar Expediente en Tribunal",
+            title: "Cita con el Solicitante",
             caseNumber: "2024-052",
-            dueDate: new Date(new Date().setDate(new Date().getDate() + 20)),
-            completed: false,
-        },
-        {
-            id: 4,
-            title: "Subir Evidencias Pendientes",
-            caseNumber: "2024-044",
-            dueDate: new Date(new Date().setDate(new Date().getDate())),
+            dueDate: new Date(),
             completed: true,
         },
-        {
-            id: 5,
-            title: "Audiencia de Conciliación",
-            caseNumber: "2024-033",
-            dueDate: new Date(new Date().setDate(new Date().getDate() + 2)), // High priority
-            completed: false,
-        }
     ]);
 
-    const [isModalOpen, setIsModalOpen] = useState(false);
-
     const handleToggleTask = (id: number) => {
-        setTasks(tasks.map(t => t.id === id ? { ...t, completed: !t.completed } : t));
+        setTasks(prev => prev.map(task =>
+            task.id === id ? { ...task, completed: !task.completed } : task
+        ));
     };
 
     const handleDeleteTask = (id: number) => {
-        setTasks(tasks.filter(t => t.id !== id));
+        setTasks(prev => prev.filter(task => task.id !== id));
     };
 
-    const handleSaveTask = (newTaskData: { title: string, caseNumber: string, dueDate: Date }) => {
-        const newTask: Task = {
-            id: Date.now(),
-            title: newTaskData.title,
-            caseNumber: newTaskData.caseNumber,
-            dueDate: newTaskData.dueDate,
+    const handleSaveTask = (newTask: { title: string, caseNumber: string, dueDate: Date }) => {
+        const task: Task = {
+            id: Math.max(...tasks.map(t => t.id), 0) + 1,
+            ...newTask,
             completed: false
         };
-        setTasks([newTask, ...tasks]);
+        setTasks(prev => [...prev, task]);
     };
 
     // Helper to get priority weight (lower is higher priority)
@@ -487,87 +529,50 @@ export default function DashboardClient() {
     });
 
 
-    /* Datos de prueba estáticos */
-    const stats: DashboardStats = {
-        activeCases: 12,
-        totalApplicants: 45,
-        casesInCourt: 5,
-        pendingToday: 3,
-        casesByStatus: [
-            { status: "EN_PROCESO", _count: { status: 8 } },
-            { status: "ARCHIVADO", _count: { status: 15 } },
-            { status: "ENTREGADO", _count: { status: 10 } },
-            { status: "ASESORIA", _count: { status: 12 } },
-        ],
-    };
+    // Calulate stats from live data
+    const totalActiveCases = caseStatusData.reduce((acc, curr) => acc + curr.value, 0);
 
     const dashboardCards = [
         {
-            label: "Casos Activos:",
-            value: stats.activeCases.toString(),
+            label: "Total Casos Activos:",
+            value: totalActiveCases.toString(),
             icon: "icon-[lucide--gavel]",
             iconColor: "text-[#3E7DBB]",
             iconBgColor: "bg-blue-100",
         },
         {
-            label: "Solicitantes Registrados:",
-            value: stats.totalApplicants.toString(),
+            label: "Solicitantes:",
+            value: totalSolicitantes.toString(),
             icon: "icon-[tabler--users]",
             iconColor: "text-[#16A34A]",
             iconBgColor: "bg-[#DCFCE7]",
         },
         {
-            label: "En Tribunales:",
-            value: stats.casesInCourt.toString(),
-            icon: "icon-[mdi--justice]",
-            iconColor: "text-[#CB8C06]",
-            iconBgColor: "bg-[#FEF9C3]",
-        },
-        {
             label: "Pendientes Hoy",
-            value: stats.pendingToday.toString(),
+            value: todayAppointments.toString(),
             icon: "icon-[tabler--alert-triangle]",
             iconColor: "text-[#E03E3E]",
             iconBgColor: "bg-[#FEE2E2]",
         },
     ];
 
-    const pieChartData = stats.casesByStatus.map((item) => ({
-        status: item.status.toLowerCase(),
-        cases: item._count.status,
+    const pieChartData = caseStatusData.map((item) => ({
+        status: item.name.toLowerCase(),
+        cases: item.value,
     }));
 
     const pieChartConfig = {
         cases: { label: "Casos" },
-        en_proceso: { label: "En Proceso" },
-        archivado: { label: "Archivado" },
-        entregado: { label: "Entregado" },
-        asesoria: { label: "Asesoría" },
+        ...Object.fromEntries(caseStatusData.map(s => [
+            (s.name || 'desconocido').toLowerCase().replace(/ /g, '_'),
+            { label: s.name || 'Desconocido' }
+        ]))
     } satisfies ChartConfig;
 
-    // Extended Mock Data for Activity Log
-    const allRecentActivity = [
-        { id: 1, user: "Luis Martínez", role: "Alumno", action: "Registro Actuación Caso #2024-051", date: "Hace 10 min" },
-        { id: 2, user: "Ana Silva", role: "Alumno", action: "Carga de Documento", date: "Hace 35 min" },
-        { id: 3, user: "Dr. Briceño", role: "Profesor", action: "Aprobación de Caso", date: "Hace 1 hora" },
-        { id: 4, user: "María Pérez", role: "Coordinador", action: "Asignación de Nuevo Caso", date: "Hace 2 horas" },
-        { id: 5, user: "Carlos Ruiz", role: "Alumno", action: "Actualización de Estatus", date: "Hace 3 horas" },
-        { id: 6, user: "Sofia Castro", role: "Estudiante", action: "Entrevista Inicial", date: "Hace 4 horas" },
-        { id: 7, user: "Pedro Gomez", role: "Profesor", action: "Revisión de Informe", date: "Hace 5 horas" },
-        { id: 8, user: "Admin Sistema", role: "Coordinador", action: "Backup Diario", date: "Hace 6 horas" },
-        { id: 9, user: "Laura Diaz", role: "Alumno", action: "Cita Programada", date: "Hace 7 horas" },
-        { id: 10, user: "Juan Ortiz", role: "Estudiante", action: "Consulta Expediente", date: "Hace 8 horas" },
-        { id: 11, user: "Dra. Mendez", role: "Profesor", action: "Firma Documento", date: "Ayer" },
-        { id: 12, user: "Luis Martínez", role: "Alumno", action: "Login al Sistema", date: "Ayer" },
-        { id: 13, user: "Ana Silva", role: "Alumno", action: "Descarga Plantilla", date: "Ayer" },
-        { id: 14, user: "Carlos Ruiz", role: "Alumno", action: "Solicitud Prórroga", date: "Ayer" },
-        { id: 15, user: "María Pérez", role: "Coordinador", action: "Cierre de Caso #2023-99", date: "Hace 2 días" },
-    ];
+    // Activity Log Columns
+    const recentAccessData = actions.slice(0, 5);
 
-    // Modified to take first 5
-    const recentAccessData = allRecentActivity.slice(0, 5);
-
-    const recentAccessColumns: Column<(typeof recentAccessData)[0]>[] = [
+    const recentAccessColumns: Column<any>[] = [
         {
             header: "Usuario",
             accessorKey: "user",
@@ -579,8 +584,8 @@ export default function DashboardClient() {
             render: (item) => (
                 <span className={cn(
                     "px-2 py-0.5 rounded-md text-[10px] font-bold uppercase",
-                    item.role === "Profesor" ? "bg-purple-100 text-purple-600" :
-                        item.role === "Coordinador" ? "bg-orange-100 text-orange-600" :
+                    item.role?.includes("Profesor") ? "bg-purple-100 text-purple-600" :
+                        item.role?.includes("Coordinador") ? "bg-orange-100 text-orange-600" :
                             "bg-blue-50 text-blue-600"
                 )}>
                     {item.role}
@@ -650,7 +655,7 @@ export default function DashboardClient() {
                 {viewMode === "overview" && (
                     <div className="absolute inset-0 flex flex-col gap-5 animate-in fade-in slide-in-from-bottom-4 duration-500">
                         {/* Stats Row */}
-                        <div className="flex-none grid grid-cols-4 gap-4">
+                        <div className="flex-none grid grid-cols-3 gap-5">
                             {dashboardCards.map((card, index) => (
                                 <DashboardCard key={index} {...card} />
                             ))}
@@ -659,7 +664,7 @@ export default function DashboardClient() {
                         {/* Split Content: Table & Tasks */}
                         <div className="flex-1 min-h-0 grid grid-cols-12 gap-5">
                             {/* Recent Access Table (Left - Wider) */}
-                            <div className="col-span-8 bg-neutral-50 rounded-[24px] border border-neutral-200/50 shadow-sm p-6 flex flex-col min-h-0">
+                            <div className="col-span-12 bg-neutral-50 rounded-[24px] border border-neutral-200/50 shadow-sm p-6 flex flex-col min-h-0">
                                 <div className="flex justify-between items-center mb-4 flex-none">
                                     <h2 className="text-sky-950 text-xl font-bold flex items-center gap-2">
                                         <span className="icon-[mdi--history] text-[#3E7DBB] text-2xl"></span>
@@ -682,7 +687,8 @@ export default function DashboardClient() {
                                 </div>
                             </div>
 
-                            {/* Pending Tasks (Right) */}
+                            {/*    
+                            // Pending Tasks (Right) 
                             <div className="col-span-4 bg-neutral-50 rounded-[24px] border border-neutral-200/50 shadow-sm p-6 flex flex-col min-h-0 relative overflow-hidden">
                                 <div className="flex justify-between items-center mb-4 flex-none px-1">
                                     <h2 className="text-sky-950 text-xl font-bold flex items-center gap-2">
@@ -692,7 +698,7 @@ export default function DashboardClient() {
                                     <div className="bg-red-50 text-red-600 px-2 py-0.5 rounded-full text-xs font-bold shadow-sm border border-red-100">{tasks.filter(t => !t.completed).length}</div>
                                 </div>
 
-                                {/* Task List */}
+                                
                                 <div className="flex-1 overflow-y-auto pr-2 pl-1 flex flex-col gap-2.5 pb-2">
                                     {sortedTasks.map((task) => (
                                         <TaskCard
@@ -704,7 +710,7 @@ export default function DashboardClient() {
                                     ))}
                                 </div>
 
-                                {/* Add Task Button */}
+                                
                                 <div className="flex-none pt-2 mt-1">
                                     <button
                                         onClick={() => setIsModalOpen(true)}
@@ -715,6 +721,8 @@ export default function DashboardClient() {
                                     </button>
                                 </div>
                             </div>
+                            */}
+
                         </div>
                     </div>
                 )}
@@ -793,7 +801,7 @@ export default function DashboardClient() {
             <ActivityLogModal
                 open={isActivityModalOpen}
                 onClose={() => setIsActivityModalOpen(false)}
-                data={allRecentActivity}
+                data={actions}
             />
 
         </div>

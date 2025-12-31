@@ -2,7 +2,7 @@
 
 import { useSearchParams } from "next/navigation";
 import { useEffect, useState } from "react";
-import { getCaseReportData } from "@/lib/actions/cases";
+import { getCaseReportData } from "@/actions/cases";
 
 export default function CaseReportPage() {
     const searchParams = useSearchParams();
