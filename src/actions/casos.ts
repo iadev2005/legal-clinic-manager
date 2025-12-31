@@ -23,6 +23,12 @@ export interface Caso {
     cnt_beneficiarios: number;
 }
 
+export interface SoporteLegalData {
+    descripcion: string;
+    documento_url: string;
+    observacion?: string;
+}
+
 export interface CreateCasoData {
     cedula_solicitante: string;
     id_nucleo: number;
@@ -39,6 +45,7 @@ export interface CreateCasoData {
         cedula_profesor?: string;
         term: string;
     };
+    soportes?: SoporteLegalData[];
 }
 
 export interface BeneficiarioData {
@@ -228,6 +235,16 @@ export async function createCaso(data: CreateCasoData) {
             }
         }
 
+        // 5. Agregar soportes legales si se proporcionaron
+        if (data.soportes && data.soportes.length > 0) {
+            for (const soporte of data.soportes) {
+                await query(`
+          INSERT INTO Soportes_Legales (nro_caso, descripcion, documento_url, observacion)
+          VALUES ($1, $2, $3, $4)
+        `, [nroCaso, soporte.descripcion, soporte.documento_url, soporte.observacion || null]);
+            }
+        }
+
         await query('COMMIT');
         revalidatePath('/cases');
         return { success: true, data: casoResult.rows[0] };
@@ -235,6 +252,100 @@ export async function createCaso(data: CreateCasoData) {
         await query('ROLLBACK');
         console.error('Error al crear caso:', error);
         return { success: false, error: error.message || 'Error al crear caso' };
+    }
+}
+
+export interface UpdateCasoData {
+    cedula_solicitante?: string;
+    id_nucleo?: number;
+    id_tramite?: number;
+    id_materia?: number;
+    num_categoria?: number;
+    num_subcategoria?: number;
+    num_ambito_legal?: number;
+    sintesis_caso?: string;
+    fecha_caso_inicio?: string;
+    fecha_caso_final?: string | null;
+}
+
+export async function updateCaso(nroCaso: number, data: UpdateCasoData) {
+    try {
+        await query('BEGIN');
+
+        // Construir la consulta UPDATE dinámicamente
+        const updates: string[] = [];
+        const values: any[] = [];
+        let paramIndex = 1;
+
+        if (data.cedula_solicitante !== undefined) {
+            updates.push(`cedula_solicitante = $${paramIndex}`);
+            values.push(data.cedula_solicitante);
+            paramIndex++;
+        }
+        if (data.id_nucleo !== undefined) {
+            updates.push(`id_nucleo = $${paramIndex}`);
+            values.push(data.id_nucleo);
+            paramIndex++;
+        }
+        if (data.id_tramite !== undefined) {
+            updates.push(`id_tramite = $${paramIndex}`);
+            values.push(data.id_tramite);
+            paramIndex++;
+        }
+        if (data.id_materia !== undefined) {
+            updates.push(`id_materia = $${paramIndex}`);
+            values.push(data.id_materia);
+            paramIndex++;
+        }
+        if (data.num_categoria !== undefined) {
+            updates.push(`num_categoria = $${paramIndex}`);
+            values.push(data.num_categoria);
+            paramIndex++;
+        }
+        if (data.num_subcategoria !== undefined) {
+            updates.push(`num_subcategoria = $${paramIndex}`);
+            values.push(data.num_subcategoria);
+            paramIndex++;
+        }
+        if (data.num_ambito_legal !== undefined) {
+            updates.push(`num_ambito_legal = $${paramIndex}`);
+            values.push(data.num_ambito_legal);
+            paramIndex++;
+        }
+        if (data.sintesis_caso !== undefined) {
+            updates.push(`sintesis_caso = $${paramIndex}`);
+            values.push(data.sintesis_caso || null);
+            paramIndex++;
+        }
+        if (data.fecha_caso_inicio !== undefined) {
+            updates.push(`fecha_caso_inicio = $${paramIndex}`);
+            values.push(data.fecha_caso_inicio);
+            paramIndex++;
+        }
+        if (data.fecha_caso_final !== undefined) {
+            updates.push(`fecha_caso_final = $${paramIndex}`);
+            values.push(data.fecha_caso_final);
+            paramIndex++;
+        }
+
+        if (updates.length === 0) {
+            await query('ROLLBACK');
+            return { success: false, error: 'No hay campos para actualizar' };
+        }
+
+        // Agregar el nro_caso al final para el WHERE
+        values.push(nroCaso);
+        const sql = `UPDATE Casos SET ${updates.join(', ')} WHERE nro_caso = $${paramIndex} RETURNING *`;
+
+        const result = await query(sql, values);
+
+        await query('COMMIT');
+        revalidatePath('/cases');
+        return { success: true, data: result.rows[0] };
+    } catch (error: any) {
+        await query('ROLLBACK');
+        console.error('Error al actualizar caso:', error);
+        return { success: false, error: error.message || 'Error al actualizar caso' };
     }
 }
 

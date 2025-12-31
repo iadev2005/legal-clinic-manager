@@ -277,3 +277,5 @@
 - La estructura de código es buena y sigue patrones consistentes
 - La mayoría de las tablas de BD están siendo utilizadas
 - **Faltan principalmente funcionalidades de UI/UX para completar el CRUD**
+
+

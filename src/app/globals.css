@@ -138,3 +138,27 @@ h6 {
     @apply bg-background text-foreground;
   }
 }
+
+/* Cloudinary Upload Widget - Asegurar que esté por encima de los modales */
+#uw_modal,
+.cloudinary-uw-modal,
+[data-cloudinary-uw-modal],
+iframe[src*="cloudinary"],
+div[id*="cloudinary"],
+div[class*="cloudinary-uw"] {
+  z-index: 9999 !important;
+  pointer-events: auto !important;
+}
+
+/* Overlay del widget de Cloudinary */
+#uw_modal_backdrop,
+.cloudinary-uw-modal-backdrop,
+[data-cloudinary-uw-backdrop] {
+  z-index: 9998 !important;
+  pointer-events: auto !important;
+}
+
+/* Clase para deshabilitar pointer-events en el overlay del Dialog */
+.dialog-overlay-cloudinary-open [data-radix-dialog-overlay] {
+  pointer-events: none !important;
+}

@@ -23,9 +23,11 @@ import {
   getProfesoresDisponibles,
   type CreateCasoData,
   type BeneficiarioData,
+  type SoporteLegalData,
 } from "@/actions/casos";
 import { getSolicitantes } from "@/actions/solicitantes";
 import { getSemestres } from "@/actions/administracion";
+import CloudinaryUploadButton from "./cloudinary-upload-button";
 
 interface CaseCreateModalProps {
   open: boolean;
@@ -108,6 +110,14 @@ export default function CaseCreateModal({
       parentesco: "",
     },
   ]);
+
+  // Soportes Legales
+  interface SoporteForm {
+    descripcion: string;
+    documento_url: string;
+    observacion: string;
+  }
+  const [soportes, setSoportes] = useState<SoporteForm[]>([]);
 
   // Cargar catálogos al abrir el modal
   useEffect(() => {
@@ -239,6 +249,7 @@ export default function CaseCreateModal({
         parentesco: "",
       },
     ]);
+    setSoportes([]);
     setErrors({});
     setSubmitError(null);
   };
@@ -325,6 +336,31 @@ export default function CaseCreateModal({
     setBeneficiarios(updated);
   };
 
+  const handleAddSoporte = () => {
+    setSoportes([
+      ...soportes,
+      {
+        descripcion: "",
+        documento_url: "",
+        observacion: "",
+      },
+    ]);
+  };
+
+  const handleRemoveSoporte = (index: number) => {
+    setSoportes(soportes.filter((_, i) => i !== index));
+  };
+
+  const handleSoporteChange = (
+    index: number,
+    field: keyof SoporteForm,
+    value: string
+  ) => {
+    const updated = [...soportes];
+    updated[index] = { ...updated[index], [field]: value };
+    setSoportes(updated);
+  };
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setSubmitError(null);
@@ -362,6 +398,15 @@ export default function CaseCreateModal({
         }
       }
 
+      // Preparar datos de soportes legales
+      const soportesData: SoporteLegalData[] = soportes
+        .filter((s) => s.descripcion.trim() && s.documento_url.trim())
+        .map((s) => ({
+          descripcion: s.descripcion,
+          documento_url: s.documento_url,
+          observacion: s.observacion || undefined,
+        }));
+
       // Preparar datos del caso
       const casoData: CreateCasoData = {
         cedula_solicitante: cedulaSolicitante,
@@ -382,6 +427,7 @@ export default function CaseCreateModal({
                 term: termToUse,
               }
             : undefined,
+        soportes: soportesData.length > 0 ? soportesData : undefined,
       };
 
       const result = await createCaso(casoData);
@@ -793,6 +839,110 @@ export default function CaseCreateModal({
                 </div>
               )}
             </div>
+          </div>
+
+          {/* Soportes Legales */}
+          <div className="space-y-4 border-t pt-4">
+            <div className="flex justify-between items-center">
+              <Label className="text-sky-950 font-semibold text-lg">
+                Soportes Legales (Opcional)
+              </Label>
+              <button
+                type="button"
+                onClick={handleAddSoporte}
+                className="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg font-semibold transition-colors flex items-center gap-2"
+              >
+                <span className="icon-[mdi--plus] text-xl"></span>
+                Agregar Soporte
+              </button>
+            </div>
+
+            {soportes.map((soporte, index) => (
+              <div
+                key={index}
+                className="bg-gray-50 p-4 rounded-xl border border-gray-200 space-y-4"
+              >
+                <div className="flex justify-between items-center">
+                  <h4 className="font-semibold text-sky-950">
+                    Soporte Legal {index + 1}
+                  </h4>
+                  <button
+                    type="button"
+                    onClick={() => handleRemoveSoporte(index)}
+                    className="text-red-600 hover:text-red-800"
+                  >
+                    <span className="icon-[mdi--delete] text-xl"></span>
+                  </button>
+                </div>
+
+                <div className="space-y-4">
+                  <div className="space-y-2">
+                    <Label className="text-sm font-semibold">
+                      Descripción <span className="text-red-500">*</span>
+                    </Label>
+                    <Input
+                      value={soporte.descripcion}
+                      onChange={(e) =>
+                        handleSoporteChange(index, "descripcion", e.target.value)
+                      }
+                      placeholder="Ej: Contrato, Sentencia, etc."
+                    />
+                  </div>
+
+                  <div className="space-y-2">
+                    <Label className="text-sm font-semibold">
+                      Documento <span className="text-red-500">*</span>
+                    </Label>
+                    {!soporte.documento_url ? (
+                      <CloudinaryUploadButton
+                        onUploadSuccess={(url) =>
+                          handleSoporteChange(index, "documento_url", url)
+                        }
+                        label="Subir Documento"
+                      />
+                    ) : (
+                      <div className="bg-green-50 p-3 rounded-lg flex items-center justify-between border border-green-200">
+                        <div className="flex items-center gap-2 flex-1 min-w-0">
+                          <span className="icon-[mdi--file-check] text-xl text-green-600"></span>
+                          <span className="text-sm text-green-800 font-medium truncate">
+                            Documento subido correctamente
+                          </span>
+                        </div>
+                        <button
+                          type="button"
+                          onClick={() =>
+                            handleSoporteChange(index, "documento_url", "")
+                          }
+                          className="text-xs text-red-600 hover:underline ml-2"
+                        >
+                          Cambiar
+                        </button>
+                      </div>
+                    )}
+                  </div>
+
+                  <div className="space-y-2">
+                    <Label className="text-sm font-semibold">
+                      Observación
+                    </Label>
+                    <Textarea
+                      value={soporte.observacion}
+                      onChange={(e) =>
+                        handleSoporteChange(index, "observacion", e.target.value)
+                      }
+                      placeholder="Observaciones adicionales (opcional)"
+                      className="min-h-[60px]"
+                    />
+                  </div>
+                </div>
+              </div>
+            ))}
+
+            {soportes.length === 0 && (
+              <p className="text-sm text-sky-950/60 italic text-center py-4">
+                No hay soportes legales agregados. Puede agregarlos después de crear el caso.
+              </p>
+            )}
           </div>
 
           {/* Error general */}
