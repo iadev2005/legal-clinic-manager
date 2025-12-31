@@ -27,6 +27,7 @@ interface BarChartProps {
   dataKey: string;
   nameKey: string;
   title?: string;
+  disableAnimation?: boolean;
 }
 
 export function BarChart({
@@ -35,6 +36,7 @@ export function BarChart({
   dataKey,
   nameKey,
   title,
+  disableAnimation,
 }: BarChartProps) {
   const processedData = React.useMemo(() => {
     return data.map((item) => ({
@@ -53,19 +55,19 @@ export function BarChart({
         </CardHeader>
       )}
       <CardContent className="flex-1 pb-0">
-        <ChartContainer config={config} className="h-[250px] w-full">
+        <ChartContainer config={config} className="h-[350px] w-full">
           <RechartsBarChart data={processedData}>
             <CartesianGrid strokeDasharray="3 3" stroke="#E5E7EB" />
             <XAxis
               dataKey={nameKey}
               angle={-45}
               textAnchor="end"
-              height={80}
+              height={120}
               tick={{ fill: "#0F172A", fontSize: 12 }}
             />
             <YAxis tick={{ fill: "#0F172A", fontSize: 12 }} />
             <ChartTooltip content={<ChartTooltipContent />} />
-            <Bar dataKey={dataKey} fill="#3E7DBB" radius={[8, 8, 0, 0]} />
+            <Bar dataKey={dataKey} fill="#3E7DBB" radius={[8, 8, 0, 0]} isAnimationActive={!disableAnimation} />
           </RechartsBarChart>
         </ChartContainer>
       </CardContent>

@@ -81,6 +81,28 @@ const CustomSelect = ({ value, onChange, options, className, placeholder = "Sele
     );
 };
 
+// --- Helper Functions ---
+
+const getTypeLabel = (type: string) => {
+    const types: { [key: string]: string } = {
+        consulta: "Consulta Inicial",
+        seguimiento: "Seguimiento",
+        audiencia: "Preparación Audiencia",
+        entrega: "Entrega de Documentos",
+    };
+    return types[type] || type;
+};
+
+const getTypeColor = (type: string) => {
+    const colors: { [key: string]: string } = {
+        consulta: "bg-blue-100 text-blue-700",
+        seguimiento: "bg-green-100 text-green-700",
+        audiencia: "bg-purple-100 text-purple-700",
+        entrega: "bg-orange-100 text-orange-700",
+    };
+    return colors[type] || "bg-gray-100 text-gray-700";
+};
+
 // --- Day Details Modal ---
 
 interface DayDetailsModalProps {
@@ -109,25 +131,7 @@ function DayDetailsModal({ open, onClose, selectedDate, appointments }: DayDetai
         }).format(date);
     };
 
-    const getTypeLabel = (type: string) => {
-        const types: { [key: string]: string } = {
-            consulta: "Consulta Inicial",
-            seguimiento: "Seguimiento",
-            audiencia: "Preparación Audiencia",
-            entrega: "Entrega de Documentos",
-        };
-        return types[type] || type;
-    };
 
-    const getTypeColor = (type: string) => {
-        const colors: { [key: string]: string } = {
-            consulta: "bg-blue-100 text-blue-700",
-            seguimiento: "bg-green-100 text-green-700",
-            audiencia: "bg-purple-100 text-purple-700",
-            entrega: "bg-orange-100 text-orange-700",
-        };
-        return colors[type] || "bg-gray-100 text-gray-700";
-    };
 
     return (
         <Dialog open={open} onOpenChange={onClose}>
@@ -209,9 +213,9 @@ function DayDetailsModal({ open, onClose, selectedDate, appointments }: DayDetai
                         </div>
                     </div>
                 ) : (
-                    <div className="bg-neutral-50 border-2 border-dashed border-neutral-300 rounded-2xl p-12 text-center">
-                        <span className="icon-[mdi--calendar-blank-outline] text-6xl text-neutral-400 mb-4 block"></span>
-                        <p className="text-sky-950/60 text-lg font-semibold">
+                    <div className="bg-neutral-50 border-2 border-dashed border-neutral-300 rounded-2xl min-h-[300px] flex flex-col items-center justify-center p-8 text-center">
+                        <span className="icon-[mdi--calendar-blank-outline] text-7xl text-neutral-300 mb-4"></span>
+                        <p className="text-sky-950/60 text-xl font-semibold max-w-xs">
                             No hay citas programadas para este día
                         </p>
                     </div>
@@ -419,12 +423,21 @@ function Calendar({ appointments, currentMonth, currentYear, onPrevMonth, onNext
     const daysInMonth = getDaysInMonth(currentMonth, currentYear);
     const firstDay = getFirstDayOfMonth(currentMonth, currentYear);
 
+    // Generate 6 weeks (42 days) to ensure consistent grid height
     const calendarDays = [];
+    const totalSlots = 42; // 6 rows * 7 columns
+
+    // Pad empty slots before first day
     for (let i = 0; i < firstDay; i++) {
         calendarDays.push(null);
     }
+    // Fill days
     for (let day = 1; day <= daysInMonth; day++) {
         calendarDays.push(day);
+    }
+    // Pad empty slots after last day
+    while (calendarDays.length < totalSlots) {
+        calendarDays.push(null);
     }
 
     const getAppointmentsForDay = (day: number | null) => {
@@ -438,9 +451,9 @@ function Calendar({ appointments, currentMonth, currentYear, onPrevMonth, onNext
     };
 
     return (
-        <div className="w-full bg-white rounded-2xl border border-neutral-200 shadow-sm p-6">
+        <div className="w-full h-full flex flex-col">
             {/* Calendar Header */}
-            <div className="flex justify-between items-center mb-6">
+            <div className="flex justify-between items-center mb-4 flex-none">
                 <h2 className="text-sky-950 text-2xl font-bold">{monthNames[currentMonth]} {currentYear}</h2>
                 <div className="flex items-center gap-2">
                     <button
@@ -465,7 +478,7 @@ function Calendar({ appointments, currentMonth, currentYear, onPrevMonth, onNext
             </div>
 
             {/* Day Headers */}
-            <div className="grid grid-cols-7 gap-2 mb-2">
+            <div className="grid grid-cols-7 gap-2 mb-2 flex-none">
                 {dayNames.map((day) => (
                     <div key={day} className="text-center text-xs font-bold text-white bg-[#003366] py-2 rounded-lg">
                         {day}
@@ -474,7 +487,7 @@ function Calendar({ appointments, currentMonth, currentYear, onPrevMonth, onNext
             </div>
 
             {/* Calendar Grid */}
-            <div className="grid grid-cols-7 gap-2">
+            <div className="flex-1 grid grid-cols-7 grid-rows-6 gap-2 min-h-0">
                 {calendarDays.map((day, index) => {
                     const dayAppointments = getAppointmentsForDay(day);
                     const isToday = day &&
@@ -486,7 +499,7 @@ function Calendar({ appointments, currentMonth, currentYear, onPrevMonth, onNext
                         <div
                             key={index}
                             className={cn(
-                                "min-h-[100px] border border-neutral-200 rounded-lg p-2 transition-all",
+                                "border border-neutral-200 rounded-lg p-2 transition-all flex flex-col h-full overflow-hidden",
                                 day ? "bg-white hover:shadow-md cursor-pointer" : "bg-neutral-50",
                                 isToday && "ring-2 ring-[#3E7DBB] bg-blue-50/30"
                             )}
@@ -495,26 +508,21 @@ function Calendar({ appointments, currentMonth, currentYear, onPrevMonth, onNext
                             {day && (
                                 <>
                                     <div className={cn(
-                                        "text-sm font-bold mb-1",
+                                        "text-sm font-bold mb-1 flex-none",
                                         isToday ? "text-[#3E7DBB]" : "text-sky-950"
                                     )}>
                                         {day}
                                     </div>
-                                    <div className="space-y-1">
-                                        {dayAppointments.slice(0, 2).map((apt) => (
+                                    <div className="space-y-1 flex-1 overflow-y-auto custom-scrollbar">
+                                        {dayAppointments.map((apt) => (
                                             <div
                                                 key={apt.id}
-                                                className="text-[10px] font-semibold bg-[#3E7DBB] text-white px-2 py-1 rounded truncate"
+                                                className="text-[10px] font-semibold bg-[#3E7DBB] text-white px-2 py-1 rounded truncate w-full"
                                                 title={`${apt.time} - ${apt.caseName}`}
                                             >
-                                                {apt.time} {apt.caseName.substring(0, 15)}...
+                                                {apt.time} {apt.caseName}
                                             </div>
                                         ))}
-                                        {dayAppointments.length > 2 && (
-                                            <div className="text-[9px] font-bold text-gray-500 px-2">
-                                                +{dayAppointments.length - 2} más
-                                            </div>
-                                        )}
                                     </div>
                                 </>
                             )}
@@ -529,6 +537,7 @@ function Calendar({ appointments, currentMonth, currentYear, onPrevMonth, onNext
 // --- Main Component ---
 
 export default function CitationsClient() {
+    const [viewMode, setViewMode] = useState<"calendar" | "chart">("calendar");
     const [isModalOpen, setIsModalOpen] = useState(false);
     const [isDayDetailsOpen, setIsDayDetailsOpen] = useState(false);
     const [selectedDate, setSelectedDate] = useState<Date | null>(null);
@@ -646,6 +655,41 @@ export default function CitationsClient() {
         }));
     }, [appointments]);
 
+    const currentMonthStats = useMemo(() => {
+        const now = new Date();
+        const currentMonth = now.getMonth();
+        const currentYear = now.getFullYear();
+
+        const thisMonthAppointments = appointments.filter(apt => {
+            const date = new Date(apt.date);
+            return date.getMonth() === currentMonth && date.getFullYear() === currentYear;
+        });
+
+        const futureAppointments = appointments.filter(apt => {
+            const aptDate = new Date(apt.date);
+            // Reset hours to compare just dates if needed, but for "upcoming" generally exact time matters
+            // Since appointments have times, we should construct a full date object
+            // The `date` property seems to be just the date part in some contexts? 
+            // initialization: date: new Date(2025, 10, 7) -> this defaults to 00:00:00
+            // But we have a `time` string "10:00".
+            // Let's just compare dates for simplicity as per existing logic in sidebars usually
+            return aptDate >= now || (aptDate.toDateString() === now.toDateString());
+        });
+
+        // Actually, let's look at how the sidebar filters it:
+        // Line 776: .filter(a => new Date(a.date) >= new Date())
+        // I will copy that logic for consistency.
+        const upcomingAppointments = appointments.filter(a => new Date(a.date) >= new Date());
+
+        upcomingAppointments.sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime());
+
+        return {
+            total: thisMonthAppointments.length,
+            upcomingCount: upcomingAppointments.length,
+            next: upcomingAppointments.length > 0 ? upcomingAppointments[0] : null
+        };
+    }, [appointments]);
+
     const chartConfig = {
         count: { label: "Citas" },
     } satisfies ChartConfig;
@@ -662,41 +706,169 @@ export default function CitationsClient() {
                         Programa y consulta la agenda de citas por caso, alumno o profesor.
                     </p>
                 </div>
-                <PrimaryButton
-                    onClick={() => setIsModalOpen(true)}
-                    icon="icon-[mdi--calendar-plus]"
-                >
-                    Programar Cita
-                </PrimaryButton>
-            </div>
-            {/* Calendar Section */}
-            <div className="flex-1 min-h-0 overflow-y-auto">
-                <Calendar
-                    appointments={appointments}
-                    currentMonth={currentMonth}
-                    currentYear={currentYear}
-                    onPrevMonth={handlePrevMonth}
-                    onNextMonth={handleNextMonth}
-                    onToday={handleToday}
-                    onDayClick={handleDayClick}
-                />
+
+                <div className="flex items-center gap-4">
+                    {/* View Toggle (Segmented Control) */}
+                    <div className="bg-neutral-100 p-1.5 rounded-xl flex gap-1 shadow-inner h-fit">
+                        <button
+                            onClick={() => setViewMode("calendar")}
+                            className={cn(
+                                "px-6 py-2 rounded-[10px] text-sm font-bold flex items-center gap-2 transition-all duration-300 cursor-pointer",
+                                viewMode === "calendar"
+                                    ? "bg-white text-[#003366] shadow-sm"
+                                    : "text-gray-400 hover:text-gray-600 hover:bg-white/50"
+                            )}
+                        >
+                            <span className="icon-[mdi--calendar-month] text-lg"></span>
+                            Calendario
+                        </button>
+                        <button
+                            onClick={() => setViewMode("chart")}
+                            className={cn(
+                                "px-6 py-2 rounded-[10px] text-sm font-bold flex items-center gap-2 transition-all duration-300 cursor-pointer",
+                                viewMode === "chart"
+                                    ? "bg-white text-[#003366] shadow-sm"
+                                    : "text-gray-400 hover:text-gray-600 hover:bg-white/50"
+                            )}
+                        >
+                            <span className="icon-[mdi--chart-bar] text-lg"></span>
+                            Estadísticas
+                        </button>
+                    </div>
+
+                    <PrimaryButton
+                        onClick={() => setIsModalOpen(true)}
+                        icon="icon-[mdi--calendar-plus]"
+                    >
+                        Programar Cita
+                    </PrimaryButton>
+                </div>
             </div>
 
-            {/* Chart Section */}
-            <div className="flex-none bg-white rounded-2xl border border-neutral-200 shadow-sm p-6">
-                <h2 className="text-sky-950 text-xl font-bold mb-4 flex items-center gap-2">
-                    <span className="icon-[mdi--chart-bar] text-[#3E7DBB] text-2xl"></span>
-                    Distribución de Citas por Hora (Semana Actual)
-                </h2>
-                <BarChart
-                    data={hourlyDistribution}
-                    config={chartConfig}
-                    dataKey="count"
-                    nameKey="hour"
-                />
+            {/* Stats Cards */}
+            <div className="grid grid-cols-3 gap-6 flex-none">
+                <div className="bg-white p-5 rounded-2xl border border-neutral-200 shadow-sm flex items-center gap-4">
+                    <div className="p-3 bg-blue-50 rounded-xl">
+                        <span className="icon-[mdi--calendar-check] text-3xl text-[#3E7DBB]"></span>
+                    </div>
+                    <div>
+                        <p className="text-sm font-semibold text-gray-500">Citas este Mes</p>
+                        <p className="text-3xl font-bold text-sky-950">{currentMonthStats.total}</p>
+                    </div>
+                </div>
+                <div className="bg-white p-5 rounded-2xl border border-neutral-200 shadow-sm flex items-center gap-4">
+                    <div className="p-3 bg-purple-50 rounded-xl">
+                        <span className="icon-[mdi--clock-fast] text-3xl text-purple-600"></span>
+                    </div>
+                    <div>
+                        <p className="text-sm font-semibold text-gray-500">Próximas Citas</p>
+                        <p className="text-3xl font-bold text-sky-950">{currentMonthStats.upcomingCount}</p>
+                    </div>
+                </div>
+                <div className="bg-white p-5 rounded-2xl border border-neutral-200 shadow-sm flex items-center gap-4 relative overflow-hidden">
+                    <div className="absolute right-0 top-0 h-full w-1 bg-[#3E7DBB]"></div>
+                    <div className="p-3 bg-orange-50 rounded-xl">
+                        <span className="icon-[mdi--calendar-star] text-3xl text-orange-500"></span>
+                    </div>
+                    <div>
+                        <p className="text-sm font-semibold text-gray-500">Siguiente Cita</p>
+                        {currentMonthStats.next ? (
+                            <div>
+                                <p className="text-lg font-bold text-sky-950 leading-tight">
+                                    {new Date(currentMonthStats.next.date).toLocaleDateString('es-ES', { day: 'numeric', month: 'short' })} • {currentMonthStats.next.time}
+                                </p>
+                                <p className="text-xs text-gray-500 truncate max-w-[150px]">{currentMonthStats.next.caseName}</p>
+                            </div>
+                        ) : (
+                            <p className="text-lg font-bold text-gray-400">Sin programar</p>
+                        )}
+                    </div>
+                </div>
             </div>
 
+            {/* Content Area */}
+            <div className="flex-1 min-h-0 bg-white rounded-2xl border border-neutral-200 shadow-sm p-6 overflow-hidden relative">
+                {/* Calendar View */}
+                {viewMode === "calendar" && (
+                    <div className="h-full w-full animate-in fade-in slide-in-from-left-4 duration-300 grid grid-cols-12 gap-8">
+                        {/* Main Calendar */}
+                        <div className="col-span-9 h-full flex flex-col">
+                            <Calendar
+                                appointments={appointments}
+                                currentMonth={currentMonth}
+                                currentYear={currentYear}
+                                onPrevMonth={handlePrevMonth}
+                                onNextMonth={handleNextMonth}
+                                onToday={handleToday}
+                                onDayClick={handleDayClick}
+                            />
+                        </div>
 
+                        {/* Upcoming Sidebar */}
+                        <div className="col-span-3 h-full flex flex-col border-l border-neutral-100 pl-6">
+                            <h3 className="text-sky-950 font-bold text-xl mb-4 flex items-center gap-2">
+                                <span className="icon-[mdi--playlist-clock] text-[#3E7DBB]"></span>
+                                Agenda Próxima
+                            </h3>
+                            <div className="flex-1 overflow-y-auto pr-2 space-y-3 custom-scrollbar">
+                                {appointments
+                                    .filter(a => new Date(a.date) >= new Date())
+                                    .sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime())
+                                    .slice(0, 5) // Show next 5
+                                    .map(apt => (
+                                        <div key={apt.id} className="group p-3 rounded-xl hover:bg-neutral-50 border border-transparent hover:border-neutral-200 transition-all cursor-pointer">
+                                            <div className="flex justify-between items-start mb-2">
+                                                <div className="bg-white border border-neutral-200 rounded-lg px-2 py-1 text-center shadow-sm min-w-[50px]">
+                                                    <span className="block text-xs font-bold text-gray-500 uppercase">
+                                                        {new Date(apt.date).toLocaleDateString('es-ES', { month: 'short' })}
+                                                    </span>
+                                                    <span className="block text-xl font-bold text-sky-950 leading-none">
+                                                        {new Date(apt.date).getDate()}
+                                                    </span>
+                                                </div>
+                                                <span className={cn("text-[10px] font-bold px-2 py-0.5 rounded-full border border-opacity-50", getTypeColor(apt.type))}>
+                                                    {getTypeLabel(apt.type)}
+                                                </span>
+                                            </div>
+                                            <h4 className="font-bold text-sky-950 truncate" title={apt.caseName}>
+                                                {apt.caseName}
+                                            </h4>
+                                            <p className="text-xs text-gray-500 font-medium flex items-center gap-1 mt-1">
+                                                <span className="icon-[mdi--clock-outline]"></span>
+                                                {apt.time} • {apt.participants}
+                                            </p>
+                                        </div>
+                                    ))}
+                                {appointments.filter(a => new Date(a.date) >= new Date()).length === 0 && (
+                                    <div className="text-center py-10 opacity-50">
+                                        <span className="icon-[mdi--calendar-blank] text-4xl mb-2"></span>
+                                        <p>No hay citas próximas</p>
+                                    </div>
+                                )}
+                            </div>
+
+                        </div>
+                    </div>
+                )}
+
+                {/* Chart View */}
+                {viewMode === "chart" && (
+                    <div className="h-full w-full flex flex-col animate-in fade-in slide-in-from-right-4 duration-300">
+                        <h2 className="text-sky-950 text-2xl font-bold mb-6 flex items-center gap-2">
+                            <span className="icon-[mdi--chart-bar] text-[#3E7DBB] text-3xl"></span>
+                            Distribución Semanal de Citas
+                        </h2>
+                        <div className="flex-1 flex items-center justify-center p-10">
+                            <BarChart
+                                data={hourlyDistribution}
+                                config={chartConfig}
+                                dataKey="count"
+                                nameKey="hour"
+                            />
+                        </div>
+                    </div>
+                )}
+            </div>
 
             {/* Appointment Modal */}
             <AppointmentModal
