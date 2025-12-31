@@ -22,6 +22,7 @@ interface CaseGrowthChartProps {
     dataKey: string
     nameKey: string
     title?: string
+    disableAnimation?: boolean
 }
 
 export function CaseGrowthChart({
@@ -29,7 +30,8 @@ export function CaseGrowthChart({
     config,
     dataKey,
     nameKey,
-    title
+    title,
+    disableAnimation
 }: CaseGrowthChartProps) {
     return (
         <Card className="flex flex-col border-none shadow-none bg-transparent">
@@ -43,8 +45,8 @@ export function CaseGrowthChart({
                         data={data}
                         margin={{
                             top: 20,
-                            left: 12,
-                            right: 12,
+                            left: 24,
+                            right: 24,
                         }}
                     >
                         <CartesianGrid vertical={false} />
@@ -53,7 +55,7 @@ export function CaseGrowthChart({
                             tickLine={false}
                             axisLine={false}
                             tickMargin={8}
-                            tickFormatter={(value) => value.slice(0, 3)}
+                            interval={0}
                         />
                         <ChartTooltip
                             cursor={false}
@@ -64,6 +66,7 @@ export function CaseGrowthChart({
                             type="natural"
                             stroke={config[dataKey]?.color || "#3E7DBB"}
                             strokeWidth={2}
+                            isAnimationActive={!disableAnimation}
                             dot={{
                                 fill: config[dataKey]?.color || "#3E7DBB",
                             }}

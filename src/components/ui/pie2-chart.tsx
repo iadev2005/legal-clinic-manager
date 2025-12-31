@@ -23,6 +23,7 @@ interface PieChartProps {
     nameKey: string
     title?: string
     innerRadius?: number
+    disableAnimation?: boolean
 }
 
 const BLUE_PALETTE = [
@@ -34,7 +35,7 @@ const BLUE_PALETTE = [
     "#0A233C",
 ]
 
-export function Pie2Chart({ data, config, dataKey, nameKey, title, innerRadius = 0 }: PieChartProps) {
+export function Pie2Chart({ data, config, dataKey, nameKey, title, innerRadius = 0, disableAnimation }: PieChartProps) {
     const processedData = React.useMemo(() => {
         return data.map((item, index) => ({
             ...item,
@@ -66,6 +67,7 @@ export function Pie2Chart({ data, config, dataKey, nameKey, title, innerRadius =
                             innerRadius={innerRadius}
                             strokeWidth={2}
                             label
+                            isAnimationActive={!disableAnimation}
                         />
                     </RechartsPieChart>
                 </ChartContainer>

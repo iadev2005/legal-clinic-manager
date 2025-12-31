@@ -54,6 +54,7 @@ export default function ReportPage() {
                             dataKey="value"
                             nameKey="name"
                             title="Crecimiento de Casos"
+                            disableAnimation
                         />
                     </div>
                     <div className="p-5 ">
@@ -63,6 +64,7 @@ export default function ReportPage() {
                             dataKey="value"
                             nameKey="name"
                             title="Distribución por Parroquia"
+                            disableAnimation
                         />
                     </div>
                     <div className="p-5 ">
@@ -72,6 +74,7 @@ export default function ReportPage() {
                             dataKey="value"
                             nameKey="name"
                             title="Estado de los Casos"
+                            disableAnimation
                         />
                     </div>
 
@@ -87,6 +90,7 @@ export default function ReportPage() {
                         config={{ value: { label: "Cantidad" } }}
                         dataKey="value"
                         nameKey="name"
+                        disableAnimation
                     />
                     {/* AgeChart -> BarChart */}
                     <BarChart
@@ -95,6 +99,7 @@ export default function ReportPage() {
                         config={{ value: { label: "Cantidad" } }}
                         dataKey="value"
                         nameKey="name"
+                        disableAnimation
                     />
                 </div>
                 <div className="grid grid-cols-1">
@@ -104,6 +109,7 @@ export default function ReportPage() {
                         config={{ value: { label: "Cantidad" } }}
                         dataKey="value"
                         nameKey="name"
+                        disableAnimation
                     />
                 </div>
             </div>
@@ -117,6 +123,7 @@ export default function ReportPage() {
                         config={{ value: { label: "Cantidad" } }}
                         dataKey="value"
                         nameKey="name"
+                        disableAnimation
                     />
 
                     <Pie2Chart
@@ -125,6 +132,7 @@ export default function ReportPage() {
                         config={{ value: { label: "Cantidad" } }}
                         dataKey="value"
                         nameKey="name"
+                        disableAnimation
                     />
                 </div>
             </div>

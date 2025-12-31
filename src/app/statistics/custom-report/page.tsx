@@ -146,6 +146,7 @@ export default function CustomReportPage() {
                                     dataKey="value"
                                     nameKey="name"
                                     title="Materia Civil - Sucesiones"
+                                    disableAnimation
                                 />
                             </div>
                             <div className="p-3">
@@ -155,6 +156,7 @@ export default function CustomReportPage() {
                                     dataKey="value"
                                     nameKey="name"
                                     title=" Materia Civil - Familia (Tribunales Ordinarios)"
+                                    disableAnimation
                                 />
                             </div>
                             <div className="p-3">
@@ -163,7 +165,9 @@ export default function CustomReportPage() {
                                     config={commonConfig}
                                     dataKey="value"
                                     nameKey="name"
-                                    title="Materia Civil - Familia (Protección)" />
+                                    title="Materia Civil - Familia (Protección)"
+                                    disableAnimation
+                                />
                             </div>
                         </div>
                     </div>
@@ -181,14 +185,16 @@ export default function CustomReportPage() {
                                     config={commonConfig}
                                     dataKey="value"
                                     nameKey="category"
-                                    title="Materia Civil - Personas" />
+                                    title="Materia Civil - Personas"
+                                    disableAnimation
+                                />
                             </div>
                             <div className="p-3 col-span-1">
                                 <Pie2Chart
-                                    data={civilBienes} config={commonConfig} dataKey="value" nameKey="name" title="Materia Civil - Bienes" />
+                                    data={civilBienes} config={commonConfig} dataKey="value" nameKey="name" title="Materia Civil - Bienes" disableAnimation />
                             </div>
                             <div className="p-3 col-span-1">
-                                <Pie2Chart data={civilContrato} config={commonConfig} dataKey="value" nameKey="name" title="Materia Civil - Contratos" />
+                                <Pie2Chart data={civilContrato} config={commonConfig} dataKey="value" nameKey="name" title="Materia Civil - Contratos" disableAnimation />
                             </div>
                         </div>
                     </div>
@@ -201,10 +207,10 @@ export default function CustomReportPage() {
                         </header>
                         <div className="grid grid-cols-1 md:grid-cols-2">
                             <div className="p-3 col-span-2">
-                                <Pie2Chart data={penal} config={commonConfig} dataKey="value" nameKey="name" title="Materia Penal" />
+                                <Pie2Chart data={penal} config={commonConfig} dataKey="value" nameKey="name" title="Materia Penal" disableAnimation />
                             </div>
                             <div className="p-3 col-span-2">
-                                <Pie2Chart data={laboral} config={commonConfig} dataKey="value" nameKey="name" title="Materia Laboral" />
+                                <Pie2Chart data={laboral} config={commonConfig} dataKey="value" nameKey="name" title="Materia Laboral" disableAnimation />
                             </div>
                         </div>
                     </div>
@@ -217,13 +223,13 @@ export default function CustomReportPage() {
                         </header>
                         <div className="grid grid-cols-1 md:grid-cols-2">
                             <div className="p-3 col-span-2">
-                                <BarChart data={otrosBar} config={commonConfig} dataKey="value" nameKey="category" title="Otros Casos" />
+                                <BarChart data={otrosBar} config={commonConfig} dataKey="value" nameKey="category" title="Otros Casos" disableAnimation />
                             </div>
                             <div className="p-3 col-span-1">
-                                <Pie2Chart data={mercantil} config={commonConfig} dataKey="value" nameKey="name" title="Materia Mercantil" />
+                                <Pie2Chart data={mercantil} config={commonConfig} dataKey="value" nameKey="name" title="Materia Mercantil" disableAnimation />
                             </div>
                             <div className="p-3 col-span-1">
-                                <Pie2Chart data={porMateria} config={commonConfig} dataKey="value" nameKey="name" title="Reporte de Casos por Materia" />
+                                <Pie2Chart data={porMateria} config={commonConfig} dataKey="value" nameKey="name" title="Reporte de Casos por Materia" disableAnimation />
                             </div>
                         </div>
                     </div>
@@ -236,10 +242,10 @@ export default function CustomReportPage() {
                         </header>
                         <div className="grid grid-cols-1 md:grid-cols-2">
                             <div className="p-3 col-span-2">
-                                <BarChart data={genero} config={commonConfig} dataKey="value" nameKey="category" title="Clasificación por Género" />
+                                <BarChart data={genero} config={commonConfig} dataKey="value" nameKey="category" title="Clasificación por Género" disableAnimation />
                             </div>
                             <div className="p-3 col-span-2">
-                                <BarChart data={estado} config={commonConfig} dataKey="value" nameKey="category" title="Usuario por Estado" />
+                                <BarChart data={estado} config={commonConfig} dataKey="value" nameKey="category" title="Usuario por Estado" disableAnimation />
                             </div>
                         </div>
                     </div>
@@ -252,7 +258,7 @@ export default function CustomReportPage() {
                         </header>
                         <div className="grid grid-cols-1 md:grid-cols-2">
                             <div className="p-3 col-span-2">
-                                <BarChart data={parroquia} config={commonConfig} dataKey="value" nameKey="category" title="Usuario por Parroquia" />
+                                <BarChart data={parroquia} config={commonConfig} dataKey="value" nameKey="category" title="Usuario por Parroquia" disableAnimation />
                             </div>
                         </div>
                     </div>
