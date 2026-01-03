@@ -13,6 +13,7 @@ import {
     getMaterias, getSemestres
 } from "@/actions/administracion";
 import { getParroquias, getEstados, getMunicipiosByEstado } from "@/actions/solicitantes";
+import Pagination from "@/components/ui/pagination";
 
 
 export default function Administration() {
@@ -154,12 +155,18 @@ export default function Administration() {
     // Limpiar selección cuando cambia la pestaña activa
     useEffect(() => {
         setSelectedItems([]);
+        setCurrentPage(1);
     }, [activeTab]);
 
     // Limpiar selección cuando se aplican filtros
     useEffect(() => {
         setSelectedItems([]);
+        setCurrentPage(1);
     }, [searchTerm, filtroRol, filtroEstatus, filtroMateria, filtroCategoria, filtroEstado, filtroMunicipio]);
+
+    // Pagination State
+    const [currentPage, setCurrentPage] = useState(1);
+    const ITEMS_PER_PAGE = 10;
 
     // Modal States
     const [adminModalOpen, setAdminModalOpen] = useState(false);
@@ -342,12 +349,12 @@ export default function Administration() {
 
     // Columns definitions
     const ManagementUserColumns: Column<typeof users[0]>[] = [
-        { header: "ID", accessorKey: "id", className: "font-bold px-4 leading-tight" },
-        { header: "Usuario", accessorKey: "user", className: "font-bold pl-6" },
+        { header: "ID", accessorKey: "id", className: "font-bold px-2 py-2 text-xs leading-tight" },
+        { header: "Usuario", accessorKey: "user", className: "font-bold pl-2 py-2 text-sm" },
         {
             header: "Rol",
             accessorKey: "role",
-            className: "text-center",
+            className: "text-center py-2",
             render: (row) => {
                 const role = row.role;
                 let badgeClass = "bg-gray-100 text-gray-800"; // default
@@ -362,18 +369,18 @@ export default function Administration() {
 
                 return (
                     <div className="flex justify-center">
-                        <span className={`px-4 py-1 rounded-full font-bold text-sm ${badgeClass}`}>
+                        <span className={`px-2 py-0.5 rounded-full font-bold text-xs ${badgeClass}`}>
                             {role}
                         </span>
                     </div>
                 );
             }
         },
-        { header: "Correo", accessorKey: "correo", className: "text-center" },
+        { header: "Correo", accessorKey: "correo", className: "text-center text-xs py-2" },
         {
             header: "Estatus",
             accessorKey: "status",
-            className: "text-center",
+            className: "text-center py-2",
             render: (row) => {
                 const status = row.status;
                 let badgeClass = "bg-gray-100 text-gray-800"; // default
@@ -386,7 +393,7 @@ export default function Administration() {
 
                 return (
                     <div className="flex justify-center">
-                        <span className={`px-4 py-1 rounded-full font-bold text-sm ${badgeClass}`}>
+                        <span className={`px-2 py-0.5 rounded-full font-bold text-xs ${badgeClass}`}>
                             {status}
                         </span>
                     </div>
@@ -413,13 +420,13 @@ export default function Administration() {
                     </button>
                 </div>
             ),
-            className: "text-gray-400 font-semibold text-base pl-6",
+            className: "text-gray-400 font-semibold text-sm pl-2 py-2",
         }
     ];
 
     const GenericColumns: Column<{ id: string; nombre: string }>[] = [
-        { header: "ID", accessorKey: "id", className: "font-bold px-4 leading-tight" },
-        { header: "Nombre", accessorKey: "nombre", className: "font-bold pl-6" },
+        { header: "ID", accessorKey: "id", className: "font-bold px-2 py-2 text-xs leading-tight" },
+        { header: "Nombre", accessorKey: "nombre", className: "font-bold pl-2 py-2 text-sm" },
         {
             header: "Accion",
             render: (row) => (
@@ -440,7 +447,7 @@ export default function Administration() {
                     </button>
                 </div>
             ),
-            className: "text-gray-400 font-semibold text-base pl-6",
+            className: "text-gray-400 font-semibold text-sm pl-2 py-2",
         },
     ];
 
@@ -586,7 +593,14 @@ export default function Administration() {
         return { data: filteredData, columns };
     };
 
-    const { data, columns } = getTableData();
+    const { data: fullFilteredData, columns } = getTableData();
+
+    // Pagination Logic
+    const totalPages = Math.ceil(fullFilteredData.length / ITEMS_PER_PAGE);
+    const paginatedData = fullFilteredData.slice(
+        (currentPage - 1) * ITEMS_PER_PAGE,
+        currentPage * ITEMS_PER_PAGE
+    );
 
     if (loading) {
         return (
@@ -609,14 +623,14 @@ export default function Administration() {
     }
 
     return (
-        <div className="w-full h-screen min-h-screen bg-neutral-50 inline-flex justify-start items-center overflow-hidden">
-            <div className="w-full h-full p-6 overflow-y-auto">
-                <div className="self-stretch flex flex-col justify-start items-start">
+        <div className="w-full h-screen min-h-screen bg-neutral-50 flex flex-col justify-start items-center overflow-hidden">
+            <div className="w-full h-full p-6 flex flex-col overflow-hidden">
+                <div className="self-stretch flex flex-col justify-start items-start flex-none">
                     <h1 className="self-stretch justify-start text-sky-950 text-6xl font-semibold">Administración</h1>
                     <h1 className="self-stretch justify-start text-[#325B84] text-2xl font-semibold">Gestiona las cuentas de los usuarios, roles y las maestras del sistemas. </h1>
                 </div>
 
-                <div className="self-stretch w-full p-7 mt-6 bg-neutral-50 rounded-[30px] shadow-[0px_0px_15.5px_0px_rgba(0,0,0,0.25)] inline-flex flex-col justify-start items-start gap-4">
+                <div className="self-stretch w-full p-7 mt-6 bg-neutral-50 rounded-[30px] shadow-[0px_0px_15.5px_0px_rgba(0,0,0,0.25)] flex flex-col justify-start items-start gap-4 flex-1 min-h-0 overflow-hidden">
                     <div className="flex gap-4 w-full justify-center">
                         <button
                             onClick={() => {
@@ -827,20 +841,45 @@ export default function Administration() {
                     </div>
 
                     {/* Contador de resultados */}
-                    {(searchTerm || filtroRol || filtroEstatus || filtroMateria || filtroCategoria || filtroEstado || filtroMunicipio) && (
-                        <div className="text-sm text-sky-950 font-medium mb-2">
-                            Mostrando {data.length} resultado{data.length !== 1 ? 's' : ''} (filtrados)
+                    <div className="flex justify-between items-center mb-2 px-2">
+                        <div className="text-sm text-sky-950 font-medium">
+                            Mostrando {paginatedData.length} de {fullFilteredData.length} registros
                         </div>
-                    )}
+                    </div>
 
-                    <CustomTable
-                        key={activeTab}
-                        data={data as any}
-                        columns={columns as any}
-                        enableSelection={true}
-                        onSelectionChange={setSelectedItems}
-                        selectedItems={selectedItems}
-                    />
+                    <div className="flex-1 min-h-0 w-full overflow-hidden flex flex-col bg-white rounded-2xl shadow-sm border border-neutral-100">
+                        {paginatedData.length === 0 ? (
+                            <div className="flex flex-col items-center justify-center flex-1 py-12 overflow-y-auto">
+                                <span className="icon-[mdi--database-off] text-4xl text-neutral-300 mb-2"></span>
+                                <p className="text-neutral-400">No se encontraron registros</p>
+                            </div>
+                        ) : (
+                            <div className="flex-1 w-full overflow-hidden">
+                                <CustomTable
+                                    key={activeTab}
+                                    data={paginatedData as any}
+                                    columns={columns as any}
+                                    enableSelection={true}
+                                    onSelectionChange={setSelectedItems}
+                                    selectedItems={selectedItems}
+                                    className="h-full"
+                                    minRows={10}
+                                />
+                            </div>
+                        )}
+                    </div>
+
+                    <div className="self-stretch py-2">
+                        {fullFilteredData.length > 0 && (
+                            <Pagination
+                                currentPage={currentPage}
+                                totalPages={totalPages}
+                                onPageChange={setCurrentPage}
+                                itemsPerPage={ITEMS_PER_PAGE}
+                                totalItems={fullFilteredData.length}
+                            />
+                        )}
+                    </div>
                 </div>
             </div>
 
