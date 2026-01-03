@@ -422,10 +422,10 @@ export default function CaseCreateModal({
         asignacion:
           asignarAlumno || asignarProfesor
             ? {
-                cedula_alumno: asignarAlumno ? cedulaAlumno : undefined,
-                cedula_profesor: asignarProfesor ? cedulaProfesor : undefined,
-                term: termToUse,
-              }
+              cedula_alumno: asignarAlumno ? cedulaAlumno : undefined,
+              cedula_profesor: asignarProfesor ? cedulaProfesor : undefined,
+              term: termToUse,
+            }
             : undefined,
         soportes: soportesData.length > 0 ? soportesData : undefined,
       };

@@ -660,15 +660,15 @@ export default function CaseEditModal({
                 options={
                   estatusList.length > 0
                     ? estatusList.map((e) => ({
-                        value: mapEstatusToFrontend(e.nombre_estatus),
-                        label: e.nombre_estatus,
-                      }))
+                      value: mapEstatusToFrontend(e.nombre_estatus),
+                      label: e.nombre_estatus,
+                    }))
                     : [
-                        { value: "EN_PROCESO", label: "En Proceso" },
-                        { value: "ENTREGADO", label: "Entregado" },
-                        { value: "ARCHIVADO", label: "Archivado" },
-                        { value: "ASESORIA", label: "Asesoría" },
-                      ]
+                      { value: "EN_PROCESO", label: "En Proceso" },
+                      { value: "ENTREGADO", label: "Entregado" },
+                      { value: "ARCHIVADO", label: "Archivado" },
+                      { value: "ASESORIA", label: "Asesoría" },
+                    ]
                 }
               />
             </div>

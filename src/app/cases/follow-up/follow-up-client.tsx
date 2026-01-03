@@ -232,264 +232,364 @@ export default function FollowUpClient() {
     const documentsDisplay = caseDetails?.supports?.map((doc: any) => ({
         id: doc.id_soporte,
         name: doc.descripcion || "Documento",
-        type: "pdf" // Placeholder type
+        type: "pdf", // Placeholder type
+        url: doc.documento_url // Correct property from API
     })) || [];
 
-    const historyDisplay = caseDetails?.actions?.map((action: any) => ({
-        id: action.id_accion,
+    const actionsDisplay = caseDetails?.actions?.map((action: any) => ({
+        id: `action-${action.id_accion}`,
         type: action.titulo_accion || "Actuación",
+        dateObj: new Date(action.fecha_realizacion),
         date: new Date(action.fecha_realizacion).toLocaleDateString("es-ES", { day: '2-digit', month: 'long', year: 'numeric' }),
         author: action.nombres ? `${action.nombres} ${action.apellidos}` : "Usuario",
-        description: action.observacion || ""
+        description: action.observacion || "",
+        isStatusChange: false
     })) || [];
+
+    const statusDisplay = statusHistory.map((status: any, index: number) => ({
+        id: `status-${index}`,
+        type: "Cambio de Estatus",
+        dateObj: new Date(status.fecha_registro),
+        date: new Date(status.fecha_registro).toLocaleDateString("es-ES", { day: '2-digit', month: 'long', year: 'numeric' }),
+        author: status.usuario_nombre || "Sistema",
+        description: `Nuevo estatus: ${status.nombre_estatus}${status.motivo ? `.\nMotivo: ${status.motivo}` : ""}`,
+        isStatusChange: true
+    })) || [];
+
+    const historyDisplay = [...actionsDisplay, ...statusDisplay].sort((a, b) => b.dateObj.getTime() - a.dateObj.getTime());
 
     // Add status history to display if needed, or mix them. Usually actions are separate from status changes.
     // For now we use the 'actions' (Bitácora) as the main history timeline per the mock.
 
     const historyPreview = historyDisplay.slice(0, 3);
 
-    if (!selectedCaseId || isLoadingDetails || !caseDetails) {
-        return (
-            <div className="w-full h-full flex items-center justify-center bg-neutral-50">
-                <div className="flex flex-col items-center gap-4">
-                    <span className="icon-[svg-spinners--180-ring-with-bg] text-4xl text-[#3E7DBB]"></span>
-                    <p className="text-sky-950/60 font-medium">Cargando expediente...</p>
-                </div>
-            </div>
-        );
-    }
+    // Loading State Logic handled in render below to keep header visible
+
 
     return (
         <div className="w-full h-full flex flex-col overflow-hidden">
             {/* Header */}
-            <div className="flex-none px-8 pt-8 pb-6 bg-white border-b border-neutral-200">
-                <h1 className="text-sky-950 text-5xl font-bold tracking-tight">
-                    Gestión de Casos
-                </h1>
-                <p className="text-[#325B84] text-lg font-medium mt-2">
-                    Visualiza el historial de actuaciones, citas y recaudos de un caso específico.
-                </p>
+            <div className="flex-none px-8 pt-8 pb-6 bg-white border-b border-neutral-200 flex justify-between items-center">
+                <div>
+                    <h1 className="text-sky-950 text-5xl font-bold tracking-tight">
+                        Gestión de Casos
+                    </h1>
+                    <p className="text-[#325B84] text-lg font-medium mt-2">
+                        Visualiza el historial de actuaciones, citas y recaudos de un caso específico.
+                    </p>
+                </div>
+                <button
+                    onClick={() => router.push('/cases')}
+                    className="px-8 py-4 bg-[#003366] hover:bg-[#002244] text-white text-lg font-bold rounded-xl transition-all hover:scale-105 shadow-sm hover:shadow-md cursor-pointer flex items-center gap-3"
+                >
+                    <span className="icon-[mdi--arrow-left] text-2xl"></span>
+                    Volver a Casos
+                </button>
             </div>
 
             {/* Main Content */}
             <div className="flex-1 min-h-0 overflow-y-auto bg-neutral-50 p-8">
-                {/* Case Selected View */}
-                <div className="max-w-7xl mx-auto">
-                    {/* Case Header */}
-                    <div className="flex items-center justify-between mb-6">
-                        <div className="flex flex-col">
-                            <h2 className="text-sky-950 text-3xl font-bold flex items-center gap-2">
-                                <span className="icon-[mdi--clipboard-text-clock-outline] text-3xl text-[#3E7DBB]"></span>
-                                Seguimiento y Control
-                            </h2>
-                            <h3 className="text-sky-950/60 text-xl font-medium mt-1">
-                                Expediente #{selectedCaseId}
-                            </h3>
+                {(!selectedCaseId || isLoadingDetails || !caseDetails) ? (
+                    <div className="w-full h-full flex items-center justify-center">
+                        <div className="flex flex-col items-center gap-4">
+                            <span className="icon-[svg-spinners--180-ring-with-bg] text-4xl text-[#3E7DBB]"></span>
+                            <p className="text-sky-950/60 font-medium">Cargando expediente...</p>
                         </div>
-                        <button
-                            onClick={() => router.push('/cases')}
-                            className="px-5 py-2.5 bg-[#003366] hover:bg-[#002244] text-white text-sm font-bold rounded-xl transition-colors cursor-pointer flex items-center gap-2"
-                        >
-                            <span className="icon-[mdi--arrow-left] text-lg"></span>
-                            Volver a Casos
-                        </button>
                     </div>
+                ) : (
+                    /* Case Selected View */
+                    <div className="max-w-7xl mx-auto">
+                        {/* Case Header */}
+                        <div className="flex items-center justify-between mb-6">
+                            <div className="flex flex-col">
+                                <h2 className="text-sky-950 text-3xl font-bold flex items-center gap-2">
+                                    <span className="icon-[mdi--clipboard-text-clock-outline] text-3xl text-[#3E7DBB]"></span>
+                                    Seguimiento y Control
+                                </h2>
+                                <h3 className="text-sky-950/60 text-xl font-medium mt-1">
+                                    Expediente #{selectedCaseId}
+                                </h3>
+                            </div>
+                        </div>
 
-                    {/* Grid Layout */}
-                    <div className="grid grid-cols-3 gap-6">
-                        {/* Left Column */}
-                        <div className="col-span-1 space-y-6">
-                            {/* Case Details Card */}
-                            <div className="bg-white rounded-2xl border-2 border-neutral-200 p-6 shadow-sm">
-                                <div className="flex items-center justify-between mb-4">
-                                    <h3 className="text-sky-950 text-xl font-bold">
-                                        Detalles del Caso:
+                        {/* Grid Layout */}
+                        <div className="grid grid-cols-3 gap-6">
+                            {/* Left Column */}
+                            <div className="col-span-1 space-y-6">
+                                {/* Case Details Card */}
+                                <div className="bg-white rounded-2xl border-2 border-neutral-200 p-6 shadow-sm">
+                                    <div className="flex items-center justify-between mb-4">
+                                        <h3 className="text-sky-950 text-xl font-bold">
+                                            Detalles del Caso:
+                                        </h3>
+                                        <button
+                                            onClick={() => setIsDetailsModalOpen(true)}
+                                            className="text-sm font-bold text-[#3E7DBB] hover:underline uppercase tracking-wide cursor-pointer flex items-center gap-1"
+                                        >
+                                            <span className="icon-[mdi--eye-plus-outline] text-lg"></span>
+                                            Ver Todo
+                                        </button>
+                                    </div>
+                                    <div className="space-y-3">
+                                        <div>
+                                            <div className="text-sky-950/60 text-sm font-medium mb-1">Beneficiario:</div>
+                                            <div className="text-sky-950 font-bold">
+                                                {caseDetails?.caseInfo?.solicitante_nombres} {caseDetails?.caseInfo?.solicitante_apellidos}
+                                            </div>
+                                        </div>
+                                        <div>
+                                            <div className="text-sky-950/60 text-sm font-medium mb-1">Materia:</div>
+                                            <div className="text-sky-950 font-bold">{caseDetails?.caseInfo?.nombre_materia}</div>
+                                        </div>
+                                        <div>
+                                            <div className="text-sky-950/60 text-sm font-medium mb-1">Profesor Supervisor:</div>
+                                            <div className="text-sky-950 font-bold">
+                                                {caseDetails?.supervisors?.[0] ? `${caseDetails.supervisors[0].nombres} ${caseDetails.supervisors[0].apellidos}` : "Sin Asignar"}
+                                            </div>
+                                        </div>
+                                        <div>
+                                            <div className="text-sky-950/60 text-sm font-medium mb-1">Alumno Asignado:</div>
+                                            <div className="text-sky-950 font-bold">
+                                                {caseDetails?.students?.[0] ? `${caseDetails.students[0].nombres} ${caseDetails.students[0].apellidos}` : "Sin Asignar"}
+                                            </div>
+                                        </div>
+                                        <div>
+                                            <div className="text-sky-950/60 text-sm font-medium mb-1">Estatus:</div>
+                                            <span className="inline-flex items-center px-3 py-1 rounded-full text-xs font-bold bg-yellow-100 text-yellow-700">
+                                                <span className="icon-[mdi--circle] text-[8px] mr-1.5"></span>
+                                                {caseDetails?.caseInfo?.estatus_actual || "Desconocido"}
+                                            </span>
+                                        </div>
+                                    </div>
+                                </div>
+
+                                {/* Beneficiaries Card */}
+                                <div className="bg-white rounded-2xl border-2 border-neutral-200 p-6 shadow-sm">
+                                    <h3 className="text-sky-950 text-xl font-bold mb-4">
+                                        Beneficiarios:
                                     </h3>
-                                    <button
-                                        onClick={() => setIsDetailsModalOpen(true)}
-                                        className="text-sm font-bold text-[#3E7DBB] hover:underline uppercase tracking-wide cursor-pointer flex items-center gap-1"
-                                    >
-                                        <span className="icon-[mdi--eye-plus-outline] text-lg"></span>
-                                        Ver Todo
-                                    </button>
+                                    <div className="space-y-3">
+                                        {caseDetails?.beneficiaries && caseDetails.beneficiaries.length > 0 ? (
+                                            caseDetails.beneficiaries.map((ben: any, idx: number) => (
+                                                <div key={idx} className="p-3 bg-pink-50 rounded-xl border border-pink-100">
+                                                    <div className="flex items-center gap-2 mb-1">
+                                                        <span className="icon-[mdi--account] text-pink-600 text-lg"></span>
+                                                        <span className="font-bold text-sky-950 text-sm">
+                                                            {ben.nombres} {ben.apellidos}
+                                                        </span>
+                                                    </div>
+                                                    <div className="text-xs text-sky-950/70 ml-6">
+                                                        <span className="font-semibold">C.I:</span> {ben.cedula_beneficiario}
+                                                    </div>
+                                                    <div className="text-xs text-sky-950/70 ml-6">
+                                                        <span className="font-semibold">Parentesco:</span> {ben.parentesco || "N/A"}
+                                                    </div>
+                                                </div>
+                                            ))
+                                        ) : (
+                                            <p className="text-gray-400 text-sm">No hay beneficiarios registrados.</p>
+                                        )}
+                                    </div>
                                 </div>
-                                <div className="space-y-3">
-                                    <div>
-                                        <div className="text-sky-950/60 text-sm font-medium mb-1">Beneficiario:</div>
-                                        <div className="text-sky-950 font-bold">
-                                            {caseDetails?.caseInfo?.solicitante_nombres} {caseDetails?.caseInfo?.solicitante_apellidos}
+
+                                {/* Legal Details Card */}
+                                <div className="bg-white rounded-2xl border-2 border-neutral-200 p-6 shadow-sm">
+                                    <h3 className="text-sky-950 text-xl font-bold mb-4">
+                                        Detalles Legales:
+                                    </h3>
+                                    <div className="space-y-3">
+                                        <div>
+                                            <div className="text-sky-950/60 text-sm font-medium mb-1">Trámite:</div>
+                                            <div className="text-sky-950 font-bold text-sm">{caseDetails?.caseInfo?.nombre_tramite || "N/A"}</div>
+                                        </div>
+                                        <div>
+                                            <div className="text-sky-950/60 text-sm font-medium mb-1">Núcleo:</div>
+                                            <div className="text-sky-950 font-bold text-sm">{caseDetails?.caseInfo?.nombre_nucleo || "N/A"}</div>
+                                        </div>
+                                        <div>
+                                            <div className="text-sky-950/60 text-sm font-medium mb-1">Ámbito:</div>
+                                            <div className="text-sky-950 font-bold text-sm">{caseDetails?.caseInfo?.nombre_ambito_legal || "N/A"}</div>
+                                        </div>
+                                        <div>
+                                            <div className="text-sky-950/60 text-sm font-medium mb-1">Inicio del Caso:</div>
+                                            <div className="text-sky-950 font-bold text-sm">
+                                                {caseDetails?.caseInfo?.fecha_caso_inicio
+                                                    ? new Date(caseDetails.caseInfo.fecha_caso_inicio).toLocaleDateString("es-ES")
+                                                    : "N/A"}
+                                            </div>
                                         </div>
                                     </div>
-                                    <div>
-                                        <div className="text-sky-950/60 text-sm font-medium mb-1">Materia:</div>
-                                        <div className="text-sky-950 font-bold">{caseDetails?.caseInfo?.nombre_materia}</div>
+                                </div>
+
+                                {/* Upcoming Appointments Card */}
+                                <div className="bg-white rounded-2xl border-2 border-neutral-200 p-6 shadow-sm">
+                                    <h3 className="text-sky-950 text-xl font-bold mb-4">
+                                        Próximas Citas:
+                                    </h3>
+                                    <div className="space-y-3">
+                                        {appointmentsDisplay.length > 0 ? appointmentsDisplay.map((appointment: any) => (
+                                            <div key={appointment.id} className="flex items-start gap-3 p-3 bg-blue-50 rounded-xl">
+                                                <span className="icon-[mdi--calendar-clock] text-[#3E7DBB] text-2xl flex-none mt-0.5"></span>
+                                                <div className="flex-1 min-w-0">
+                                                    <div className="text-sky-950 font-bold text-sm mb-1">
+                                                        {appointment.title}
+                                                    </div>
+                                                    <div className="text-sky-950/60 text-xs font-medium">
+                                                        {appointment.date} - {appointment.time}
+                                                    </div>
+                                                </div>
+                                            </div>
+                                        )) : <p className="text-gray-400 text-sm">No hay citas próximas.</p>}
                                     </div>
-                                    <div>
-                                        <div className="text-sky-950/60 text-sm font-medium mb-1">Profesor Supervisor:</div>
-                                        <div className="text-sky-950 font-bold">
-                                            {caseDetails?.supervisors?.[0] ? `${caseDetails.supervisors[0].nombres} ${caseDetails.supervisors[0].apellidos}` : "Sin Asignar"}
-                                        </div>
-                                    </div>
-                                    <div>
-                                        <div className="text-sky-950/60 text-sm font-medium mb-1">Alumno Asignado:</div>
-                                        <div className="text-sky-950 font-bold">
-                                            {caseDetails?.students?.[0] ? `${caseDetails.students[0].nombres} ${caseDetails.students[0].apellidos}` : "Sin Asignar"}
-                                        </div>
-                                    </div>
-                                    <div>
-                                        <div className="text-sky-950/60 text-sm font-medium mb-1">Estatus:</div>
-                                        <span className="inline-flex items-center px-3 py-1 rounded-full text-xs font-bold bg-yellow-100 text-yellow-700">
-                                            <span className="icon-[mdi--circle] text-[8px] mr-1.5"></span>
-                                            {caseDetails?.caseInfo?.estatus_actual || "Desconocido"}
-                                        </span>
+                                </div>
+
+                                {/* Soportes Legales Section */}
+                                <div className="bg-white rounded-2xl border-2 border-neutral-200 p-6 shadow-sm">
+                                    <h3 className="text-sky-950 text-xl font-bold mb-4">
+                                        Soportes Legales:
+                                    </h3>
+                                    <div className="space-y-3">
+                                        {documentsDisplay.length > 0 ? documentsDisplay.map((doc: any) => (
+                                            doc.url ? (
+                                                <a
+                                                    key={doc.id}
+                                                    href={doc.url}
+                                                    target="_blank"
+                                                    rel="noopener noreferrer"
+                                                    className="group flex items-center justify-between p-3 bg-neutral-50 rounded-xl border border-neutral-200 hover:border-[#3E7DBB] hover:bg-blue-50/50 transition-all cursor-pointer shadow-sm hover:shadow-md"
+                                                >
+                                                    <div className="flex items-center gap-3 overflow-hidden">
+                                                        <div className="w-10 h-10 rounded-lg bg-white border border-neutral-200 flex items-center justify-center flex-none group-hover:bg-[#3E7DBB] group-hover:border-[#3E7DBB] transition-colors">
+                                                            <span className="icon-[mdi--file-document-outline] text-[#3E7DBB] text-2xl group-hover:text-white transition-colors"></span>
+                                                        </div>
+                                                        <div className="flex flex-col overflow-hidden">
+                                                            <span className="text-sky-950 text-sm font-bold truncate group-hover:text-[#003366] transition-colors" title={doc.name}>
+                                                                {doc.name}
+                                                            </span>
+                                                            <span className="text-sky-950/40 text-xs font-medium group-hover:text-[#3E7DBB] transition-colors">
+                                                                Clic para ver documento
+                                                            </span>
+                                                        </div>
+                                                    </div>
+                                                    <span className="icon-[mdi--open-in-new] text-neutral-300 text-xl group-hover:text-[#3E7DBB] transition-colors"></span>
+                                                </a>
+                                            ) : (
+                                                <div key={doc.id} className="group flex items-center justify-between p-3 bg-neutral-50 rounded-xl border border-neutral-200 opacity-60">
+                                                    <div className="flex items-center gap-3 overflow-hidden">
+                                                        <div className="w-10 h-10 rounded-lg bg-white border border-neutral-200 flex items-center justify-center flex-none">
+                                                            <span className="icon-[mdi--file-document-outline] text-neutral-400 text-2xl"></span>
+                                                        </div>
+                                                        <div className="flex flex-col overflow-hidden">
+                                                            <span className="text-sky-950 text-sm font-bold truncate" title={doc.name}>
+                                                                {doc.name}
+                                                            </span>
+                                                            <span className="text-sky-950/40 text-xs font-medium">No disponible</span>
+                                                        </div>
+                                                    </div>
+                                                </div>
+                                            )
+                                        )) : (
+                                            <div className="text-center py-8 bg-neutral-50 rounded-xl border border-dashed border-neutral-200">
+                                                <span className="icon-[mdi--file-document-remove-outline] text-4xl text-neutral-300 mb-2"></span>
+                                                <p className="text-sky-950/40 text-sm font-medium">No hay soportes registrados.</p>
+                                            </div>
+                                        )}
                                     </div>
                                 </div>
                             </div>
 
-                            {/* Upcoming Appointments Card */}
-                            <div className="bg-white rounded-2xl border-2 border-neutral-200 p-6 shadow-sm">
-                                <h3 className="text-sky-950 text-xl font-bold mb-4">
-                                    Próximas Citas:
-                                </h3>
-                                <div className="space-y-3">
-                                    {appointmentsDisplay.length > 0 ? appointmentsDisplay.map((appointment: any) => (
-                                        <div key={appointment.id} className="flex items-start gap-3 p-3 bg-blue-50 rounded-xl">
-                                            <span className="icon-[mdi--calendar-clock] text-[#3E7DBB] text-2xl flex-none mt-0.5"></span>
-                                            <div className="flex-1 min-w-0">
-                                                <div className="text-sky-950 font-bold text-sm mb-1">
-                                                    {appointment.title}
-                                                </div>
-                                                <div className="text-sky-950/60 text-xs font-medium">
-                                                    {appointment.date} - {appointment.time}
-                                                </div>
-                                            </div>
+                            {/* Right Column */}
+                            <div className="col-span-2 space-y-6">
+                                {/* Register New Action Card */}
+                                <div className="bg-white rounded-2xl border-2 border-neutral-200 p-6 shadow-sm">
+                                    <h3 className="text-sky-950 text-xl font-bold mb-4">
+                                        Registrar Nueva Actuación:
+                                    </h3>
+                                    <div className="space-y-4">
+                                        <div>
+                                            <textarea
+                                                placeholder="Síntesis del problema..."
+                                                value={newActionProblem}
+                                                onChange={(e) => setNewActionProblem(e.target.value)}
+                                                className="w-full px-4 py-3 bg-neutral-50 rounded-xl border-2 border-neutral-200 text-sky-950 text-sm font-medium placeholder:text-sky-950/40 focus:outline-none focus:border-[#3E7DBB] focus:bg-white transition-all resize-none h-24"
+                                            />
                                         </div>
-                                    )) : <p className="text-gray-400 text-sm">No hay citas próximas.</p>}
-                                </div>
-                            </div>
+                                        <div>
+                                            <textarea
+                                                placeholder="Orientación dada por el alumno..."
+                                                value={newActionOrientation}
+                                                onChange={(e) => setNewActionOrientation(e.target.value)}
+                                                className="w-full px-4 py-3 bg-neutral-50 rounded-xl border-2 border-neutral-200 text-sky-950 text-sm font-medium placeholder:text-sky-950/40 focus:outline-none focus:border-[#3E7DBB] focus:bg-white transition-all resize-none h-24"
+                                            />
+                                        </div>
+                                        <div className="flex gap-3">
 
-                            {/* Documents Card */}
-                            <div className="bg-white rounded-2xl border-2 border-neutral-200 p-6 shadow-sm">
-                                <h3 className="text-sky-950 text-xl font-bold mb-4">
-                                    Recaudos Consignados:
-                                </h3>
-                                <div className="space-y-2 mb-4">
-                                    {documentsDisplay.length > 0 ? documentsDisplay.map((doc: any) => (
-                                        <div key={doc.id} className="flex items-center justify-between p-3 bg-neutral-50 rounded-lg border border-neutral-200">
-                                            <div className="flex items-center gap-2">
-                                                <span className="icon-[mdi--file-pdf-box] text-red-500 text-xl"></span>
-                                                <span className="text-sky-950 text-sm font-medium">{doc.name}</span>
-                                            </div>
-                                            <button className="text-sky-950/40 hover:text-[#3E7DBB] transition-colors cursor-pointer">
-                                                <span className="icon-[mdi--download] text-xl"></span>
+                                            <button
+                                                onClick={handleSaveAction}
+                                                className="flex-1 px-5 py-2.5 bg-[#003366] hover:bg-[#002244] text-white text-sm font-bold rounded-xl transition-colors cursor-pointer flex items-center justify-center gap-2"
+                                            >
+                                                <span className="icon-[mdi--content-save] text-lg"></span>
+                                                Guardar Actuación
                                             </button>
                                         </div>
-                                    )) : <p className="text-gray-400 text-sm">No hay documentos cargados.</p>}
+                                    </div>
                                 </div>
-                                <button className="w-full py-3 bg-[#003366] hover:bg-[#002244] text-white text-sm font-bold rounded-xl transition-colors cursor-pointer flex items-center justify-center gap-2">
-                                    <span className="icon-[mdi--upload] text-lg"></span>
-                                    Subir Documentos
-                                </button>
-                            </div>
-                        </div>
 
-                        {/* Right Column */}
-                        <div className="col-span-2 space-y-6">
-                            {/* Register New Action Card */}
-                            <div className="bg-white rounded-2xl border-2 border-neutral-200 p-6 shadow-sm">
-                                <h3 className="text-sky-950 text-xl font-bold mb-4">
-                                    Registrar Nueva Actuación:
-                                </h3>
-                                <div className="space-y-4">
-                                    <div>
-                                        <textarea
-                                            placeholder="Síntesis del problema..."
-                                            value={newActionProblem}
-                                            onChange={(e) => setNewActionProblem(e.target.value)}
-                                            className="w-full px-4 py-3 bg-neutral-50 rounded-xl border-2 border-neutral-200 text-sky-950 text-sm font-medium placeholder:text-sky-950/40 focus:outline-none focus:border-[#3E7DBB] focus:bg-white transition-all resize-none h-24"
-                                        />
-                                    </div>
-                                    <div>
-                                        <textarea
-                                            placeholder="Orientación dada por el alumno..."
-                                            value={newActionOrientation}
-                                            onChange={(e) => setNewActionOrientation(e.target.value)}
-                                            className="w-full px-4 py-3 bg-neutral-50 rounded-xl border-2 border-neutral-200 text-sky-950 text-sm font-medium placeholder:text-sky-950/40 focus:outline-none focus:border-[#3E7DBB] focus:bg-white transition-all resize-none h-24"
-                                        />
-                                    </div>
-                                    <div className="flex gap-3">
+                                {/* Action History Timeline */}
+                                <div className="bg-white rounded-2xl border-2 border-neutral-200 p-6 shadow-sm">
+                                    <div className="flex items-center justify-between mb-6">
+                                        <h3 className="text-sky-950 text-xl font-bold">
+                                            Historial de Actuaciones:
+                                        </h3>
                                         <button
-                                            onClick={handleAttachFile}
-                                            className="px-5 py-2.5 bg-neutral-100 hover:bg-neutral-200 text-sky-950 text-sm font-bold rounded-xl transition-colors cursor-pointer flex items-center gap-2"
+                                            onClick={() => setIsHistoryModalOpen(true)}
+                                            className="text-sm font-bold text-[#3E7DBB] hover:underline uppercase tracking-wide cursor-pointer flex items-center gap-1"
                                         >
-                                            <span className="icon-[mdi--paperclip] text-lg"></span>
-                                            Adjuntar
-                                        </button>
-                                        <button
-                                            onClick={handleSaveAction}
-                                            className="flex-1 px-5 py-2.5 bg-[#003366] hover:bg-[#002244] text-white text-sm font-bold rounded-xl transition-colors cursor-pointer flex items-center justify-center gap-2"
-                                        >
-                                            <span className="icon-[mdi--content-save] text-lg"></span>
-                                            Guardar Actuación
+                                            <span className="icon-[mdi--eye-outline] text-lg"></span>
+                                            Ver Todo
                                         </button>
                                     </div>
-                                </div>
-                            </div>
 
-                            {/* Action History Timeline */}
-                            <div className="bg-white rounded-2xl border-2 border-neutral-200 p-6 shadow-sm">
-                                <div className="flex items-center justify-between mb-6">
-                                    <h3 className="text-sky-950 text-xl font-bold">
-                                        Historial de Actuaciones:
-                                    </h3>
-                                    <button
-                                        onClick={() => setIsHistoryModalOpen(true)}
-                                        className="text-sm font-bold text-[#3E7DBB] hover:underline uppercase tracking-wide cursor-pointer flex items-center gap-1"
-                                    >
-                                        <span className="icon-[mdi--eye-outline] text-lg"></span>
-                                        Ver Todo
-                                    </button>
-                                </div>
-
-                                <div className="space-y-6">
-                                    {historyPreview.length > 0 ? historyPreview.map((action: any, index: number) => (
-                                        <div key={action.id} className="flex gap-4">
-                                            {/* Timeline Icon */}
-                                            <div className="flex flex-col items-center">
-                                                <div className="w-10 h-10 rounded-full bg-blue-50 border-2 border-[#3E7DBB] flex items-center justify-center flex-none">
-                                                    <span className="icon-[mdi--file-document-outline] text-[#3E7DBB] text-lg"></span>
-                                                </div>
-                                                {index < historyPreview.length - 1 && (
-                                                    <div className="w-0.5 flex-1 bg-neutral-200 my-2"></div>
-                                                )}
-                                            </div>
-
-                                            {/* Action Content */}
-                                            <div className="flex-1 pb-6">
-                                                <div className="flex items-start justify-between mb-2">
-                                                    <div>
-                                                        <h4 className="text-sky-950 font-bold text-base mb-1">
-                                                            {action.type}
-                                                        </h4>
-                                                        <p className="text-sky-950/60 text-xs font-medium">
-                                                            {action.date}
-                                                        </p>
+                                    <div className="space-y-6">
+                                        {historyPreview.length > 0 ? historyPreview.map((action: any, index: number) => (
+                                            <div key={action.id} className="flex gap-4">
+                                                {/* Timeline Icon */}
+                                                <div className="flex flex-col items-center">
+                                                    <div className={`w-10 h-10 rounded-full border-2 flex items-center justify-center flex-none ${action.isStatusChange ? "bg-yellow-50 border-yellow-500" : "bg-blue-50 border-[#3E7DBB]"}`}>
+                                                        <span className={`text-lg ${action.isStatusChange ? "icon-[mdi--swap-horizontal] text-yellow-600" : "icon-[mdi--file-document-outline] text-[#3E7DBB]"}`}></span>
                                                     </div>
-                                                    <span className="px-3 py-1 bg-blue-50 text-[#3E7DBB] text-xs font-bold rounded-full">
-                                                        {action.author}
-                                                    </span>
+                                                    {index < historyPreview.length - 1 && (
+                                                        <div className="w-0.5 flex-1 bg-neutral-200 my-2"></div>
+                                                    )}
                                                 </div>
-                                                <p className="text-sky-950/80 text-sm leading-relaxed whitespace-pre-wrap">
-                                                    {action.description}
-                                                </p>
+
+                                                {/* Action Content */}
+                                                <div className="flex-1 pb-6">
+                                                    <div className="flex items-start justify-between mb-2">
+                                                        <div>
+                                                            <h4 className="text-sky-950 font-bold text-base mb-1">
+                                                                {action.type}
+                                                            </h4>
+                                                            <p className="text-sky-950/60 text-xs font-medium">
+                                                                {action.date}
+                                                            </p>
+                                                        </div>
+                                                        <span className="px-3 py-1 bg-blue-50 text-[#3E7DBB] text-xs font-bold rounded-full">
+                                                            {action.author}
+                                                        </span>
+                                                    </div>
+                                                    <p className="text-sky-950/80 text-sm leading-relaxed whitespace-pre-wrap">
+                                                        {action.description}
+                                                    </p>
+                                                </div>
                                             </div>
-                                        </div>
-                                    )) : <p className="text-gray-400 text-sm">No hay historial disponible.</p>}
+                                        )) : <p className="text-gray-400 text-sm">No hay historial disponible.</p>}
+                                    </div>
                                 </div>
                             </div>
                         </div>
                     </div>
-                </div>
+                )}
             </div>
 
             {/* History Modal */}

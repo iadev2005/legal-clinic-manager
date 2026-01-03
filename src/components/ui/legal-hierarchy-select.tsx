@@ -96,7 +96,7 @@ export default function LegalHierarchySelect({
 
         // Crear una clave única para este valor
         const valueKey = `${value.id_materia}-${value.num_categoria}-${value.num_subcategoria}-${value.num_ambito_legal}`;
-        
+
         // Solo procesar si el valor cambió
         if (valueKey === lastProcessedValue.current) {
             return;
@@ -110,7 +110,7 @@ export default function LegalHierarchySelect({
                 const categoriasResult = await getCategoriasByMateria(value.id_materia);
                 if (categoriasResult.success && categoriasResult.data) {
                     setCategorias(categoriasResult.data);
-                    
+
                     // Establecer categoría y cargar subcategorías
                     if (value.num_categoria) {
                         setSelectedCategoria(value.num_categoria.toString());
@@ -120,7 +120,7 @@ export default function LegalHierarchySelect({
                         );
                         if (subcategoriasResult.success && subcategoriasResult.data) {
                             setSubcategorias(subcategoriasResult.data);
-                            
+
                             // Establecer subcategoría y cargar ámbitos
                             if (value.num_subcategoria) {
                                 setSelectedSubcategoria(value.num_subcategoria.toString());
@@ -131,7 +131,7 @@ export default function LegalHierarchySelect({
                                 );
                                 if (ambitosResult.success && ambitosResult.data) {
                                     setAmbitos(ambitosResult.data);
-                                    
+
                                     // Establecer ámbito y notificar cambio completo
                                     if (value.num_ambito_legal) {
                                         setSelectedAmbito(value.num_ambito_legal.toString());
@@ -151,7 +151,7 @@ export default function LegalHierarchySelect({
                 lastProcessedValue.current = valueKey;
             }
         };
-        
+
         loadInitialData();
     }, [value, materias, onChange]);
 
@@ -259,7 +259,7 @@ export default function LegalHierarchySelect({
                 />
             </div>
 
-            <div className="space-y-2">
+            <div className={`space-y-2 transition-opacity duration-300 ${!selectedMateria ? "opacity-50" : "opacity-100"}`}>
                 <Label htmlFor="categoria" className="text-sky-950 font-semibold">
                     Categoría {required && <span className="text-red-500">*</span>}
                 </Label>
@@ -279,7 +279,7 @@ export default function LegalHierarchySelect({
                 />
             </div>
 
-            <div className="space-y-2">
+            <div className={`space-y-2 transition-opacity duration-300 ${!selectedCategoria ? "opacity-50" : "opacity-100"}`}>
                 <Label htmlFor="subcategoria" className="text-sky-950 font-semibold">
                     Subcategoría {required && <span className="text-red-500">*</span>}
                 </Label>
@@ -299,7 +299,7 @@ export default function LegalHierarchySelect({
                 />
             </div>
 
-            <div className="space-y-2">
+            <div className={`space-y-2 transition-opacity duration-300 ${!selectedSubcategoria ? "opacity-50" : "opacity-100"}`}>
                 <Label htmlFor="ambito" className="text-sky-950 font-semibold">
                     Ámbito Legal {required && <span className="text-red-500">*</span>}
                 </Label>
