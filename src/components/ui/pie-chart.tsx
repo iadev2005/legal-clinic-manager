@@ -52,7 +52,7 @@ export function PieChart({ data, config, dataKey, nameKey, title, innerRadius = 
             <CardContent className="flex-1 pb-0 pt-0">
                 <ChartContainer
                     config={config}
-                    className="mx-auto aspect-square max-h-[250px] min-w-[250px] -mt-10 -mb-2"
+                    className="mx-auto aspect-square max-h-[250px] min-w-[250px]"
                 >
                     <RechartsPieChart>
                         <ChartTooltip
@@ -69,7 +69,7 @@ export function PieChart({ data, config, dataKey, nameKey, title, innerRadius = 
                     </RechartsPieChart>
                 </ChartContainer>
             </CardContent>
-            <div className="flex flex-wrap justify-center gap-x-4 gap-y-1 -mt-5 mb-2 max-w-[240px] mx-auto">
+            <div className="flex flex-wrap justify-center gap-x-4 gap-y-1 mt-4 max-w-[240px] mx-auto">
                 {processedData.map((entry, index) => {
                     const key = entry[nameKey] as string
                     return (

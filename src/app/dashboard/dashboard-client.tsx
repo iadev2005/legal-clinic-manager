@@ -564,7 +564,7 @@ export default function DashboardClient({ user }: DashboardClientProps) {
     ];
 
     const pieChartData = caseStatusData.map((item) => ({
-        status: item.name.toLowerCase(),
+        status: (item.name || 'desconocido').toLowerCase().replace(/ /g, '_'),
         cases: item.value,
     }));
 
@@ -572,7 +572,7 @@ export default function DashboardClient({ user }: DashboardClientProps) {
         cases: { label: "Casos" },
         ...Object.fromEntries(caseStatusData.map(s => [
             (s.name || 'desconocido').toLowerCase().replace(/ /g, '_'),
-            { label: s.name || 'Desconocido' }
+            { label: (s.name || 'Desconocido').charAt(0).toUpperCase() + (s.name || 'Desconocido').slice(1).toLowerCase() }
         ]))
     } satisfies ChartConfig;
 
@@ -613,8 +613,13 @@ export default function DashboardClient({ user }: DashboardClientProps) {
         },
     ];
 
+    // Calculate top 2 statuses for dynamic comment
+    const topStatuses = [...caseStatusData]
+        .sort((a, b) => b.value - a.value)
+        .slice(0, 2);
+
     return (
-        <div className="w-full h-full p-6 flex flex-col gap-5 overflow-hidden font-sans">
+        <div className="w-full h-full p-8 flex flex-col gap-4 overflow-hidden font-sans">
             {/* Header & Toggle Container */}
             <div className="flex-none flex justify-between items-end">
                 <div className="flex flex-col">
@@ -754,20 +759,6 @@ export default function DashboardClient({ user }: DashboardClientProps) {
                                         Nuestra clínica jurídica promueve el acceso a la justicia para todos, brindando asesoría legal gratuita y fortaleciendo las instituciones.
                                     </p>
                                 </div>
-                                <div className="grid grid-cols-3 gap-8 mt-8 border-t border-white/20 pt-8 w-full">
-                                    <div>
-                                        <div className="text-3xl font-bold">142</div>
-                                        <div className="text-blue-200 text-sm uppercase tracking-wider font-semibold">Casos Atendidos</div>
-                                    </div>
-                                    <div>
-                                        <div className="text-3xl font-bold">98%</div>
-                                        <div className="text-blue-200 text-sm uppercase tracking-wider font-semibold">Resolución</div>
-                                    </div>
-                                    <div>
-                                        <div className="text-3xl font-bold">15</div>
-                                        <div className="text-blue-200 text-sm uppercase tracking-wider font-semibold">Comunidades</div>
-                                    </div>
-                                </div>
                             </div>
                         </div>
 
@@ -789,8 +780,29 @@ export default function DashboardClient({ user }: DashboardClientProps) {
                             </div>
                             <div className="mt-6 p-4 bg-neutral-50 rounded-xl border border-neutral-100">
                                 <p className="text-center text-sky-950/70 text-sm font-medium">
-                                    Se observa una mayor concentración de casos en etapa de <span className="text-[#3E7DBB] font-bold">Archivo</span>, seguido de <span className="text-green-600 font-bold">Entregado</span>.
+                                    {topStatuses.length > 0 ? (
+                                        <>
+                                            Se observa una mayor concentración de casos en etapa de <span className="text-[#3E7DBB] font-bold">{topStatuses[0]?.name}</span>
+                                            {topStatuses[1] && (
+                                                <>
+                                                    , seguido de <span className="text-green-600 font-bold">{topStatuses[1]?.name}</span>
+                                                </>
+                                            )}
+                                        </>
+                                    ) : (
+                                        "No hay suficientes datos para mostrar estadísticas."
+                                    )}
+                                    .
                                 </p>
+                                <div className="mt-4 flex justify-center w-full">
+                                    <a
+                                        href="/statistics"
+                                        className="px-6 py-2.5 bg-[#3E7DBB] text-white font-bold text-sm rounded-xl shadow-md hover:bg-[#2d5f8f] hover:shadow-lg transition-all transform active:scale-95 flex items-center gap-2"
+                                    >
+                                        Ver Reportes y Estadísticas
+                                        <span className="icon-[mdi--chart-box-outline] text-lg"></span>
+                                    </a>
+                                </div>
                             </div>
                         </div>
                     </div>

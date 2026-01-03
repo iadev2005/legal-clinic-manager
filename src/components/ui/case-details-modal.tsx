@@ -28,12 +28,16 @@ interface CaseDetailsModalProps {
     status: "EN_PROCESO" | "ARCHIVADO" | "ENTREGADO" | "ASESORIA";
     createdAt: string;
   } | null;
+  preloadedDetails?: any;
+  preloadedStatusHistory?: any[];
 }
 
 export default function CaseDetailsModal({
   open,
   onClose,
   caseData,
+  preloadedDetails,
+  preloadedStatusHistory
 }: CaseDetailsModalProps) {
   const [loading, setLoading] = useState(false);
   const [caseDetails, setCaseDetails] = useState<any>(null);
@@ -43,9 +47,14 @@ export default function CaseDetailsModal({
 
   useEffect(() => {
     if (open && caseData) {
-      loadCaseDetails();
+      if (preloadedDetails) {
+        setCaseDetails(preloadedDetails);
+        setHistorialEstatus(preloadedStatusHistory || []);
+      } else {
+        loadCaseDetails();
+      }
     }
-  }, [open, caseData]);
+  }, [open, caseData, preloadedDetails, preloadedStatusHistory]);
 
   const loadCaseDetails = async () => {
     if (!caseData) return;
@@ -123,8 +132,8 @@ export default function CaseDetailsModal({
                   key={tab.id}
                   onClick={() => setActiveTab(tab.id as any)}
                   className={`px-4 py-2 font-semibold transition-colors border-b-2 ${activeTab === tab.id
-                      ? "border-[#3E7DBB] text-[#3E7DBB]"
-                      : "border-transparent text-gray-500 hover:text-sky-950"
+                    ? "border-[#3E7DBB] text-[#3E7DBB]"
+                    : "border-transparent text-gray-500 hover:text-sky-950"
                     }`}
                 >
                   <span className={`${tab.icon} mr-2`}></span>

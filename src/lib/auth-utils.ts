@@ -1,10 +1,16 @@
 
-import { SignJWT, jwtVerify } from 'jose';
+import { SignJWT, jwtVerify, JWTPayload } from 'jose';
 import bcrypt from 'bcryptjs';
 import { cookies } from 'next/headers';
 
 const SECRET_KEY = process.env.JWT_SECRET || 'secret-key-change-me-in-production';
 const KEY = new TextEncoder().encode(SECRET_KEY);
+
+export interface UserSession extends JWTPayload {
+    nombre: string;
+    rol: string;
+    cedula?: string;
+}
 
 export async function hashPassword(password: string): Promise<string> {
     const salt = await bcrypt.genSalt(10);
@@ -23,10 +29,10 @@ export async function signToken(payload: any) {
         .sign(KEY);
 }
 
-export async function verifyToken(token: string) {
+export async function verifyToken(token: string): Promise<UserSession | null> {
     try {
         const { payload } = await jwtVerify(token, KEY);
-        return payload;
+        return payload as UserSession;
     } catch (error) {
         return null;
     }

@@ -429,11 +429,11 @@ export default function CasesClient({ userRole, userCedula }: CasesClientProps) 
       render: (caso) => (
         <div className="flex justify-center items-center gap-2">
           <button
-            onClick={() => handleViewDetails(caso.id)}
+            onClick={() => router.push(`/cases/follow-up?caseId=${caso.id}`)}
             className="w-10 h-10 flex justify-center items-center hover:bg-blue-100 rounded-lg transition-colors group cursor-pointer"
-            title="Ver detalles"
+            title="Seguimiento y Control"
           >
-            <span className="icon-[mdi--file-document-outline] text-3xl text-[#3E7DBB] group-hover:scale-110 transition-transform"></span>
+            <span className="icon-[mdi--clipboard-text-clock-outline] text-3xl text-[#3E7DBB] group-hover:scale-110 transition-transform"></span>
           </button>
           <button
             onClick={() => handleEdit(caso.id)}

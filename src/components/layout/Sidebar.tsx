@@ -19,7 +19,6 @@ export default function Sidebar({ user }: SidebarProps) {
         { label: "Inicio/Dashboard", href: "/dashboard", icon: "icon-[material-symbols--dashboard-outline-rounded]", activeIcon: "icon-[material-symbols--dashboard-rounded]" },
         { label: "Gestión de\nSolicitantes", href: "/applicants", icon: "icon-[flowbite--users-outline]", activeIcon: "icon-[flowbite--users-solid]" },
         { label: "Gestión de Casos", href: "/cases", icon: "icon-[icon-park-outline--gavel]", activeIcon: "icon-[icon-park-solid--gavel]" },
-        { label: "Seguimiento y Control", href: "/follow-up", icon: "icon-[mdi--file-check-outline]", activeIcon: "icon-[mdi--file-check]" },
         { label: "Gestión de Citas", href: "/citations", icon: "icon-[mdi--calendar-outline]", activeIcon: "icon-[mdi--calendar]" },
         { label: "Reportes y\nEstadísticas", href: "/statistics", icon: "icon-[material-symbols--pie-chart-outline]", activeIcon: "icon-[material-symbols--pie-chart]" },
         { label: "Administración", href: "/administration", icon: "icon-[ph--sliders-horizontal]", activeIcon: "icon-[ph--sliders-horizontal-fill]" },
@@ -41,7 +40,9 @@ export default function Sidebar({ user }: SidebarProps) {
                 {/* Navigation Items */}
                 <div className="flex flex-col gap-1 w-full">
                     {sidebarItems.map((item, index) => {
-                        const isActive = pathname === item.href;
+                        const isActive =
+                            pathname === item.href ||
+                            (item.href !== "/dashboard" && pathname.startsWith(item.href));
                         return (
                             <Link key={index} href={item.href} className={`group inline-flex justify-start items-center gap-2 p-1 rounded-xl transition-all duration-300 hover:bg-white/10 hover:scale-105 hover:shadow-md cursor-pointer ${isActive ? "bg-white/10" : ""}`}>
                                 <div className="relative w-11 h-11 flex justify-center items-center">

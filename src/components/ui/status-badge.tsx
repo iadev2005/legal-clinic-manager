@@ -3,7 +3,7 @@
 import React from "react";
 
 interface StatusBadgeProps {
-  status: "EN_PROCESO" | "ARCHIVADO" | "ENTREGADO" | "ASESORIA";
+  status: string;
   className?: string;
 }
 
@@ -38,7 +38,12 @@ export default function StatusBadge({
   status,
   className = "",
 }: StatusBadgeProps) {
-  const config = statusConfig[status];
+  const config = statusConfig[status as keyof typeof statusConfig] || {
+    label: status || "Desconocido",
+    bgColor: "bg-gray-100",
+    textColor: "text-gray-600",
+    icon: "icon-[mdi--help-circle-outline]",
+  };
 
   return (
     <div

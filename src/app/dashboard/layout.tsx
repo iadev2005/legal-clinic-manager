@@ -12,7 +12,7 @@ export default async function DashboardLayout({
     return (
         <div className="w-full h-screen min-h-screen bg-neutral-50 inline-flex justify-start items-center overflow-hidden">
             <Sidebar user={session} />
-            <div className="w-full h-full p-11 inline-flex flex-col justify-start items-center gap-6 overflow-y-auto">
+            <div className="w-full h-full inline-flex flex-col justify-start items-center gap-6 overflow-hidden">
                 {children}
             </div>
         </div>
