@@ -64,33 +64,87 @@ export async function createUsuario(data: Partial<Usuario> & { password: string 
         // Hash de contraseña usando la utilidad del sistema (bcrypt)
         const contrasena_hash = await hashPassword(data.password);
 
-        const result = await query(`
-            INSERT INTO Usuarios_Sistema (
-                cedula_usuario, correo_electronico, contrasena_hash,
-                nombres, apellidos, telefono_celular, telefono_local,
-                rol, activo
-            ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)
-            RETURNING *
-        `, [
-            cedula,
-            data.correo,
-            contrasena_hash,
-            data.nombres,
-            data.apellidos,
-            data.telefonoCelular || null,
-            data.telefonoLocal || null,
-            data.role || 'Estudiante',
-            true
-        ]);
+            // Actualizar usuario existente
+            const updateFields: string[] = [];
+            const updateValues: any[] = [];
+            let i = 1;
 
-        revalidatePath('/administration');
-        return { success: true, data: result.rows[0] };
-    } catch (error: any) {
-        console.error('Error al crear usuario:', error);
-        if (error.code === '23505') { // unique_violation
-            return { success: false, error: 'El correo o cédula ya existe' };
+            if (data.nombres) { updateFields.push(`nombres = $${i++}`); updateValues.push(data.nombres); }
+            if (data.apellidos) { updateFields.push(`apellidos = $${i++}`); updateValues.push(data.apellidos); }
+            if (data.correo) { updateFields.push(`correo_electronico = $${i++}`); updateValues.push(data.correo); }
+            if (data.telefonoLocal) { updateFields.push(`telefono_local = $${i++}`); updateValues.push(data.telefonoLocal); }
+            if (data.telefonoCelular) { updateFields.push(`telefono_celular = $${i++}`); updateValues.push(data.telefonoCelular); }
+            // if (data.role) { updateFields.push(`rol = $${i++}`); updateValues.push(data.role); } // Ya validamos que sea el mismo
+            if (contrasena_hash) { updateFields.push(`contrasena_hash = $${i++}`); updateValues.push(contrasena_hash); }
+
+            if (updateFields.length > 0) {
+                updateValues.push(cedula);
+                await query(`
+                    UPDATE Usuarios_Sistema 
+                    SET ${updateFields.join(', ')} 
+                    WHERE cedula_usuario = $${i}
+                `, updateValues);
+            }
+        } else {
+            // Crear nuevo usuario
+            if (!data.password) {
+                throw new Error('La contraseña es requerida para nuevos usuarios');
+            }
+            await query(`
+                INSERT INTO Usuarios_Sistema (
+                    cedula_usuario, correo_electronico, contrasena_hash,
+                    nombres, apellidos, telefono_celular, telefono_local,
+                    rol, activo
+                ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)
+            `, [
+                cedula,
+                data.correo,
+                contrasena_hash,
+                data.nombres,
+                data.apellidos,
+                data.telefonoCelular || null,
+                data.telefonoLocal || null,
+                data.role || 'Estudiante',
+                true
+            ]);
         }
-        return { success: false, error: error.message || 'Error al crear usuario' };
+
+        // Manejar participación record
+        const role = data.role || 'Estudiante';
+        if ((role === 'Estudiante' || role === 'Profesor') && data.term && data.tipoParticipacion) {
+            if (role === 'Estudiante') {
+                // Verificar si ya tiene participación en ese semestre
+                const existingPart = await query('SELECT * FROM Alumnos WHERE cedula_alumno = $1 AND term = $2', [cedula, data.term]);
+                if (existingPart.rows.length > 0) {
+                    await query('ROLLBACK');
+                    return {
+                        success: false,
+                        error: `El usuario ya se encuentra registrado en el semestre ${data.term}.`
+                    };
+                } else {
+                    await query('INSERT INTO Alumnos (cedula_alumno, term, tipo) VALUES ($1, $2, $3)', [cedula, data.term, data.tipoParticipacion]);
+                }
+            } else if (role === 'Profesor') {
+                const existingPart = await query('SELECT * FROM Profesores WHERE cedula_profesor = $1 AND term = $2', [cedula, data.term]);
+                if (existingPart.rows.length > 0) {
+                    await query('ROLLBACK');
+                    return {
+                        success: false,
+                        error: `El usuario ya se encuentra registrado en el semestre ${data.term}.`
+                    };
+                } else {
+                    await query('INSERT INTO Profesores (cedula_profesor, term, tipo) VALUES ($1, $2, $3)', [cedula, data.term, data.tipoParticipacion]);
+                }
+            }
+        }
+
+        await query('COMMIT');
+        revalidatePath('/administration');
+        return { success: true };
+    } catch (error: any) {
+        await query('ROLLBACK');
+        console.error('Error al crear/actualizar usuario:', error);
+        return { success: false, error: error.message || 'Error al procesar usuario' };
     }
 }
 
@@ -832,7 +886,6 @@ export async function processBulkUpload(
                 if (existingUser.rows.length > 0) {
                     // Usuario existe, solo crear/actualizar el perfil
                     const existingCedula = existingUser.rows[0].cedula_usuario;
-                    const existingRol = existingUser.rows[0].rol;
 
                     // Verificar si ya tiene perfil en este semestre
                     if (tipo === 'Estudiante') {

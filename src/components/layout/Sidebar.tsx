@@ -22,6 +22,7 @@ export default function Sidebar({ user }: SidebarProps) {
         { label: "Gestión de Citas", href: "/citations", icon: "icon-[mdi--calendar-outline]", activeIcon: "icon-[mdi--calendar]" },
         { label: "Reportes y\nEstadísticas", href: "/statistics", icon: "icon-[material-symbols--pie-chart-outline]", activeIcon: "icon-[material-symbols--pie-chart]" },
         { label: "Administración", href: "/administration", icon: "icon-[ph--sliders-horizontal]", activeIcon: "icon-[ph--sliders-horizontal-fill]" },
+        { label: "Notificaciones", href: "/notifications", icon: "icon-[ph--sliders-horizontal]", activeIcon: "icon-[ph--sliders-horizontal-fill]" },
     ];
 
     const safeUser = user || { nombre: "Usuario", rol: "Invitado" };

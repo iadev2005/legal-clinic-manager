@@ -1,4 +1,5 @@
 "use client";
+import { getUsuarioById } from "@/actions/administracion";
 
 import { useState, useEffect, useRef } from "react";
 import {
@@ -20,12 +21,13 @@ interface AdministrationModalProps {
     onSave: (data: any) => Promise<void> | void;
     item?: any;
     mode: "create" | "edit";
-    type: "users" | "catalogs" | "formalities" | "centers";
+    type: "users" | "subcatalogs" | "legalfield" | "centers";
     parishes?: { id: string; nombre: string }[];
     participations?: any[];
     materias?: { id: string; nombre: string }[];
-    categorias?: { id: string; nombre: string; legalfieldid: string }[];
+    categorias?: { id: string; nombre: string; legalfieldid?: string; materiaid?: string }[];
     subcategorias?: { id: string; nombre: string; categorymateriaid: string }[];
+    semestres?: { term: string; fecha_inicio: string; fecha_final: string }[];
 }
 
 interface CustomSelectProps {
@@ -103,16 +105,19 @@ export default function AdministrationModal({
     materias = [],
     categorias = [],
     subcategorias = [],
+    semestres = [],
 }: AdministrationModalProps) {
     const [formData, setFormData] = useState<any>({});
     const [loading, setLoading] = useState(false);
     const [showPassword, setShowPassword] = useState(false);
     const [error, setError] = useState<string | null>(null);
+    const [isExistingUser, setIsExistingUser] = useState(false);
 
     // Initial State Setup
     useEffect(() => {
         if (open) {
             setError(null);
+            setIsExistingUser(false);
             if (item && mode === "edit") {
                 setFormData({
                     ...item,
@@ -146,13 +151,58 @@ export default function AdministrationModal({
                     password: "",
                     parishId: "",
                     legalfieldid: "",
-                    categorylegalfieldid: "",
                     nombre: "",
+                    term: "",
+                    tipoParticipacion: "Inscrito",
                 });
             }
             setShowPassword(false);
         }
     }, [item, mode, open]);
+
+    // Update tipoParticipacion when role changes in create mode
+    useEffect(() => {
+        if (mode === "create" && type === "users") {
+            setFormData((prev: any) => ({
+                ...prev,
+                tipoParticipacion: prev.role === "Profesor" ? "Titular" : "Inscrito"
+            }));
+        }
+    }, [formData.role, mode, type]);
+
+    // Auto-fill logic
+    useEffect(() => {
+        const checkExistingUser = async () => {
+            if (type === "users" && mode === "create" && formData.cedulaNumber && formData.cedulaNumber.length >= 6) {
+                const cedula = `${formData.cedulaPrefix}-${formData.cedulaNumber}`;
+                const result = await getUsuarioById(cedula);
+                if (result.success && result.data) {
+                    const user = result.data;
+                    setFormData((prev: any) => ({
+                        ...prev,
+                        nombres: user.nombres || prev.nombres,
+                        apellidos: user.apellidos || prev.apellidos,
+                        correo: user.correo || prev.correo,
+                        telefonoLocal: user.telefonoLocal || prev.telefonoLocal,
+                        telefonoCelular: user.telefonoCelular || prev.telefonoCelular,
+                        role: user.role || prev.role,
+                        sexo: user.sexo || prev.sexo,
+                    }));
+                    setIsExistingUser(true);
+                } else {
+                    setIsExistingUser(false);
+                }
+            } else if (type === "users" && mode === "create" && (!formData.cedulaNumber || formData.cedulaNumber.length < 6)) {
+                setIsExistingUser(false);
+            }
+        };
+
+        const timer = setTimeout(() => {
+            checkExistingUser();
+        }, 500); // Debounce
+
+        return () => clearTimeout(timer);
+    }, [formData.cedulaNumber, formData.cedulaPrefix, mode, type]);
 
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
@@ -160,8 +210,13 @@ export default function AdministrationModal({
 
         // Validation - Removed confirm matches
         if (type === "users" && mode === "create") {
-            if (formData.password.length < 6) {
+            if (!isExistingUser && formData.password && formData.password.length < 6) {
                 setError("La contraseña debe tener al menos 6 caracteres");
+                return;
+            }
+            // For Students/Professors, semester and type are required
+            if (isStudentOrTeacher && (!formData.term || !formData.tipoParticipacion)) {
+                setError("Debe indicar el semestre y tipo de participación");
                 return;
             }
         }
@@ -173,24 +228,10 @@ export default function AdministrationModal({
             }
         }
 
-        // Validación para categorías
-        if (type === "catalogs" && mode === "create") {
-            if (!formData.legalfieldid) {
-                setError("Debe seleccionar una materia");
-                return;
-            }
-            if (!formData.nombre || formData.nombre.trim() === "") {
-                setError("El nombre es requerido");
-                return;
-            }
-        }
+        // Validaciones específicas movidas a la construcción de finalData
 
-        // Validación para subcategorías
-        if (type === "formalities" && mode === "create") {
-            if (!formData.categorylegalfieldid) {
-                setError("Debe seleccionar una categoría");
-                return;
-            }
+        // Validación para núcleos
+        if (type === "centers" && mode === "create") {
             if (!formData.nombre || formData.nombre.trim() === "") {
                 setError("El nombre es requerido");
                 return;
@@ -212,25 +253,55 @@ export default function AdministrationModal({
             finalData.id = `${formData.cedulaPrefix}-${formData.cedulaNumber}`;
             finalData.user = `${formData.nombres} ${formData.apellidos}`;
         }
-        if (type === "catalogs") {
-            // Asegurar que legalfieldid esté presente y sea válido
-            const legalfieldid = String(formData.legalfieldid || '').trim();
-            if (!legalfieldid || legalfieldid === "" || legalfieldid === "undefined" || legalfieldid === "null") {
+        if (type === "subcatalogs") {
+            // Validar Materia
+            if (!formData.materiaId) {
                 setError("Debe seleccionar una materia");
                 setLoading(false);
                 return;
             }
-            // Normalizar el valor a string
-            finalData.legalfieldid = legalfieldid;
+
+            const isCivil = materias.find(m => String(m.id) === String(formData.materiaId))?.nombre.toLowerCase().includes("civil");
+
+            if (isCivil) {
+                // Si es Civil, requerimos selección explícita
+                if (!formData.categorylegalfieldid || formData.categorylegalfieldid.trim() === "") {
+                    setError("Debe seleccionar una categoría");
+                    setLoading(false);
+                    return;
+                }
+            } else {
+                // Si no es Civil, auto-asignamos la primera categoría disponible para esa materia si no se seleccionó ninguna
+                if (!formData.categorylegalfieldid) {
+                    const availableCats = categorias.filter(c => String(c.materiaid) === String(formData.materiaId));
+                    if (availableCats.length > 0) {
+                        finalData.categorylegalfieldid = availableCats[0].id;
+                    } else {
+                        // Fallback si no hay categorías (no debería pasar si la base de datos es consistente)
+                        console.warn("No se encontraron categorías para la materia seleccionada:", formData.materiaId);
+                        // Permitimos continuar, pero el backend podría fallar si requiere categoría válida
+                        // O podríamos lanzar error aquí
+                        setError("No hay categorías configuradas para esta materia.");
+                        setLoading(false);
+                        return;
+                    }
+                }
+            }
+            // Aseguramos que legalfieldid (o categorylegalfieldid) se envíe correctamente. 
+            // createSubCategoria usa categorylegalfieldid.
+            // finalData ya tiene categorylegalfieldid si fue seleccionado o auto-asignado.
+            // No necesitamos asignar legalfieldid aquí para subcatalogos, eso era confusión anterior.
         }
-        if (type === "formalities") {
-            // Asegurar que categorylegalfieldid esté presente y sea válido
-            if (!formData.categorylegalfieldid || formData.categorylegalfieldid.trim() === "") {
-                setError("Debe seleccionar una categoría");
+        if (type === "legalfield") {
+            // Asegurar que longid (Subcategoría) esté presente y sea válido
+            if (!formData.longid || formData.longid.trim() === "") {
+                setError("Debe seleccionar una subcategoría");
                 setLoading(false);
                 return;
             }
-            finalData.categorylegalfieldid = String(formData.categorylegalfieldid).trim();
+            // Enviar el ID de la subcategoría. Si el backend espera 'categorylegalfieldid', lo mapeamos.
+            // Pero lo más probable es que espere 'categorylegalfieldid' con el ID del padre inmediato.
+            finalData.categorylegalfieldid = String(formData.longid).trim();
         }
         if (type === "centers" && formData.parishId) {
             const parsed = parseInt(formData.parishId);
@@ -241,13 +312,14 @@ export default function AdministrationModal({
 
         // Llamar a onSave de forma asíncrona
         try {
-            const result = await Promise.resolve(onSave(finalData));
+            await Promise.resolve(onSave(finalData));
             // Si onSave no lanza error, asumimos éxito y cerramos
             setLoading(false);
             onClose();
-        } catch (err) {
+        } catch (err: any) {
             setLoading(false);
-            // El error ya fue manejado por el componente padre, no cerramos el modal
+            setError(err.message || "Error al guardar");
+            // El modal permanece abierto para que el usuario corrija
         }
     };
 
@@ -260,7 +332,7 @@ export default function AdministrationModal({
 
     const getTitle = () => {
         const action = mode === "create" ? "Crear" : "Editar";
-        const entity = type === "users" ? "Usuario" : type === "catalogs" ? "Catálogo" : type === "formalities" ? "Trámite" : "Centro";
+        const entity = type === "users" ? "Usuario" : type === "subcatalogs" ? "Catálogo" : type === "legalfield" ? "Trámite" : "Centro";
         return `${action} ${entity}`;
     };
 
@@ -285,138 +357,193 @@ export default function AdministrationModal({
                         )}
 
                         {type === "users" ? (
-                            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                                {/* Columna 1 */}
-                                <div className="space-y-4">
-                                    <div className="space-y-2">
-                                        <Label htmlFor="role">Rol en el Sistema</Label>
-                                        <CustomSelect
-                                            value={formData.role ?? "Estudiante"}
-                                            onChange={(val) => handleChange("role", val)}
-                                            options={[
-                                                { value: "Estudiante", label: "Estudiante" },
-                                                { value: "Profesor", label: "Profesor" },
-                                                { value: "Coordinador", label: "Coordinador" },
-                                            ]}
-                                        />
-                                    </div>
-
-                                    <div className="space-y-2">
-                                        <Label>Cédula de Identidad</Label>
-                                        <div className="flex gap-2">
-                                            <div className="w-24">
+                            <div className="space-y-6">
+                                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                                    {/* Columna 1 */}
+                                    <div className="space-y-4">
+                                        <div className="space-y-2">
+                                            <Label htmlFor="role">Rol en el Sistema</Label>
+                                            <div className={isExistingUser ? "pointer-events-none opacity-50" : ""}>
                                                 <CustomSelect
-                                                    value={formData.cedulaPrefix ?? "V"}
-                                                    onChange={(val) => handleChange("cedulaPrefix", val)}
+                                                    value={formData.role ?? "Estudiante"}
+                                                    onChange={(val) => handleChange("role", val)}
                                                     options={[
-                                                        { value: "V", label: "V" },
-                                                        { value: "E", label: "E" },
+                                                        { value: "Estudiante", label: "Estudiante" },
+                                                        { value: "Profesor", label: "Profesor" },
+                                                        { value: "Coordinador", label: "Coordinador" },
                                                     ]}
                                                 />
                                             </div>
+                                        </div>
+
+                                        <div className="space-y-2">
+                                            <Label>Cédula de Identidad</Label>
+                                            <div className="flex gap-2">
+                                                <div className="w-24">
+                                                    <CustomSelect
+                                                        value={formData.cedulaPrefix ?? "V"}
+                                                        onChange={(val) => handleChange("cedulaPrefix", val)}
+                                                        options={[
+                                                            { value: "V", label: "V" },
+                                                            { value: "E", label: "E" },
+                                                        ]}
+                                                    />
+                                                </div>
+                                                <Input
+                                                    value={formData.cedulaNumber ?? ""}
+                                                    onChange={(e) => handleChange("cedulaNumber", e.target.value)}
+                                                    placeholder="12.345.678"
+                                                    required
+                                                />
+                                            </div>
+                                        </div>
+
+                                        <div className="space-y-2">
+                                            <Label htmlFor="nombres">Nombres</Label>
                                             <Input
-                                                value={formData.cedulaNumber ?? ""}
-                                                onChange={(e) => handleChange("cedulaNumber", e.target.value)}
-                                                placeholder="12.345.678"
+                                                id="nombres"
+                                                value={formData.nombres ?? ""}
+                                                onChange={(e) => handleChange("nombres", e.target.value)}
+                                                placeholder="Nombres"
                                                 required
+                                                disabled={isExistingUser}
+                                                className={isExistingUser ? "bg-gray-100" : ""}
+                                            />
+                                        </div>
+
+                                        <div className="space-y-2">
+                                            <Label htmlFor="apellidos">Apellidos</Label>
+                                            <Input
+                                                id="apellidos"
+                                                value={formData.apellidos ?? ""}
+                                                onChange={(e) => handleChange("apellidos", e.target.value)}
+                                                placeholder="Apellidos"
+                                                required
+                                                disabled={isExistingUser}
+                                                className={isExistingUser ? "bg-gray-100" : ""}
                                             />
                                         </div>
                                     </div>
 
-                                    <div className="space-y-2">
-                                        <Label htmlFor="nombres">Nombres</Label>
-                                        <Input
-                                            id="nombres"
-                                            value={formData.nombres ?? ""}
-                                            onChange={(e) => handleChange("nombres", e.target.value)}
-                                            placeholder="Nombres"
-                                            required
-                                        />
-                                    </div>
+                                    {/* Columna 2 */}
+                                    <div className="space-y-4">
+                                        <div className="space-y-2">
+                                            <Label htmlFor="correo">Correo Institucional</Label>
+                                            <Input
+                                                id="correo"
+                                                type="email"
+                                                value={formData.correo ?? ""}
+                                                onChange={(e) => handleChange("correo", e.target.value)}
+                                                placeholder="@universidad.edu"
+                                                required
+                                                disabled={isExistingUser}
+                                                className={isExistingUser ? "bg-gray-100" : ""}
+                                            />
+                                        </div>
 
-                                    <div className="space-y-2">
-                                        <Label htmlFor="apellidos">Apellidos</Label>
-                                        <Input
-                                            id="apellidos"
-                                            value={formData.apellidos ?? ""}
-                                            onChange={(e) => handleChange("apellidos", e.target.value)}
-                                            placeholder="Apellidos"
-                                            required
-                                        />
+                                        <div className="space-y-2">
+                                            <Label htmlFor="sexo">Sexo</Label>
+                                            <div className={isExistingUser ? "pointer-events-none opacity-50" : ""}>
+                                                <CustomSelect
+                                                    value={formData.sexo ?? "M"}
+                                                    onChange={(val) => handleChange("sexo", val)}
+                                                    options={[
+                                                        { value: "M", label: "Masculino" },
+                                                        { value: "F", label: "Femenino" },
+                                                    ]}
+                                                />
+                                            </div>
+                                        </div>
+
+                                        <div className="grid grid-cols-2 gap-2">
+                                            <div className="space-y-2">
+                                                <Label htmlFor="tlf_local">Tlf. Local</Label>
+                                                <Input
+                                                    id="tlf_local"
+                                                    value={formData.telefonoLocal ?? ""}
+                                                    onChange={(e) => handleChange("telefonoLocal", e.target.value)}
+                                                    placeholder="(0212) ..."
+                                                    disabled={isExistingUser}
+                                                    className={isExistingUser ? "bg-gray-100" : ""}
+                                                />
+                                            </div>
+                                            <div className="space-y-2">
+                                                <Label htmlFor="tlf_celular">Tlf. Celular</Label>
+                                                <Input
+                                                    id="tlf_celular"
+                                                    value={formData.telefonoCelular ?? ""}
+                                                    onChange={(e) => handleChange("telefonoCelular", e.target.value)}
+                                                    placeholder="(0414) ..."
+                                                    required
+                                                    disabled={isExistingUser}
+                                                    className={isExistingUser ? "bg-gray-100" : ""}
+                                                />
+                                            </div>
+                                        </div>
+
+                                        <div className="space-y-2">
+                                            <Label htmlFor="password">
+                                                {mode === "create" ? "Contraseña" : "Nueva Contraseña"}
+                                            </Label>
+                                            <div className="relative">
+                                                <Input
+                                                    id="password"
+                                                    type={showPassword ? "text" : "password"}
+                                                    value={formData.password ?? ""}
+                                                    onChange={(e) => handleChange("password", e.target.value)}
+                                                    placeholder={mode === "create" ? "******" : "(Opcional)"}
+                                                    required={mode === "create" && !isExistingUser}
+                                                    disabled={isExistingUser}
+                                                    className={isExistingUser ? "bg-gray-100" : ""}
+                                                />
+                                                {!isExistingUser && (
+                                                    <button
+                                                        type="button"
+                                                        onClick={() => setShowPassword(!showPassword)}
+                                                        className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-500 hover:text-sky-950 focus:outline-none cursor-pointer"
+                                                    >
+                                                        <span className={`text-xl ${showPassword ? "icon-[uil--eye]" : "icon-[uil--eye-slash]"}`}></span>
+                                                    </button>
+                                                )}
+                                            </div>
+                                        </div>
                                     </div>
                                 </div>
 
-                                {/* Columna 2 */}
-                                <div className="space-y-4">
-                                    <div className="space-y-2">
-                                        <Label htmlFor="correo">Correo Institucional</Label>
-                                        <Input
-                                            id="correo"
-                                            type="email"
-                                            value={formData.correo ?? ""}
-                                            onChange={(e) => handleChange("correo", e.target.value)}
-                                            placeholder="@universidad.edu"
-                                            required
-                                        />
-                                    </div>
-
-                                    <div className="space-y-2">
-                                        <Label htmlFor="sexo">Sexo</Label>
-                                        <CustomSelect
-                                            value={formData.sexo ?? "M"}
-                                            onChange={(val) => handleChange("sexo", val)}
-                                            options={[
-                                                { value: "M", label: "Masculino" },
-                                                { value: "F", label: "Femenino" },
-                                            ]}
-                                        />
-                                    </div>
-
-                                    <div className="grid grid-cols-2 gap-2">
-                                        <div className="space-y-2">
-                                            <Label htmlFor="tlf_local">Tlf. Local</Label>
-                                            <Input
-                                                id="tlf_local"
-                                                value={formData.telefonoLocal ?? ""}
-                                                onChange={(e) => handleChange("telefonoLocal", e.target.value)}
-                                                placeholder="(0212) ..."
-                                            />
-                                        </div>
-                                        <div className="space-y-2">
-                                            <Label htmlFor="tlf_celular">Tlf. Celular</Label>
-                                            <Input
-                                                id="tlf_celular"
-                                                value={formData.telefonoCelular ?? ""}
-                                                onChange={(e) => handleChange("telefonoCelular", e.target.value)}
-                                                placeholder="(0414) ..."
-                                                required
-                                            />
+                                {isStudentOrTeacher && mode === "create" && (
+                                    <div className="pt-4 border-t space-y-4">
+                                        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                                            <div className="space-y-2">
+                                                <Label htmlFor="term">Semestre de Ingreso</Label>
+                                                <CustomSelect
+                                                    value={formData.term ?? ""}
+                                                    onChange={(val) => handleChange("term", val)}
+                                                    options={semestres.map(s => ({ value: s.term, label: s.term }))}
+                                                />
+                                            </div>
+                                            <div className="space-y-2">
+                                                <Label htmlFor="tipoParticipacion">Tipo de Participación</Label>
+                                                <CustomSelect
+                                                    value={formData.tipoParticipacion ?? ""}
+                                                    onChange={(val) => handleChange("tipoParticipacion", val)}
+                                                    options={
+                                                        formData.role === "Profesor"
+                                                            ? [
+                                                                { value: "Voluntario", label: "Voluntario" },
+                                                                { value: "Asesor", label: "Asesor" },
+                                                                { value: "Titular", label: "Titular" },
+                                                            ]
+                                                            : [
+                                                                { value: "Voluntario", label: "Voluntario" },
+                                                                { value: "Inscrito", label: "Inscrito" },
+                                                                { value: "Egresado", label: "Egresado" },
+                                                            ]
+                                                    }
+                                                />
+                                            </div>
                                         </div>
                                     </div>
-
-                                    <div className="space-y-2">
-                                        <Label htmlFor="password">
-                                            {mode === "create" ? "Contraseña" : "Nueva Contraseña"}
-                                        </Label>
-                                        <div className="relative">
-                                            <Input
-                                                id="password"
-                                                type={showPassword ? "text" : "password"}
-                                                value={formData.password ?? ""}
-                                                onChange={(e) => handleChange("password", e.target.value)}
-                                                placeholder={mode === "create" ? "******" : "(Opcional)"}
-                                                required={mode === "create"}
-                                            />
-                                            <button
-                                                type="button"
-                                                onClick={() => setShowPassword(!showPassword)}
-                                                className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-500 hover:text-sky-950 focus:outline-none cursor-pointer"
-                                            >
-                                                <span className={`text-xl ${showPassword ? "icon-[uil--eye]" : "icon-[uil--eye-slash]"}`}></span>
-                                            </button>
-                                        </div>
-                                    </div>
-                                </div>
+                                )}
                             </div>
                         ) : (
                             <div className="space-y-4">
@@ -429,23 +556,39 @@ export default function AdministrationModal({
                                         required
                                     />
                                 </div>
-                                {type === "catalogs" && (
-                                    <div className="space-y-2">
-                                        <Label htmlFor="categoria">Categoría <span className="text-red-500">*</span></Label>
-                                        <CustomSelect
-                                            value={formData.categorylegalfieldid || ""}
-                                            onChange={(val) => {
-                                                console.log('Categoría seleccionada:', val);
-                                                handleChange("categorylegalfieldid", val);
-                                            }}
-                                            options={categorias.map(c => ({ value: c.id, label: c.nombre }))}
-                                        />
-                                        {!formData.categorylegalfieldid && mode === "create" && (
-                                            <p className="text-xs text-red-500">Debe seleccionar una categoría</p>
+                                {type === "subcatalogs" && (
+                                    <>
+                                        <div className="space-y-2">
+                                            <Label htmlFor="materia">Materia <span className="text-red-500">*</span></Label>
+                                            <CustomSelect
+                                                value={formData.materiaId || ""}
+                                                onChange={(val) => {
+                                                    console.log('Materia seleccionada:', val);
+                                                    handleChange("materiaId", val);
+                                                    handleChange("categorylegalfieldid", ""); // Reset category
+                                                }}
+                                                options={materias.map(m => ({ value: m.id, label: m.nombre }))}
+                                            />
+                                        </div>
+                                        {formData.materiaId && materias.find(m => m.id === formData.materiaId)?.nombre.toLowerCase().includes("civil") && (
+                                            <div className="space-y-2">
+                                                <Label htmlFor="categoria">Categoría <span className="text-red-500">*</span></Label>
+                                                <CustomSelect
+                                                    value={formData.categorylegalfieldid || ""}
+                                                    onChange={(val) => {
+                                                        console.log('Categoría seleccionada:', val);
+                                                        handleChange("categorylegalfieldid", val);
+                                                    }}
+                                                    options={categorias.filter(c => String(c.materiaid) === String(formData.materiaId)).map(c => ({ value: c.id, label: c.nombre }))}
+                                                />
+                                                {!formData.categorylegalfieldid && mode === "create" && (
+                                                    <p className="text-xs text-red-500">Debe seleccionar una categoría</p>
+                                                )}
+                                            </div>
                                         )}
-                                    </div>
+                                    </>
                                 )}
-                                {type === "formalities" && (
+                                {type === "legalfield" && (
                                     <div className="space-y-2">
                                         <Label htmlFor="subcategoria">Subcategoría <span className="text-red-500">*</span></Label>
                                         <CustomSelect
@@ -534,7 +677,7 @@ export default function AdministrationModal({
                         {loading ? "Guardando..." : "Guardar"}
                     </PrimaryButton>
                 </DialogFooter>
-            </DialogContent>
-        </Dialog>
+            </DialogContent >
+        </Dialog >
     );
 }

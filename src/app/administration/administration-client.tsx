@@ -150,7 +150,7 @@ export default function Administration() {
     }, [filtroEstado]);
 
     // Active tab state
-    const [activeTab, setActiveTab] = useState<"users" | "catalogs" | "formalities" | "centers">("users");
+    const [activeTab, setActiveTab] = useState<"users" | "subcatalogs" | "legalfield" | "centers">("users");
 
     // Limpiar selección cuando cambia la pestaña activa
     useEffect(() => {
@@ -223,7 +223,7 @@ export default function Administration() {
                     } else {
                         throw new Error(result.error || 'Error al crear usuario');
                     }
-                } else if (activeTab === "catalogs") {
+                } else if (activeTab === "subcatalogs") {
                     const result = await createSubCategoria(formData);
                     if (result.success) {
                         await loadData();
@@ -231,7 +231,7 @@ export default function Administration() {
                     } else {
                         throw new Error(result.error || 'Error al crear subcategoría');
                     }
-                } else if (activeTab === "formalities") {
+                } else if (activeTab === "legalfield") {
                     const result = await createLegalField(formData);
                     if (result.success) {
                         await loadData();
@@ -258,7 +258,7 @@ export default function Administration() {
                     } else {
                         throw new Error(result.error || 'Error al actualizar usuario');
                     }
-                } else if (activeTab === "catalogs") {
+                } else if (activeTab === "subcatalogs") {
                     const result = await updateSubCategoria(currentItem.id, formData);
                     if (result.success) {
                         await loadData();
@@ -266,7 +266,7 @@ export default function Administration() {
                     } else {
                         throw new Error(result.error || 'Error al actualizar subcategoría');
                     }
-                } else if (activeTab === "formalities") {
+                } else if (activeTab === "legalfield") {
                     const result = await updateLegalField(currentItem.id, formData);
                     if (result.success) {
                         await loadData();
@@ -285,9 +285,8 @@ export default function Administration() {
                 }
             }
         } catch (err: any) {
-            alert(err.message || 'Error al guardar');
             console.error('Error en handleSave:', err);
-            throw err; // Re-lanzar para que el modal no se cierre
+            throw err; // Re-lanzar para que el modal lo capture y muestre
         }
     };
 
@@ -298,9 +297,9 @@ export default function Administration() {
                 for (const item of selectedItems) {
                     if (activeTab === "users") {
                         await deleteUsuario(item.id);
-                    } else if (activeTab === "catalogs") {
+                    } else if (activeTab === "subcatalogs") {
                         await deleteSubCategoria(item.id);
-                    } else if (activeTab === "formalities") {
+                    } else if (activeTab === "legalfield") {
                         await deleteLegalField(item.id);
                     } else if (activeTab === "centers") {
                         await deleteNucleo(item.id);
@@ -318,13 +317,13 @@ export default function Administration() {
                         alert(result.error || 'Error al eliminar usuario');
                         return;
                     }
-                } else if (activeTab === "catalogs") {
+                } else if (activeTab === "subcatalogs") {
                     const result = await deleteSubCategoria(id);
                     if (!result.success) {
                         alert(result.error || 'Error al eliminar subcategoría');
                         return;
                     }
-                } else if (activeTab === "formalities") {
+                } else if (activeTab === "legalfield") {
                     const result = await deleteLegalField(id);
                     if (!result.success) {
                         alert(result.error || 'Error al eliminar ámbito legal');
@@ -492,7 +491,7 @@ export default function Administration() {
                 }
                 break;
 
-            case "catalogs":
+            case "subcatalogs":
                 // Filtro por búsqueda de texto
                 if (searchTerm.trim()) {
                     const searchLower = searchTerm.toLowerCase().trim();
@@ -501,16 +500,21 @@ export default function Administration() {
                         searchInField(item.nombre, searchLower)
                     );
                 }
-                // Filtro por categoría (categorymateriaid es num_categoria-id_materia, igual que el id de categoría)
+                // Filtro por Materia (nuevo)
                 if (filtroMateria) {
                     filtered = filtered.filter((item) =>
-                        item.categorymateriaid === filtroMateria ||
-                        item.id?.includes(filtroMateria)
+                        String(item.id_materia) === String(filtroMateria)
+                    );
+                }
+                // Filtro por Categoría (para Civil)
+                if (filtroCategoria) {
+                    filtered = filtered.filter((item) =>
+                        item.categorymateriaid === filtroCategoria
                     );
                 }
                 break;
 
-            case "formalities":
+            case "legalfield":
                 // Filtro por búsqueda de texto
                 if (searchTerm.trim()) {
                     const searchLower = searchTerm.toLowerCase().trim();
@@ -570,11 +574,11 @@ export default function Administration() {
                 rawData = users;
                 columns = ManagementUserColumns;
                 break;
-            case "catalogs":
+            case "subcatalogs":
                 rawData = subcategorylegalfield;
                 columns = GenericColumns;
                 break;
-            case "formalities":
+            case "legalfield":
                 rawData = ambitoslegales;
                 columns = GenericColumns;
                 break;
@@ -646,23 +650,23 @@ export default function Administration() {
                         </button>
                         <button
                             onClick={() => {
-                                setActiveTab("catalogs");
+                                setActiveTab("subcatalogs");
                                 setSelectedItems([]);
                                 setSearchTerm("");
                                 setFiltroMateria("");
                             }}
-                            className={`px-4 py-2 rounded-lg font-semibold transition-colors cursor-pointer ${activeTab === "catalogs" ? "bg-sky-950 text-white" : "bg-gray-200 text-sky-950 hover:bg-gray-300"}`}
+                            className={`px-4 py-2 rounded-lg font-semibold transition-colors cursor-pointer ${activeTab === "subcatalogs" ? "bg-sky-950 text-white" : "bg-gray-200 text-sky-950 hover:bg-gray-300"}`}
                         >
                             SubCatálogos
                         </button>
                         <button
                             onClick={() => {
-                                setActiveTab("formalities");
+                                setActiveTab("legalfield");
                                 setSelectedItems([]);
                                 setSearchTerm("");
                                 setFiltroCategoria("");
                             }}
-                            className={`px-4 py-2 rounded-lg font-semibold transition-colors cursor-pointer ${activeTab === "formalities" ? "bg-sky-950 text-white" : "bg-gray-200 text-sky-950 hover:bg-gray-300"}`}
+                            className={`px-4 py-2 rounded-lg font-semibold transition-colors cursor-pointer ${activeTab === "legalfield" ? "bg-sky-950 text-white" : "bg-gray-200 text-sky-950 hover:bg-gray-300"}`}
                         >
                             Ambitos Legales
                         </button>
@@ -724,27 +728,51 @@ export default function Administration() {
                             </>
                         )}
 
-                        {activeTab === "catalogs" && (
-                            <div className="flex items-center gap-2">
-                                <span className="text-sky-950 font-semibold whitespace-nowrap">Categoría:</span>
-                                <select
-                                    value={filtroMateria}
-                                    onChange={(e) => setFiltroMateria(e.target.value)}
-                                    className="bg-white border border-gray-300 text-sky-950 text-sm rounded-lg focus:ring-sky-950 focus:border-sky-950 block p-2.5 min-w-[200px]"
-                                >
-                                    <option value="">Todas las categorías</option>
-                                    {categorylegalfield.map((categoria) => (
-                                        <option key={categoria.id} value={categoria.id}>
-                                            {categoria.nombre}
-                                        </option>
-                                    ))}
-                                </select>
-                            </div>
+                        {activeTab === "subcatalogs" && (
+                            <>
+                                <div className="flex items-center gap-2">
+                                    <span className="text-sky-950 font-semibold whitespace-nowrap">Materia:</span>
+                                    <select
+                                        value={filtroMateria}
+                                        onChange={(e) => {
+                                            setFiltroMateria(e.target.value);
+                                            setFiltroCategoria(""); // Reset sub-filter
+                                        }}
+                                        className="bg-white border border-gray-300 text-sky-950 text-sm rounded-lg focus:ring-sky-950 focus:border-sky-950 block p-2.5 min-w-[200px]"
+                                    >
+                                        <option value="">Todas las materias</option>
+                                        {legalfield.map((materia: any) => (
+                                            <option key={materia.id} value={materia.id}>
+                                                {materia.nombre}
+                                            </option>
+                                        ))}
+                                    </select>
+                                </div>
+                                {filtroMateria && legalfield.find((m: any) => m.id === filtroMateria)?.nombre.toLowerCase().includes("civil") && (
+                                    <div className="flex items-center gap-2">
+                                        <span className="text-sky-950 font-semibold whitespace-nowrap">Categoría:</span>
+                                        <select
+                                            value={filtroCategoria}
+                                            onChange={(e) => setFiltroCategoria(e.target.value)}
+                                            className="bg-white border border-gray-300 text-sky-950 text-sm rounded-lg focus:ring-sky-950 focus:border-sky-950 block p-2.5 min-w-[200px]"
+                                        >
+                                            <option value="">Todas las categorías</option>
+                                            {categorylegalfield
+                                                .filter((c: any) => c.materiaid === filtroMateria)
+                                                .map((categoria: any) => (
+                                                    <option key={categoria.id} value={categoria.id}>
+                                                        {categoria.nombre}
+                                                    </option>
+                                                ))}
+                                        </select>
+                                    </div>
+                                )}
+                            </>
                         )}
 
-                        {activeTab === "formalities" && (
+                        {activeTab === "legalfield" && (
                             <div className="flex items-center gap-2">
-                                <span className="text-sky-950 font-semibold whitespace-nowrap">Subcategoría:</span>
+                                <span className="text-sky-950 font-semibold whitespace-nowrap">Ámbito Legal:</span>
                                 <select
                                     value={filtroCategoria}
                                     onChange={(e) => setFiltroCategoria(e.target.value)}
@@ -894,6 +922,7 @@ export default function Administration() {
                 materias={legalfield}
                 categorias={categorylegalfield}
                 subcategorias={subcategorylegalfield}
+                semestres={semestres}
                 participations={
                     activeTab === "users" && currentItem
                         ? [

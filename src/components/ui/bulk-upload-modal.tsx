@@ -30,6 +30,7 @@ export default function BulkUploadModal({
     semestres
 }: BulkUploadModalProps) {
     const [tipo, setTipo] = useState<"Estudiante" | "Profesor">("Estudiante");
+    const [tipoParticipacion, setTipoParticipacion] = useState<string>("Inscrito");
     const [term, setTerm] = useState<string>("");
     const [file, setFile] = useState<File | null>(null);
     const [excelHeaders, setExcelHeaders] = useState<string[]>([]);
@@ -106,9 +107,9 @@ export default function BulkUploadModal({
                     autoMapping.nombres = header;
                 } else if (headerLower.includes("apellido")) {
                     autoMapping.apellidos = header;
-                } else if ((headerLower.includes("nombre") && headerLower.includes("completo")) || 
-                           (headerLower.includes("nombre") && headerLower.includes("apellido")) ||
-                           (headerLower.includes("nombre") && !headerLower.includes("apellido") && !autoMapping.nombres)) {
+                } else if ((headerLower.includes("nombre") && headerLower.includes("completo")) ||
+                    (headerLower.includes("nombre") && headerLower.includes("apellido")) ||
+                    (headerLower.includes("nombre") && !headerLower.includes("apellido") && !autoMapping.nombres)) {
                     // Si tiene "completo" o "apellido" en el nombre, es nombre completo
                     if (headerLower.includes("completo") || headerLower.includes("apellido")) {
                         autoMapping.nombreCompleto = header;
@@ -142,7 +143,7 @@ export default function BulkUploadModal({
         // Validar mapeo de columnas obligatorias
         const hasNombreCompleto = !!columnMapping.nombreCompleto;
         const hasNombresYApellidos = !!columnMapping.nombres && !!columnMapping.apellidos;
-        
+
         if (!columnMapping.cedula || !columnMapping.correo || (!hasNombreCompleto && !hasNombresYApellidos)) {
             alert("Por favor configure el mapeo de columnas para: Cédula, Correo, y (Nombre Completo O Nombres y Apellidos)");
             return;
@@ -164,7 +165,7 @@ export default function BulkUploadModal({
             // Leer todas las filas (empezando desde la fila 2, ya que la 1 es encabezado)
             worksheet.eachRow((row, rowNumber) => {
                 if (rowNumber === 1) return; // Skip header row
-                
+
                 const rowData: any = {};
 
                 headers.forEach((header, index) => {
@@ -180,7 +181,7 @@ export default function BulkUploadModal({
                 if (columnMapping.nombreCompleto && rowData[columnMapping.nombreCompleto]) {
                     const nombreCompleto = rowData[columnMapping.nombreCompleto].trim();
                     const partes = nombreCompleto.split(",").map((p: string) => p.trim());
-                    
+
                     if (partes.length >= 2) {
                         // Formato: "Apellido, Nombre" o "Apellido1 Apellido2, Nombre1 Nombre2"
                         apellidos = partes[0]; // Primera parte antes de la coma = apellidos
@@ -222,6 +223,8 @@ export default function BulkUploadModal({
 
                 if (columnMapping.tipo && rowData[columnMapping.tipo]) {
                     user.tipo = rowData[columnMapping.tipo];
+                } else {
+                    user.tipo = tipoParticipacion;
                 }
 
                 // Solo agregar si tiene datos mínimos
@@ -298,18 +301,47 @@ export default function BulkUploadModal({
 
                 <div className="space-y-4">
                     {/* Tipo y Semestre */}
-                    <div className="grid grid-cols-2 gap-4">
+                    <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                         <div>
                             <label className="block text-sm font-semibold text-sky-950 mb-2">
                                 Tipo de Usuario *
                             </label>
                             <select
                                 value={tipo}
-                                onChange={(e) => setTipo(e.target.value as "Estudiante" | "Profesor")}
+                                onChange={(e) => {
+                                    const val = e.target.value as "Estudiante" | "Profesor";
+                                    setTipo(val);
+                                    setTipoParticipacion(val === "Estudiante" ? "Inscrito" : "Titular");
+                                }}
                                 className="w-full bg-white border border-gray-300 text-sky-950 text-sm rounded-lg focus:ring-sky-950 focus:border-sky-950 block p-2.5"
                             >
                                 <option value="Estudiante">Estudiante</option>
                                 <option value="Profesor">Profesor</option>
+                            </select>
+                        </div>
+
+                        <div>
+                            <label className="block text-sm font-semibold text-sky-950 mb-2">
+                                Tipo de Participación *
+                            </label>
+                            <select
+                                value={tipoParticipacion}
+                                onChange={(e) => setTipoParticipacion(e.target.value)}
+                                className="w-full bg-white border border-gray-300 text-sky-950 text-sm rounded-lg focus:ring-sky-950 focus:border-sky-950 block p-2.5"
+                            >
+                                {tipo === "Estudiante" ? (
+                                    <>
+                                        <option value="Voluntario">Voluntario</option>
+                                        <option value="Inscrito">Inscrito</option>
+                                        <option value="Egresado">Egresado</option>
+                                    </>
+                                ) : (
+                                    <>
+                                        <option value="Voluntario">Voluntario</option>
+                                        <option value="Asesor">Asesor</option>
+                                        <option value="Titular">Titular</option>
+                                    </>
+                                )}
                             </select>
                         </div>
 
