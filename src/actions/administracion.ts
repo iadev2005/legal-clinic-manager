@@ -21,6 +21,8 @@ export interface Usuario {
     telefonoLocal?: string;
     telefonoCelular?: string;
     status: string; // activo
+    term?: string;
+    tipoParticipacion?: string;
 }
 
 export async function getUsuarios() {
@@ -57,12 +59,62 @@ export async function getUsuarios() {
     }
 }
 
-export async function createUsuario(data: Partial<Usuario> & { password: string }) {
+export async function getUsuarioById(id: string) {
+    try {
+        const result = await query(`
+            SELECT 
+                cedula_usuario as id,
+                nombres,
+                apellidos,
+                correo_electronico as correo,
+                telefono_local as "telefonoLocal",
+                telefono_celular as "telefonoCelular",
+                rol as role,
+                activo as status,
+                CASE 
+                    WHEN SUBSTRING(cedula_usuario, 1, 1) = 'V' THEN 'V'
+                    WHEN SUBSTRING(cedula_usuario, 1, 1) = 'E' THEN 'E'
+                    ELSE 'V'
+                END as "cedulaPrefix",
+                CASE 
+                    WHEN POSITION('-' IN cedula_usuario) > 0 
+                    THEN SUBSTRING(cedula_usuario FROM POSITION('-' IN cedula_usuario) + 1)
+                    ELSE SUBSTRING(cedula_usuario FROM 2)
+                END as "cedulaNumber"
+            FROM Usuarios_Sistema
+            WHERE cedula_usuario = $1
+        `, [id]);
+
+        if (result.rows.length === 0) {
+            return { success: false, error: 'Usuario no encontrado' };
+        }
+
+        return { success: true, data: result.rows[0] };
+    } catch (error) {
+        console.error('Error al obtener usuario por ID:', error);
+        return { success: false, error: 'Error al obtener usuario' };
+    }
+}
+
+export async function createUsuario(data: Partial<Usuario> & { password?: string }) {
     try {
         const cedula = `${data.cedulaPrefix}-${data.cedulaNumber}`;
+        const contrasena_hash = data.password ? await hashPassword(data.password) : null;
+        await query('BEGIN');
 
-        // Hash de contraseña usando la utilidad del sistema (bcrypt)
-        const contrasena_hash = await hashPassword(data.password);
+        // Verificar si el usuario ya existe
+        const existingUser = await query('SELECT cedula_usuario, rol FROM Usuarios_Sistema WHERE cedula_usuario = $1', [cedula]);
+
+        if (existingUser.rows.length > 0) {
+            // VALIDACIÓN: Conflicto de roles
+            const existingRole = existingUser.rows[0].rol;
+            if (data.role && data.role !== existingRole) {
+                await query('ROLLBACK');
+                return {
+                    success: false,
+                    error: `El usuario ya existe con el rol de ${existingRole}. No se puede cambiar el rol mediante este proceso.`
+                };
+            }
 
             // Actualizar usuario existente
             const updateFields: string[] = [];
@@ -884,6 +936,17 @@ export async function processBulkUpload(
                 const contrasena_hash = await hashPassword(tempPassword);
 
                 if (existingUser.rows.length > 0) {
+                    // VALIDACIÓN: Conflicto de roles
+                    const existingRol = existingUser.rows[0].rol;
+                    if (tipo !== existingRol) {
+                        errors.push({
+                            row,
+                            cedula,
+                            error: `El usuario ya existe con el rol de ${existingRol}. No se puede cambiar el rol mediante este proceso.`
+                        });
+                        continue;
+                    }
+
                     // Usuario existe, solo crear/actualizar el perfil
                     const existingCedula = existingUser.rows[0].cedula_usuario;
 
@@ -906,17 +969,13 @@ export async function processBulkUpload(
                             );
                             updated++;
                         } else {
-                            // Actualizar perfil existente
-                            await query(
-                                'UPDATE Alumnos SET nrc = $1, tipo = $2 WHERE cedula_alumno = $3 AND term = $4',
-                                [
-                                    user.nrc || null,
-                                    user.tipo || 'Inscrito',
-                                    existingCedula,
-                                    term
-                                ]
-                            );
-                            updated++;
+                            // VALIDACIÓN: Ya inscrito en este semestre
+                            errors.push({
+                                row,
+                                cedula,
+                                error: `El usuario ya se encuentra registrado en el semestre ${term}.`
+                            });
+                            continue;
                         }
                     } else if (tipo === 'Profesor') {
                         const existingProfile = await query(
@@ -936,17 +995,13 @@ export async function processBulkUpload(
                             );
                             updated++;
                         } else {
-                            // Actualizar perfil existente
-                            await query(
-                                'UPDATE Profesores SET nrc = $1, tipo = $2 WHERE cedula_profesor = $3 AND term = $4',
-                                [
-                                    user.nrc || null,
-                                    user.tipo || 'Titular',
-                                    existingCedula,
-                                    term
-                                ]
-                            );
-                            updated++;
+                            // VALIDACIÓN: Ya inscrito en este semestre
+                            errors.push({
+                                row,
+                                cedula,
+                                error: `El usuario ya se encuentra registrado en el semestre ${term}.`
+                            });
+                            continue;
                         }
                     }
                 } else {
