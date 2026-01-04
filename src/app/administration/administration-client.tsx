@@ -153,8 +153,7 @@ export default function Administration() {
     }, [filtroEstado]);
 
     // Active tab state
-    const [activeTab, setActiveTab] = useState<"users" | "subcatalogs" | "legalfield" | "centers">("users");
-    const [activeTab, setActiveTab] = useState<"users" | "catalogs" | "formalities" | "centers" | "semestres">("users");
+    const [activeTab, setActiveTab] = useState<"users" | "subcatalogs" | "legalfield" | "centers" | "semestres">("users");
 
     // Limpiar selección cuando cambia la pestaña activa
     useEffect(() => {
