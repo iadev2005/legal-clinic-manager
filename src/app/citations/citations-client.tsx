@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useMemo } from "react";
+import { useState, useMemo, useEffect } from "react";
 import PrimaryButton from "@/components/ui/primary-button";
 import { BarChart } from "@/components/ui/bar-chart";
 import { type ChartConfig } from "@/components/shadcn/chart";
@@ -14,7 +14,11 @@ import {
 } from "@/components/shadcn/dialog";
 import { Input } from "@/components/shadcn/input";
 import { Label } from "@/components/shadcn/label";
+import { Textarea } from "@/components/shadcn/textarea";
 import { cn } from "@/lib/utils";
+import { getCitas, createCita, updateCita, deleteCita, getUpcomingCitas, getCitaById, getUsuariosAsignadosACita } from "@/actions/citas";
+import { getCasos, getAlumnosDisponibles, getProfesoresDisponibles } from "@/actions/casos";
+import DeleteConfirmationModal from "@/components/ui/delete-confirmation-modal";
 
 // --- Types & Interfaces ---
 
@@ -26,6 +30,9 @@ interface Appointment {
     time: string;
     type: string;
     participants: string;
+    id_cita?: number;
+    nro_caso?: number;
+    observacion?: string;
 }
 
 interface CustomSelectProps {
@@ -34,11 +41,12 @@ interface CustomSelectProps {
     options: { value: string; label: string }[];
     className?: string;
     placeholder?: string;
+    disabled?: boolean;
 }
 
 // --- Helper Components ---
 
-const CustomSelect = ({ value, onChange, options, className, placeholder = "Seleccionar" }: CustomSelectProps) => {
+const CustomSelect = ({ value, onChange, options, className, placeholder = "Seleccionar", disabled = false }: CustomSelectProps) => {
     const [isOpen, setIsOpen] = useState(false);
 
     const selectedOption = options.find(opt => opt.value === value);
@@ -47,10 +55,11 @@ const CustomSelect = ({ value, onChange, options, className, placeholder = "Sele
         <div className={cn("relative", className)}>
             <div
                 className={cn(
-                    "flex h-10 w-full rounded-md border border-input bg-white px-3 py-1 text-sm shadow-sm transition-colors cursor-pointer flex items-center justify-between",
+                    "flex h-10 w-full rounded-md border border-input bg-white px-3 py-1 text-sm shadow-sm transition-colors flex items-center justify-between",
+                    disabled ? "bg-gray-100 cursor-not-allowed opacity-50" : "cursor-pointer",
                     "focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
                 )}
-                onClick={() => setIsOpen(!isOpen)}
+                onClick={() => !disabled && setIsOpen(!isOpen)}
             >
                 <span className={selectedOption ? "text-sky-950" : "text-muted-foreground"}>
                     {selectedOption ? selectedOption.label : placeholder}
@@ -110,9 +119,11 @@ interface DayDetailsModalProps {
     onClose: () => void;
     selectedDate: Date | null;
     appointments: Appointment[];
+    onEdit?: (appointment: Appointment) => void;
+    onDelete?: (appointment: Appointment) => void;
 }
 
-function DayDetailsModal({ open, onClose, selectedDate, appointments }: DayDetailsModalProps) {
+function DayDetailsModal({ open, onClose, selectedDate, appointments, onEdit, onDelete }: DayDetailsModalProps) {
     if (!selectedDate) return null;
 
     const dayAppointments = appointments.filter(apt => {
@@ -167,15 +178,14 @@ function DayDetailsModal({ open, onClose, selectedDate, appointments }: DayDetai
                                                                         apt.time === "16:00" ? "4:00 PM" : apt.time}
                                         </h3>
                                     </div>
-                                    <span className={cn(
-                                        "px-3 py-1 rounded-full text-xs font-bold uppercase",
-                                        getTypeColor(apt.type)
-                                    )}>
-                                        {getTypeLabel(apt.type)}
-                                    </span>
+                                    {apt.observacion && (
+                                        <span className="px-3 py-1 rounded-full text-xs font-bold uppercase bg-blue-100 text-blue-700">
+                                            {apt.observacion.substring(0, 20)}
+                                        </span>
+                                    )}
                                 </div>
 
-                                <div className="grid grid-cols-2 gap-4">
+                                <div className="grid grid-cols-2 gap-4 mb-4">
                                     <div>
                                         <label className="text-sky-950/70 text-sm font-semibold">
                                             Caso
@@ -197,6 +207,40 @@ function DayDetailsModal({ open, onClose, selectedDate, appointments }: DayDetai
                                         </p>
                                     </div>
                                 </div>
+
+                                {apt.observacion && (
+                                    <div className="mb-4">
+                                        <label className="text-sky-950/70 text-sm font-semibold">
+                                            Observación
+                                        </label>
+                                        <p className="text-sky-950 text-sm mt-1">
+                                            {apt.observacion}
+                                        </p>
+                                    </div>
+                                )}
+
+                                {(onEdit || onDelete) && (
+                                    <div className="flex gap-2 pt-2 border-t border-blue-200">
+                                        {onEdit && (
+                                            <button
+                                                onClick={() => onEdit(apt)}
+                                                className="flex-1 px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg font-semibold transition-colors flex items-center justify-center gap-2 cursor-pointer"
+                                            >
+                                                <span className="icon-[mdi--pencil]"></span>
+                                                Editar
+                                            </button>
+                                        )}
+                                        {onDelete && (
+                                            <button
+                                                onClick={() => onDelete(apt)}
+                                                className="flex-1 px-4 py-2 bg-red-600 hover:bg-red-700 text-white rounded-lg font-semibold transition-colors flex items-center justify-center gap-2 cursor-pointer"
+                                            >
+                                                <span className="icon-[mdi--trash-can-outline]"></span>
+                                                Eliminar
+                                            </button>
+                                        )}
+                                    </div>
+                                )}
                             </div>
                         ))}
 
@@ -240,29 +284,21 @@ interface AppointmentModalProps {
     open: boolean;
     onClose: () => void;
     onSave: (appointment: Omit<Appointment, "id">) => void;
+    editingAppointment?: Appointment | null;
+    onUpdate?: (appointment: Appointment) => void;
 }
 
-function AppointmentModal({ open, onClose, onSave }: AppointmentModalProps) {
+function AppointmentModal({ open, onClose, onSave, editingAppointment, onUpdate }: AppointmentModalProps) {
     const [caseId, setCaseId] = useState("");
     const [date, setDate] = useState("");
     const [time, setTime] = useState("");
-    const [type, setType] = useState("");
-    const [participants, setParticipants] = useState("");
-
-    const availableCases = [
-        { value: "2024-051", label: "Caso #2024-051 - Desalojo Injustificado" },
-        { value: "2024-049", label: "Caso #2024-049 - Custodia de Menores" },
-        { value: "2024-052", label: "Caso #2024-052 - Reclamo Laboral" },
-        { value: "2024-044", label: "Caso #2024-044 - Divorcio Mutuo Acuerdo" },
-        { value: "2024-060", label: "Caso #2024-060 - Violencia Doméstica" },
-    ];
-
-    const appointmentTypes = [
-        { value: "consulta", label: "Consulta Inicial" },
-        { value: "seguimiento", label: "Seguimiento" },
-        { value: "audiencia", label: "Preparación Audiencia" },
-        { value: "entrega", label: "Entrega de Documentos" },
-    ];
+    const [observacion, setObservacion] = useState("");
+    const [fechaProximaCita, setFechaProximaCita] = useState("");
+    const [usuariosAsignados, setUsuariosAsignados] = useState<string[]>([]);
+    const [availableCases, setAvailableCases] = useState<{ value: string; label: string }[]>([]);
+    const [availableUsers, setAvailableUsers] = useState<{ value: string; label: string }[]>([]);
+    const [loading, setLoading] = useState(false);
+    const [error, setError] = useState<string | null>(null);
 
     const timeSlots = [
         { value: "08:00", label: "8:00 AM" },
@@ -275,29 +311,218 @@ function AppointmentModal({ open, onClose, onSave }: AppointmentModalProps) {
         { value: "16:00", label: "4:00 PM" },
     ];
 
-    const handleSubmit = (e: React.FormEvent) => {
+    // Cargar datos de la cita si está en modo edición
+    useEffect(() => {
+        if (open && editingAppointment) {
+            const loadCitaData = async () => {
+                setLoading(true);
+                setError(null);
+                try {
+                    if (editingAppointment.id_cita && editingAppointment.nro_caso) {
+                        const [citaRes, usuariosRes] = await Promise.all([
+                            getCitaById(editingAppointment.id_cita, editingAppointment.nro_caso),
+                            getUsuariosAsignadosACita(editingAppointment.id_cita, editingAppointment.nro_caso)
+                        ]);
+
+                        if (citaRes.success && citaRes.data) {
+                            const cita = citaRes.data;
+                            const fechaAtencion = new Date(cita.fecha_atencion);
+                            setCaseId(cita.nro_caso.toString());
+                            setDate(fechaAtencion.toISOString().split('T')[0]);
+                            setTime(`${fechaAtencion.getHours().toString().padStart(2, '0')}:${fechaAtencion.getMinutes().toString().padStart(2, '0')}`);
+                            setObservacion(cita.observacion || '');
+                            if (cita.fecha_proxima_cita) {
+                                const fechaProx = new Date(cita.fecha_proxima_cita);
+                                setFechaProximaCita(fechaProx.toISOString().slice(0, 16));
+                            }
+
+                            if (usuariosRes.success) {
+                                setUsuariosAsignados(usuariosRes.data.map((u: any) => u.cedula_usuario));
+                            }
+                        }
+                    }
+                } catch (err: any) {
+                    setError(err.message || 'Error al cargar datos de la cita');
+                } finally {
+                    setLoading(false);
+                }
+            };
+            loadCitaData();
+        } else if (open && !editingAppointment) {
+            // Reset form for new appointment
+            setCaseId("");
+            setDate("");
+            setTime("");
+            setObservacion("");
+            setFechaProximaCita("");
+            setUsuariosAsignados([]);
+        }
+    }, [open, editingAppointment]);
+
+    // Cargar casos y usuarios disponibles
+    useEffect(() => {
+        if (open) {
+            const loadData = async () => {
+                setLoading(true);
+                setError(null);
+                try {
+                    const [casosRes, alumnosRes, profesoresRes] = await Promise.all([
+                        getCasos(),
+                        getAlumnosDisponibles(),
+                        getProfesoresDisponibles()
+                    ]);
+
+                    if (casosRes.success) {
+                        const casosOptions = casosRes.data.map((caso: any) => ({
+                            value: caso.nro_caso.toString(),
+                            label: `Caso #${caso.nro_caso} - ${caso.solicitante_nombre || 'Sin solicitante'}`
+                        }));
+                        setAvailableCases(casosOptions);
+                    }
+
+                    if (alumnosRes.success && profesoresRes.success) {
+                        // Usar un Map para evitar duplicados por cédula
+                        const usuariosMap = new Map<string, { value: string; label: string }>();
+                        
+                        // Agregar alumnos primero
+                        alumnosRes.data.forEach((u: any) => {
+                            if (!usuariosMap.has(u.cedula_usuario)) {
+                                usuariosMap.set(u.cedula_usuario, {
+                                    value: u.cedula_usuario,
+                                    label: `${u.nombre_completo} (Estudiante)`
+                                });
+                            }
+                        });
+                        
+                        // Agregar profesores (si no están ya como estudiantes, o actualizar el label)
+                        profesoresRes.data.forEach((u: any) => {
+                            if (usuariosMap.has(u.cedula_usuario)) {
+                                // Si ya existe, actualizar el label para indicar ambos roles
+                                const existing = usuariosMap.get(u.cedula_usuario)!;
+                                if (!existing.label.includes('Profesor')) {
+                                    existing.label = `${u.nombre_completo} (Estudiante/Profesor)`;
+                                }
+                            } else {
+                                usuariosMap.set(u.cedula_usuario, {
+                                    value: u.cedula_usuario,
+                                    label: `${u.nombre_completo} (Profesor)`
+                                });
+                            }
+                        });
+                        
+                        setAvailableUsers(Array.from(usuariosMap.values()));
+                    }
+                } catch (err: any) {
+                    setError(err.message || 'Error al cargar datos');
+                } finally {
+                    setLoading(false);
+                }
+            };
+            loadData();
+        }
+    }, [open]);
+
+    const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
-        if (!caseId || !date || !time || !type || !participants) return;
+        if (!caseId || !date || !time) {
+            setError('Por favor complete todos los campos obligatorios');
+            return;
+        }
 
-        const selectedCase = availableCases.find(c => c.value === caseId);
-        const caseName = selectedCase ? selectedCase.label.split(" - ")[1] : "";
+        setLoading(true);
+        setError(null);
 
-        onSave({
-            caseNumber: caseId,
-            caseName,
-            date: new Date(date),
-            time,
-            type,
-            participants,
-        });
+        try {
+            // Combinar fecha y hora
+            const fechaHora = new Date(`${date}T${time}:00`);
+            const fechaHoraISO = fechaHora.toISOString();
 
-        // Reset form
-        setCaseId("");
-        setDate("");
-        setTime("");
-        setType("");
-        setParticipants("");
-        onClose();
+            // Preparar fecha próxima cita si existe
+            let fechaProximaISO = null;
+            if (fechaProximaCita) {
+                fechaProximaISO = new Date(fechaProximaCita).toISOString();
+            }
+
+            const selectedCase = availableCases.find(c => c.value === caseId);
+            const caseName = selectedCase ? selectedCase.label.split(" - ")[1] : "";
+
+            // Formatear participantes
+            const participantesNombres = usuariosAsignados
+                .map(cedula => {
+                    const user = availableUsers.find(u => u.value === cedula);
+                    return user ? user.label.split(' (')[0] : '';
+                })
+                .filter(Boolean)
+                .join(', ') || 'Sin asignar';
+
+            if (editingAppointment && editingAppointment.id_cita && editingAppointment.nro_caso) {
+                // Modo edición
+                const result = await updateCita(
+                    editingAppointment.id_cita,
+                    editingAppointment.nro_caso,
+                    {
+                        fecha_atencion: fechaHoraISO,
+                        observacion: observacion || undefined,
+                        fecha_proxima_cita: fechaProximaISO || undefined,
+                        usuarios_asignados: usuariosAsignados.length > 0 ? usuariosAsignados : []
+                    }
+                );
+
+                if (result.success && onUpdate) {
+                    const updatedAppointment: Appointment = {
+                        ...editingAppointment,
+                        caseNumber: caseId,
+                        caseName,
+                        date: fechaHora,
+                        time,
+                        participants: participantesNombres,
+                        observacion: observacion || undefined
+                    };
+                    onUpdate(updatedAppointment);
+                    onClose();
+                } else {
+                    setError(result.error || 'Error al actualizar la cita');
+                }
+            } else {
+                // Modo creación
+                const result = await createCita({
+                    nro_caso: parseInt(caseId),
+                    fecha_atencion: fechaHoraISO,
+                    observacion: observacion || undefined,
+                    fecha_proxima_cita: fechaProximaISO || undefined,
+                    usuarios_asignados: usuariosAsignados.length > 0 ? usuariosAsignados : undefined
+                });
+
+                if (result.success) {
+                    onSave({
+                        caseNumber: caseId,
+                        caseName,
+                        date: fechaHora,
+                        time,
+                        type: "consulta", // Por defecto
+                        participants: participantesNombres,
+                        id_cita: result.data?.id_cita,
+                        nro_caso: parseInt(caseId),
+                        observacion: observacion || undefined
+                    });
+
+                    // Reset form
+                    setCaseId("");
+                    setDate("");
+                    setTime("");
+                    setObservacion("");
+                    setFechaProximaCita("");
+                    setUsuariosAsignados([]);
+                    onClose();
+                } else {
+                    setError(result.error || 'Error al crear la cita');
+                }
+            }
+        } catch (err: any) {
+            setError(err.message || 'Error al guardar la cita');
+        } finally {
+            setLoading(false);
+        }
     };
 
     return (
@@ -305,11 +530,11 @@ function AppointmentModal({ open, onClose, onSave }: AppointmentModalProps) {
             <DialogContent className="sm:max-w-lg bg-white p-0 overflow-hidden border-0 gap-0 rounded-2xl shadow-2xl">
                 <div className="bg-[#003366] text-white p-5 flex flex-col gap-1">
                     <DialogTitle className="font-bold text-xl flex items-center gap-2">
-                        <span className="icon-[mdi--calendar-plus] text-[#3E7DBB] bg-white rounded-full p-0.5"></span>
-                        Programar Cita
+                        <span className={`icon-[${editingAppointment ? 'mdi--pencil' : 'mdi--calendar-plus'}] text-[#3E7DBB] bg-white rounded-full p-0.5`}></span>
+                        {editingAppointment ? 'Editar Cita' : 'Programar Cita'}
                     </DialogTitle>
                     <DialogDescription className="text-blue-200 text-sm">
-                        Agenda una nueva cita para seguimiento de caso.
+                        {editingAppointment ? 'Modifica los datos de la cita.' : 'Agenda una nueva cita para seguimiento de caso.'}
                     </DialogDescription>
                 </div>
 
@@ -322,6 +547,7 @@ function AppointmentModal({ open, onClose, onSave }: AppointmentModalProps) {
                             options={availableCases}
                             placeholder="Seleccionar caso..."
                             className="w-full"
+                            disabled={!!editingAppointment}
                         />
                     </div>
 
@@ -351,27 +577,58 @@ function AppointmentModal({ open, onClose, onSave }: AppointmentModalProps) {
                     </div>
 
                     <div className="space-y-2">
-                        <Label className="text-xs font-bold uppercase tracking-wider text-gray-500 ml-1">Tipo de Cita</Label>
-                        <CustomSelect
-                            value={type}
-                            onChange={setType}
-                            options={appointmentTypes}
-                            placeholder="Seleccionar tipo..."
-                            className="w-full"
+                        <Label htmlFor="observacion" className="text-xs font-bold uppercase tracking-wider text-gray-500 ml-1">Observación</Label>
+                        <Textarea
+                            id="observacion"
+                            placeholder="Descripción de la cita..."
+                            value={observacion}
+                            onChange={(e) => setObservacion(e.target.value)}
+                            className="bg-white border-gray-200 focus:border-[#3E7DBB] min-h-[80px]"
                         />
                     </div>
 
                     <div className="space-y-2">
-                        <Label htmlFor="participants" className="text-xs font-bold uppercase tracking-wider text-gray-500 ml-1">Participantes</Label>
+                        <Label htmlFor="fechaProxima" className="text-xs font-bold uppercase tracking-wider text-gray-500 ml-1">Fecha Próxima Cita (Opcional)</Label>
                         <Input
-                            id="participants"
-                            placeholder="Ej: Juan Pérez, María González..."
-                            value={participants}
-                            onChange={(e) => setParticipants(e.target.value)}
-                            required
+                            id="fechaProxima"
+                            type="datetime-local"
+                            value={fechaProximaCita}
+                            onChange={(e) => setFechaProximaCita(e.target.value)}
                             className="bg-white border-gray-200 focus:border-[#3E7DBB] h-10"
                         />
                     </div>
+
+                    <div className="space-y-2">
+                        <Label className="text-xs font-bold uppercase tracking-wider text-gray-500 ml-1">Usuarios Asignados (Opcional)</Label>
+                        <div className="space-y-2 max-h-40 overflow-y-auto border border-gray-200 rounded-md p-2 bg-white">
+                            {availableUsers.map((user) => (
+                                <label key={user.value} className="flex items-center gap-2 cursor-pointer hover:bg-gray-50 p-2 rounded">
+                                    <input
+                                        type="checkbox"
+                                        checked={usuariosAsignados.includes(user.value)}
+                                        onChange={(e) => {
+                                            if (e.target.checked) {
+                                                setUsuariosAsignados([...usuariosAsignados, user.value]);
+                                            } else {
+                                                setUsuariosAsignados(usuariosAsignados.filter(u => u !== user.value));
+                                            }
+                                        }}
+                                        className="rounded"
+                                    />
+                                    <span className="text-sm text-sky-950">{user.label}</span>
+                                </label>
+                            ))}
+                            {availableUsers.length === 0 && (
+                                <p className="text-sm text-gray-500 text-center py-2">Cargando usuarios...</p>
+                            )}
+                        </div>
+                    </div>
+
+                    {error && (
+                        <div className="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded-lg text-sm">
+                            {error}
+                        </div>
+                    )}
 
                     <DialogFooter className="pt-2 gap-2 sm:gap-0">
                         <button
@@ -383,10 +640,20 @@ function AppointmentModal({ open, onClose, onSave }: AppointmentModalProps) {
                         </button>
                         <button
                             type="submit"
-                            className="px-6 py-2.5 text-sm font-bold text-white bg-[#003366] hover:bg-[#002244] rounded-xl shadow-lg shadow-blue-900/10 transition-all transform active:scale-95 flex items-center justify-center gap-2 w-full sm:w-auto cursor-pointer"
+                            disabled={loading}
+                            className="px-6 py-2.5 text-sm font-bold text-white bg-[#003366] hover:bg-[#002244] rounded-xl shadow-lg shadow-blue-900/10 transition-all transform active:scale-95 flex items-center justify-center gap-2 w-full sm:w-auto cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
                         >
-                            <span className="icon-[mdi--check]"></span>
-                            Confirmar
+                            {loading ? (
+                                <>
+                                    <span className="icon-[svg-spinners--180-ring-with-bg]"></span>
+                                    Guardando...
+                                </>
+                            ) : (
+                                <>
+                                    <span className="icon-[mdi--check]"></span>
+                                    Confirmar
+                                </>
+                            )}
                         </button>
                     </DialogFooter>
                 </form>
@@ -541,54 +808,220 @@ export default function CitationsClient() {
     const [isModalOpen, setIsModalOpen] = useState(false);
     const [isDayDetailsOpen, setIsDayDetailsOpen] = useState(false);
     const [selectedDate, setSelectedDate] = useState<Date | null>(null);
-    const [appointments, setAppointments] = useState<Appointment[]>([
-        {
-            id: 1,
-            caseNumber: "2024-051",
-            caseName: "Desalojo Injustificado",
-            date: new Date(2025, 10, 7),
-            time: "10:00",
-            type: "consulta",
-            participants: "María García",
-        },
-        {
-            id: 2,
-            caseNumber: "2024-049",
-            caseName: "Custodia de Menores",
-            date: new Date(2025, 10, 4),
-            time: "09:00",
-            type: "seguimiento",
-            participants: "Carlos Ruiz",
-        },
-        {
-            id: 3,
-            caseNumber: "2024-052",
-            caseName: "Reclamo Laboral",
-            date: new Date(2025, 10, 10),
-            time: "09:00",
-            type: "audiencia",
-            participants: "Ana Silva",
-        },
-        {
-            id: 4,
-            caseNumber: "2024-044",
-            caseName: "Divorcio Mutuo Acuerdo",
-            date: new Date(2025, 10, 14),
-            time: "09:00",
-            type: "entrega",
-            participants: "Pedro Gómez",
-        },
-    ]);
-
+    const [appointments, setAppointments] = useState<Appointment[]>([]);
+    const [allAppointments, setAllAppointments] = useState<Appointment[]>([]); // Todas las citas sin filtrar
+    const [loading, setLoading] = useState(true);
+    const [error, setError] = useState<string | null>(null);
     const [currentMonth, setCurrentMonth] = useState(new Date().getMonth());
     const [currentYear, setCurrentYear] = useState(new Date().getFullYear());
+    
+    // Estados para edición y eliminación
+    const [editingAppointment, setEditingAppointment] = useState<Appointment | null>(null);
+    const [deletingAppointment, setDeletingAppointment] = useState<Appointment | null>(null);
+    const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
+    
+    // Estados para filtros
+    const [filterCaso, setFilterCaso] = useState<string>("");
+    const [filterUsuario, setFilterUsuario] = useState<string>("");
+    const [filterFechaInicio, setFilterFechaInicio] = useState<string>("");
+    const [filterFechaFin, setFilterFechaFin] = useState<string>("");
+    const [availableCasesForFilter, setAvailableCasesForFilter] = useState<{ value: string; label: string }[]>([]);
+    const [availableUsersForFilter, setAvailableUsersForFilter] = useState<{ value: string; label: string }[]>([]);
 
-    const handleSaveAppointment = (newAppointment: Omit<Appointment, "id">) => {
-        const appointment: Appointment = {
-            ...newAppointment,
-            id: Date.now(),
+    // Función para transformar citas de BD al formato Appointment
+    const transformCitas = (citasData: any[]): Appointment[] => {
+        return citasData.map((cita: any) => {
+            const fechaAtencion = new Date(cita.fecha_atencion);
+            const hora = fechaAtencion.getHours().toString().padStart(2, '0');
+            const minutos = fechaAtencion.getMinutes().toString().padStart(2, '0');
+            const timeStr = `${hora}:${minutos}`;
+
+            const participantes = cita.atendido_por && Array.isArray(cita.atendido_por) 
+                ? cita.atendido_por.filter((p: any) => p).join(', ')
+                : 'Sin asignar';
+
+            return {
+                id: cita.id_cita,
+                caseNumber: cita.nro_caso.toString(),
+                caseName: cita.solicitante_nombre || cita.caso_sintesis || `Caso #${cita.nro_caso}`,
+                date: fechaAtencion,
+                time: timeStr,
+                type: "consulta",
+                participants: participantes,
+                id_cita: cita.id_cita,
+                nro_caso: cita.nro_caso,
+                observacion: cita.observacion
+            };
+        });
+    };
+
+    // Cargar citas desde la BD
+    useEffect(() => {
+        const loadCitas = async () => {
+            setLoading(true);
+            setError(null);
+            try {
+                const filters: any = {};
+                if (filterCaso) filters.nroCaso = parseInt(filterCaso);
+                if (filterUsuario) filters.cedulaUsuario = filterUsuario;
+                if (filterFechaInicio) filters.fechaInicio = filterFechaInicio;
+                if (filterFechaFin) filters.fechaFin = filterFechaFin;
+
+                const result = await getCitas(filters);
+                if (result.success) {
+                    const citasFormateadas = transformCitas(result.data);
+                    setAllAppointments(citasFormateadas);
+                    setAppointments(citasFormateadas);
+                } else {
+                    setError(result.error || 'Error al cargar citas');
+                }
+            } catch (err: any) {
+                setError(err.message || 'Error al cargar citas');
+            } finally {
+                setLoading(false);
+            }
         };
-        setAppointments([...appointments, appointment]);
+        loadCitas();
+    }, [filterCaso, filterUsuario, filterFechaInicio, filterFechaFin]);
+
+    // Cargar casos y usuarios para filtros
+    useEffect(() => {
+        const loadFilterData = async () => {
+            try {
+                const [casosRes, alumnosRes, profesoresRes] = await Promise.all([
+                    getCasos(),
+                    getAlumnosDisponibles(),
+                    getProfesoresDisponibles()
+                ]);
+
+                if (casosRes.success) {
+                    const casosOptions = casosRes.data.map((caso: any) => ({
+                        value: caso.nro_caso.toString(),
+                        label: `Caso #${caso.nro_caso} - ${caso.solicitante_nombre || 'Sin solicitante'}`
+                    }));
+                    setAvailableCasesForFilter(casosOptions);
+                }
+
+                if (alumnosRes.success && profesoresRes.success) {
+                    const usuariosMap = new Map<string, { value: string; label: string }>();
+                    
+                    alumnosRes.data.forEach((u: any) => {
+                        if (!usuariosMap.has(u.cedula_usuario)) {
+                            usuariosMap.set(u.cedula_usuario, {
+                                value: u.cedula_usuario,
+                                label: `${u.nombre_completo} (Estudiante)`
+                            });
+                        }
+                    });
+                    
+                    profesoresRes.data.forEach((u: any) => {
+                        if (usuariosMap.has(u.cedula_usuario)) {
+                            const existing = usuariosMap.get(u.cedula_usuario)!;
+                            if (!existing.label.includes('Profesor')) {
+                                existing.label = `${u.nombre_completo} (Estudiante/Profesor)`;
+                            }
+                        } else {
+                            usuariosMap.set(u.cedula_usuario, {
+                                value: u.cedula_usuario,
+                                label: `${u.nombre_completo} (Profesor)`
+                            });
+                        }
+                    });
+                    
+                    setAvailableUsersForFilter(Array.from(usuariosMap.values()));
+                }
+            } catch (err: any) {
+                console.error('Error al cargar datos para filtros:', err);
+            }
+        };
+        loadFilterData();
+    }, []);
+
+    const handleSaveAppointment = async (newAppointment: Omit<Appointment, "id">) => {
+        // Recargar citas para asegurar sincronización
+        const filters: any = {};
+        if (filterCaso) filters.nroCaso = parseInt(filterCaso);
+        if (filterUsuario) filters.cedulaUsuario = filterUsuario;
+        if (filterFechaInicio) filters.fechaInicio = filterFechaInicio;
+        if (filterFechaFin) filters.fechaFin = filterFechaFin;
+
+        const result = await getCitas(filters);
+        if (result.success) {
+            const citasFormateadas = transformCitas(result.data);
+            setAllAppointments(citasFormateadas);
+            setAppointments(citasFormateadas);
+        }
+    };
+
+    const handleUpdateAppointment = async (updatedAppointment: Appointment) => {
+        // Recargar citas después de actualizar
+        const filters: any = {};
+        if (filterCaso) filters.nroCaso = parseInt(filterCaso);
+        if (filterUsuario) filters.cedulaUsuario = filterUsuario;
+        if (filterFechaInicio) filters.fechaInicio = filterFechaInicio;
+        if (filterFechaFin) filters.fechaFin = filterFechaFin;
+
+        const result = await getCitas(filters);
+        if (result.success) {
+            const citasFormateadas = transformCitas(result.data);
+            setAllAppointments(citasFormateadas);
+            setAppointments(citasFormateadas);
+        }
+        setEditingAppointment(null);
+    };
+
+    const handleEditAppointment = (appointment: Appointment) => {
+        setEditingAppointment(appointment);
+        setIsDayDetailsOpen(false);
+        setIsModalOpen(true);
+    };
+
+    const handleDeleteAppointment = (appointment: Appointment) => {
+        setDeletingAppointment(appointment);
+        setIsDeleteModalOpen(true);
+        setIsDayDetailsOpen(false);
+    };
+
+    const confirmDelete = async () => {
+        if (deletingAppointment && deletingAppointment.id_cita && deletingAppointment.nro_caso) {
+            setLoading(true);
+            try {
+                const result = await deleteCita(deletingAppointment.id_cita, deletingAppointment.nro_caso);
+                if (result.success) {
+                    // Recargar citas
+                    const filters: any = {};
+                    if (filterCaso) filters.nroCaso = parseInt(filterCaso);
+                    if (filterUsuario) filters.cedulaUsuario = filterUsuario;
+                    if (filterFechaInicio) filters.fechaInicio = filterFechaInicio;
+                    if (filterFechaFin) filters.fechaFin = filterFechaFin;
+
+                    const citasResult = await getCitas(filters);
+                    if (citasResult.success) {
+                        const citasFormateadas = transformCitas(citasResult.data);
+                        setAllAppointments(citasFormateadas);
+                        setAppointments(citasFormateadas);
+                    }
+                } else {
+                    setError(result.error || 'Error al eliminar la cita');
+                }
+            } catch (err: any) {
+                setError(err.message || 'Error al eliminar la cita');
+            } finally {
+                setLoading(false);
+                setIsDeleteModalOpen(false);
+                setDeletingAppointment(null);
+            }
+        }
+    };
+
+    const handleNewAppointment = () => {
+        setEditingAppointment(null);
+        setIsModalOpen(true);
+    };
+
+    const handleCloseModal = () => {
+        setIsModalOpen(false);
+        setEditingAppointment(null);
     };
 
     const handlePrevMonth = () => {
@@ -697,17 +1130,18 @@ export default function CitationsClient() {
     return (
         <div className="w-full h-full flex flex-col gap-6 overflow-hidden">
             {/* Header */}
-            <div className="flex-none flex justify-between items-end">
-                <div className="flex flex-col">
-                    <h1 className="text-sky-950 text-5xl font-bold tracking-tight">
-                        Gestión de Citas
-                    </h1>
-                    <p className="text-[#325B84] text-lg font-medium mt-1">
-                        Programa y consulta la agenda de citas por caso, alumno o profesor.
-                    </p>
-                </div>
+            <div className="flex-none flex flex-col gap-4">
+                <div className="flex justify-between items-end">
+                    <div className="flex flex-col">
+                        <h1 className="text-sky-950 text-5xl font-bold tracking-tight">
+                            Gestión de Citas
+                        </h1>
+                        <p className="text-[#325B84] text-lg font-medium mt-1">
+                            Programa y consulta la agenda de citas por caso, alumno o profesor.
+                        </p>
+                    </div>
 
-                <div className="flex items-center gap-4">
+                    <div className="flex items-center gap-4">
                     {/* View Toggle (Segmented Control) */}
                     <div className="bg-neutral-100 p-1.5 rounded-xl flex gap-1 shadow-inner h-fit">
                         <button
@@ -736,12 +1170,75 @@ export default function CitationsClient() {
                         </button>
                     </div>
 
-                    <PrimaryButton
-                        onClick={() => setIsModalOpen(true)}
-                        icon="icon-[mdi--calendar-plus]"
-                    >
-                        Programar Cita
-                    </PrimaryButton>
+                        <PrimaryButton
+                            onClick={handleNewAppointment}
+                            icon="icon-[mdi--calendar-plus]"
+                        >
+                            Programar Cita
+                        </PrimaryButton>
+                    </div>
+                </div>
+
+                {/* Filtros */}
+                <div className="bg-white rounded-xl border border-neutral-200 p-4 shadow-sm">
+                    <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+                        <div className="space-y-2">
+                            <Label className="text-xs font-bold uppercase tracking-wider text-gray-500">Caso</Label>
+                            <CustomSelect
+                                value={filterCaso}
+                                onChange={setFilterCaso}
+                                options={[{ value: "", label: "Todos los casos" }, ...availableCasesForFilter]}
+                                placeholder="Filtrar por caso..."
+                                className="w-full"
+                            />
+                        </div>
+                        <div className="space-y-2">
+                            <Label className="text-xs font-bold uppercase tracking-wider text-gray-500">Usuario</Label>
+                            <CustomSelect
+                                value={filterUsuario}
+                                onChange={setFilterUsuario}
+                                options={[{ value: "", label: "Todos los usuarios" }, ...availableUsersForFilter]}
+                                placeholder="Filtrar por usuario..."
+                                className="w-full"
+                            />
+                        </div>
+                        <div className="space-y-2">
+                            <Label htmlFor="fechaInicio" className="text-xs font-bold uppercase tracking-wider text-gray-500">Fecha Inicio</Label>
+                            <Input
+                                id="fechaInicio"
+                                type="date"
+                                value={filterFechaInicio}
+                                onChange={(e) => setFilterFechaInicio(e.target.value)}
+                                className="bg-white border-gray-200 h-10"
+                            />
+                        </div>
+                        <div className="space-y-2">
+                            <Label htmlFor="fechaFin" className="text-xs font-bold uppercase tracking-wider text-gray-500">Fecha Fin</Label>
+                            <div className="flex gap-2">
+                                <Input
+                                    id="fechaFin"
+                                    type="date"
+                                    value={filterFechaFin}
+                                    onChange={(e) => setFilterFechaFin(e.target.value)}
+                                    className="bg-white border-gray-200 h-10 flex-1"
+                                />
+                                {(filterCaso || filterUsuario || filterFechaInicio || filterFechaFin) && (
+                                    <button
+                                        onClick={() => {
+                                            setFilterCaso("");
+                                            setFilterUsuario("");
+                                            setFilterFechaInicio("");
+                                            setFilterFechaFin("");
+                                        }}
+                                        className="px-4 py-2 bg-gray-100 hover:bg-gray-200 rounded-lg text-gray-700 font-semibold transition-colors cursor-pointer"
+                                        title="Limpiar filtros"
+                                    >
+                                        <span className="icon-[mdi--close]"></span>
+                                    </button>
+                                )}
+                            </div>
+                        </div>
+                    </div>
                 </div>
             </div>
 
@@ -788,8 +1285,21 @@ export default function CitationsClient() {
 
             {/* Content Area */}
             <div className="flex-1 min-h-0 bg-white rounded-2xl border border-neutral-200 shadow-sm p-6 overflow-hidden relative">
+                {loading && (
+                    <div className="absolute inset-0 flex items-center justify-center bg-white/80 z-10">
+                        <div className="flex flex-col items-center gap-4">
+                            <span className="icon-[svg-spinners--180-ring-with-bg] text-4xl text-[#3E7DBB]"></span>
+                            <p className="text-sky-950/60 font-medium">Cargando citas...</p>
+                        </div>
+                    </div>
+                )}
+                {error && (
+                    <div className="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded-lg text-sm mb-4">
+                        {error}
+                    </div>
+                )}
                 {/* Calendar View */}
-                {viewMode === "calendar" && (
+                {viewMode === "calendar" && !loading && (
                     <div className="h-full w-full animate-in fade-in slide-in-from-left-4 duration-300 grid grid-cols-12 gap-8">
                         {/* Main Calendar */}
                         <div className="col-span-9 h-full flex flex-col">
@@ -826,9 +1336,11 @@ export default function CitationsClient() {
                                                         {new Date(apt.date).getDate()}
                                                     </span>
                                                 </div>
-                                                <span className={cn("text-[10px] font-bold px-2 py-0.5 rounded-full border border-opacity-50", getTypeColor(apt.type))}>
-                                                    {getTypeLabel(apt.type)}
-                                                </span>
+                                                {apt.observacion && (
+                                                    <span className="text-[10px] font-bold px-2 py-0.5 rounded-full border border-opacity-50 bg-blue-100 text-blue-700">
+                                                        {apt.observacion.substring(0, 15)}
+                                                    </span>
+                                                )}
                                             </div>
                                             <h4 className="font-bold text-sky-950 truncate" title={apt.caseName}>
                                                 {apt.caseName}
@@ -852,7 +1364,7 @@ export default function CitationsClient() {
                 )}
 
                 {/* Chart View */}
-                {viewMode === "chart" && (
+                {viewMode === "chart" && !loading && (
                     <div className="h-full w-full flex flex-col animate-in fade-in slide-in-from-right-4 duration-300">
                         <h2 className="text-sky-950 text-2xl font-bold mb-6 flex items-center gap-2">
                             <span className="icon-[mdi--chart-bar] text-[#3E7DBB] text-3xl"></span>
@@ -873,8 +1385,10 @@ export default function CitationsClient() {
             {/* Appointment Modal */}
             <AppointmentModal
                 open={isModalOpen}
-                onClose={() => setIsModalOpen(false)}
+                onClose={handleCloseModal}
                 onSave={handleSaveAppointment}
+                editingAppointment={editingAppointment}
+                onUpdate={handleUpdateAppointment}
             />
 
             {/* Day Details Modal */}
@@ -883,6 +1397,20 @@ export default function CitationsClient() {
                 onClose={() => setIsDayDetailsOpen(false)}
                 selectedDate={selectedDate}
                 appointments={appointments}
+                onEdit={handleEditAppointment}
+                onDelete={handleDeleteAppointment}
+            />
+
+            {/* Delete Confirmation Modal */}
+            <DeleteConfirmationModal
+                open={isDeleteModalOpen}
+                onClose={() => {
+                    setIsDeleteModalOpen(false);
+                    setDeletingAppointment(null);
+                }}
+                onConfirm={confirmDelete}
+                title="Eliminar Cita"
+                description={`¿Estás seguro de que deseas eliminar la cita del caso #${deletingAppointment?.caseNumber}? Esta acción no se puede deshacer.`}
             />
         </div>
     );
