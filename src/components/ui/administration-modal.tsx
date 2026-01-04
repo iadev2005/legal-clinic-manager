@@ -364,8 +364,7 @@ export default function AdministrationModal({
 
     const getTitle = () => {
         const action = mode === "create" ? "Crear" : "Editar";
-        const entity = type === "users" ? "Usuario" : type === "catalogs" ? "Catálogo" : type === "formalities" ? "Trámite" : type === "centers" ? "Centro" : "Semestre";
-        const entity = type === "users" ? "Usuario" : type === "subcatalogs" ? "Catálogo" : type === "legalfield" ? "Trámite" : "Centro";
+        const entity = type === "users" ? "Usuario" : type === "subcatalogs" ? "Subcategoría" : type === "legalfield" ? "Legalfield" : "Centro";
         return `${action} ${entity}`;
     };
 
@@ -591,32 +590,6 @@ export default function AdministrationModal({
                                         />
                                     </div>
                                 )}
-                                {type === "catalogs" && (
-                                    <div className="space-y-2">
-                                        <Label htmlFor="categoria">Categoría <span className="text-red-500">*</span></Label>
-                                        <CustomSelect
-                                            value={formData.categorylegalfieldid || ""}
-                                            onChange={(val) => {
-                                                console.log('Categoría seleccionada:', val);
-                                                handleChange("categorylegalfieldid", val);
-                                            }}
-                                            options={categorias.map(c => ({ value: c.id, label: c.nombre }))}
-                                        />
-                                        {!formData.categorylegalfieldid && mode === "create" && (
-                                            <p className="text-xs text-red-500">Debe seleccionar una categoría</p>
-                                        )}
-                                    </div>
-                                )}
-                                {type === "formalities" && (
-                                    <div className="space-y-2">
-                                        <Label htmlFor="nombre">Nombre</Label>
-                                        <Input
-                                            id="nombre"
-                                            value={formData.nombre || ""}
-                                            onChange={(e) => handleChange("nombre", e.target.value)}
-                                            required
-                                        />
-                                    </div>
                                 {type === "subcatalogs" && (
                                     <>
                                         <div className="space-y-2">
