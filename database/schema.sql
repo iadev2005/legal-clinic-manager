@@ -401,3 +401,32 @@ CREATE TABLE Se_Le_Adjudican (
     motivo TEXT,
     fecha_registro TIMESTAMP DEFAULT NOW()
 );
+
+/* ==========================================================================
+   MÓDULO H: NOTIFICACIONES
+   ========================================================================== */
+
+-- Tabla 31 (Notificaciones)
+CREATE TABLE Notificaciones (
+    id_notificacion SERIAL PRIMARY KEY,
+    descripcion TEXT NOT NULL,
+    fecha_notificacion TIMESTAMP DEFAULT NOW() NOT NULL
+);
+
+-- Tabla 32 (Notificaciones-Usuarios N:M)
+CREATE TABLE Notificaciones_Usuarios (
+    id_notificacion INTEGER NOT NULL REFERENCES Notificaciones(id_notificacion) ON DELETE CASCADE,
+    cedula_usuario VARCHAR(20) NOT NULL REFERENCES Usuarios_Sistema(cedula_usuario) ON DELETE CASCADE,
+    revisado BOOLEAN DEFAULT FALSE NOT NULL,
+    fecha_revision TIMESTAMP,
+    PRIMARY KEY (id_notificacion, cedula_usuario)
+);
+
+-- Índice para búsquedas frecuentes de notificaciones no revisadas por usuario
+CREATE INDEX idx_notificaciones_usuario_revisado 
+ON Notificaciones_Usuarios (cedula_usuario, revisado) 
+WHERE revisado = FALSE;
+
+-- Índice para búsquedas por fecha de notificación
+CREATE INDEX idx_notificaciones_fecha 
+ON Notificaciones (fecha_notificacion DESC);
