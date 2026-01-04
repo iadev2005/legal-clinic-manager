@@ -690,10 +690,25 @@ export async function getMaterias() {
 // SEMESTRES
 // ============================================================================
 
+export interface Semestre {
+    term: string;
+    fecha_inicio: string;
+    fecha_final: string;
+}
+
 export async function getSemestres() {
     try {
         const result = await query(`
-            SELECT term, fecha_inicio, fecha_final
+            SELECT 
+                term as id,
+                term,
+                fecha_inicio,
+                fecha_final,
+                CASE 
+                    WHEN CURRENT_DATE BETWEEN fecha_inicio AND fecha_final THEN 'Activo'
+                    WHEN CURRENT_DATE < fecha_inicio THEN 'Pendiente'
+                    ELSE 'Finalizado'
+                END as estado
             FROM Semestres
             ORDER BY fecha_inicio DESC
         `);
@@ -701,6 +716,141 @@ export async function getSemestres() {
     } catch (error) {
         console.error('Error al obtener semestres:', error);
         return { success: false, error: 'Error al obtener semestres' };
+    }
+}
+
+export async function createSemestre(data: Partial<Semestre>) {
+    try {
+        if (!data.term || !data.fecha_inicio || !data.fecha_final) {
+            return { success: false, error: 'Todos los campos son obligatorios' };
+        }
+
+        // Validar formato del term (ej: 2025-15)
+        const termPattern = /^\d{4}-\d{2}$/;
+        if (!termPattern.test(data.term)) {
+            return { success: false, error: 'El formato del semestre debe ser YYYY-NN (ej: 2025-15)' };
+        }
+
+        // Validar que fecha_final > fecha_inicio
+        const fechaInicio = new Date(data.fecha_inicio);
+        const fechaFinal = new Date(data.fecha_final);
+        if (fechaFinal <= fechaInicio) {
+            return { success: false, error: 'La fecha final debe ser posterior a la fecha de inicio' };
+        }
+
+        const result = await query(`
+            INSERT INTO Semestres (term, fecha_inicio, fecha_final)
+            VALUES ($1, $2, $3)
+            RETURNING term, fecha_inicio, fecha_final
+        `, [data.term, data.fecha_inicio, data.fecha_final]);
+
+        revalidatePath('/administration');
+        return {
+            success: true,
+            data: {
+                id: result.rows[0].term,
+                term: result.rows[0].term,
+                fecha_inicio: result.rows[0].fecha_inicio,
+                fecha_final: result.rows[0].fecha_final
+            }
+        };
+    } catch (error: any) {
+        console.error('Error al crear semestre:', error);
+        if (error.code === '23505') { // unique_violation
+            return { success: false, error: 'Ya existe un semestre con ese término' };
+        }
+        if (error.code === '23514') { // check_violation
+            return { success: false, error: 'La fecha final debe ser posterior a la fecha de inicio' };
+        }
+        return { success: false, error: error.message || 'Error al crear semestre' };
+    }
+}
+
+export async function updateSemestre(term: string, data: Partial<Semestre>) {
+    try {
+        if (!term) {
+            return { success: false, error: 'El término del semestre es obligatorio' };
+        }
+
+        // Validar que fecha_final > fecha_inicio si se proporcionan ambas
+        if (data.fecha_inicio && data.fecha_final) {
+            const fechaInicio = new Date(data.fecha_inicio);
+            const fechaFinal = new Date(data.fecha_final);
+            if (fechaFinal <= fechaInicio) {
+                return { success: false, error: 'La fecha final debe ser posterior a la fecha de inicio' };
+            }
+        }
+
+        const result = await query(`
+            UPDATE Semestres
+            SET fecha_inicio = COALESCE($1, fecha_inicio),
+                fecha_final = COALESCE($2, fecha_final)
+            WHERE term = $3
+            RETURNING term, fecha_inicio, fecha_final
+        `, [data.fecha_inicio || null, data.fecha_final || null, term]);
+
+        if (result.rows.length === 0) {
+            return { success: false, error: 'Semestre no encontrado' };
+        }
+
+        revalidatePath('/administration');
+        return {
+            success: true,
+            data: {
+                id: result.rows[0].term,
+                term: result.rows[0].term,
+                fecha_inicio: result.rows[0].fecha_inicio,
+                fecha_final: result.rows[0].fecha_final
+            }
+        };
+    } catch (error: any) {
+        console.error('Error al actualizar semestre:', error);
+        if (error.code === '23514') { // check_violation
+            return { success: false, error: 'La fecha final debe ser posterior a la fecha de inicio' };
+        }
+        return { success: false, error: error.message || 'Error al actualizar semestre' };
+    }
+}
+
+export async function deleteSemestre(term: string) {
+    try {
+        if (!term) {
+            return { success: false, error: 'El término del semestre es obligatorio' };
+        }
+
+        // Verificar si hay alumnos, profesores o casos asociados al semestre
+        const checkAlumnos = await query('SELECT COUNT(*) as count FROM Alumnos WHERE term = $1', [term]);
+        const checkProfesores = await query('SELECT COUNT(*) as count FROM Profesores WHERE term = $1', [term]);
+        const checkAsignaciones = await query('SELECT COUNT(*) as count FROM Se_Asignan WHERE term = $1', [term]);
+        const checkSupervisiones = await query('SELECT COUNT(*) as count FROM Supervisan WHERE term = $1', [term]);
+
+        const totalAsociaciones = 
+            parseInt(checkAlumnos.rows[0].count) +
+            parseInt(checkProfesores.rows[0].count) +
+            parseInt(checkAsignaciones.rows[0].count) +
+            parseInt(checkSupervisiones.rows[0].count);
+
+        if (totalAsociaciones > 0) {
+            return { 
+                success: false, 
+                error: `No se puede eliminar el semestre porque tiene ${totalAsociaciones} registro(s) asociado(s) (alumnos, profesores, asignaciones o supervisiones)` 
+            };
+        }
+
+        const result = await query('DELETE FROM Semestres WHERE term = $1 RETURNING term', [term]);
+
+        if (result.rows.length === 0) {
+            return { success: false, error: 'Semestre no encontrado' };
+        }
+
+        revalidatePath('/administration');
+        return { success: true };
+    } catch (error: any) {
+        console.error('Error al eliminar semestre:', error);
+        if (error.code === '23503') { // foreign_key_violation
+            return { success: false, error: 'No se puede eliminar el semestre porque tiene registros asociados' };
+        }
+        return { success: false, error: error.message || 'Error al eliminar semestre' };
     }
 }
 

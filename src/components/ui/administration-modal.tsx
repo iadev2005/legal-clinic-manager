@@ -21,7 +21,7 @@ interface AdministrationModalProps {
     onSave: (data: any) => Promise<void> | void;
     item?: any;
     mode: "create" | "edit";
-    type: "users" | "subcatalogs" | "legalfield" | "centers";
+    type: "users" | "subcatalogs" | "legalfield" | "centers" | "semestres";
     parishes?: { id: string; nombre: string }[];
     participations?: any[];
     materias?: { id: string; nombre: string }[];
@@ -135,6 +135,9 @@ export default function AdministrationModal({
                     telefonoCelular: item.telefonoCelular ?? "",
                     password: "",
                     nombre: item.nombre || "",
+                    term: item.term || "",
+                    fecha_inicio: item.fecha_inicio ? new Date(item.fecha_inicio).toISOString().split('T')[0] : "",
+                    fecha_final: item.fecha_final ? new Date(item.fecha_final).toISOString().split('T')[0] : "",
                 });
             } else {
                 setFormData({
@@ -246,6 +249,35 @@ export default function AdministrationModal({
             }
         }
 
+        // Validación para semestres
+        if (type === "semestres") {
+            if (!formData.term || formData.term.trim() === "") {
+                setError("El término del semestre es requerido (ej: 2025-15)");
+                return;
+            }
+            // Validar formato YYYY-NN
+            const termPattern = /^\d{4}-\d{2}$/;
+            if (!termPattern.test(formData.term)) {
+                setError("El formato del término debe ser YYYY-NN (ej: 2025-15)");
+                return;
+            }
+            if (!formData.fecha_inicio) {
+                setError("La fecha de inicio es requerida");
+                return;
+            }
+            if (!formData.fecha_final) {
+                setError("La fecha final es requerida");
+                return;
+            }
+            // Validar que fecha_final > fecha_inicio
+            const fechaInicio = new Date(formData.fecha_inicio);
+            const fechaFinal = new Date(formData.fecha_final);
+            if (fechaFinal <= fechaInicio) {
+                setError("La fecha final debe ser posterior a la fecha de inicio");
+                return;
+            }
+        }
+
         setLoading(true);
 
         const finalData = { ...formData };
@@ -332,6 +364,7 @@ export default function AdministrationModal({
 
     const getTitle = () => {
         const action = mode === "create" ? "Crear" : "Editar";
+        const entity = type === "users" ? "Usuario" : type === "catalogs" ? "Catálogo" : type === "formalities" ? "Trámite" : type === "centers" ? "Centro" : "Semestre";
         const entity = type === "users" ? "Usuario" : type === "subcatalogs" ? "Catálogo" : type === "legalfield" ? "Trámite" : "Centro";
         return `${action} ${entity}`;
     };
@@ -547,15 +580,43 @@ export default function AdministrationModal({
                             </div>
                         ) : (
                             <div className="space-y-4">
-                                <div className="space-y-2">
-                                    <Label htmlFor="nombre">Nombre</Label>
-                                    <Input
-                                        id="nombre"
-                                        value={formData.nombre || ""}
-                                        onChange={(e) => handleChange("nombre", e.target.value)}
-                                        required
-                                    />
-                                </div>
+                                {type !== "semestres" && (
+                                    <div className="space-y-2">
+                                        <Label htmlFor="nombre">Nombre</Label>
+                                        <Input
+                                            id="nombre"
+                                            value={formData.nombre || ""}
+                                            onChange={(e) => handleChange("nombre", e.target.value)}
+                                            required
+                                        />
+                                    </div>
+                                )}
+                                {type === "catalogs" && (
+                                    <div className="space-y-2">
+                                        <Label htmlFor="categoria">Categoría <span className="text-red-500">*</span></Label>
+                                        <CustomSelect
+                                            value={formData.categorylegalfieldid || ""}
+                                            onChange={(val) => {
+                                                console.log('Categoría seleccionada:', val);
+                                                handleChange("categorylegalfieldid", val);
+                                            }}
+                                            options={categorias.map(c => ({ value: c.id, label: c.nombre }))}
+                                        />
+                                        {!formData.categorylegalfieldid && mode === "create" && (
+                                            <p className="text-xs text-red-500">Debe seleccionar una categoría</p>
+                                        )}
+                                    </div>
+                                )}
+                                {type === "formalities" && (
+                                    <div className="space-y-2">
+                                        <Label htmlFor="nombre">Nombre</Label>
+                                        <Input
+                                            id="nombre"
+                                            value={formData.nombre || ""}
+                                            onChange={(e) => handleChange("nombre", e.target.value)}
+                                            required
+                                        />
+                                    </div>
                                 {type === "subcatalogs" && (
                                     <>
                                         <div className="space-y-2">
@@ -610,6 +671,44 @@ export default function AdministrationModal({
                                             options={parishes.map(p => ({ value: p.id, label: p.nombre }))}
                                         />
                                     </div>
+                                )}
+                                {type === "semestres" && (
+                                    <>
+                                        <div className="space-y-2">
+                                            <Label htmlFor="term">Término del Semestre <span className="text-red-500">*</span></Label>
+                                            <Input
+                                                id="term"
+                                                value={formData.term || ""}
+                                                onChange={(e) => handleChange("term", e.target.value)}
+                                                placeholder="Ej: 2025-15"
+                                                required
+                                                disabled={mode === "edit"}
+                                            />
+                                            <p className="text-xs text-gray-500">Formato: YYYY-NN (ej: 2025-15)</p>
+                                        </div>
+                                        <div className="grid grid-cols-2 gap-4">
+                                            <div className="space-y-2">
+                                                <Label htmlFor="fecha_inicio">Fecha de Inicio <span className="text-red-500">*</span></Label>
+                                                <Input
+                                                    id="fecha_inicio"
+                                                    type="date"
+                                                    value={formData.fecha_inicio || ""}
+                                                    onChange={(e) => handleChange("fecha_inicio", e.target.value)}
+                                                    required
+                                                />
+                                            </div>
+                                            <div className="space-y-2">
+                                                <Label htmlFor="fecha_final">Fecha Final <span className="text-red-500">*</span></Label>
+                                                <Input
+                                                    id="fecha_final"
+                                                    type="date"
+                                                    value={formData.fecha_final || ""}
+                                                    onChange={(e) => handleChange("fecha_final", e.target.value)}
+                                                    required
+                                                />
+                                            </div>
+                                        </div>
+                                    </>
                                 )}
                             </div>
                         )}

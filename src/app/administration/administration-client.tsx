@@ -10,7 +10,7 @@ import {
     getSubCategorias, createSubCategoria, updateSubCategoria, deleteSubCategoria,
     getLegalField, createLegalField, updateLegalField, deleteLegalField,
     getNucleos, createNucleo, updateNucleo, deleteNucleo,
-    getMaterias, getSemestres
+    getMaterias, getSemestres, createSemestre, updateSemestre, deleteSemestre
 } from "@/actions/administracion";
 import { getParroquias, getEstados, getMunicipiosByEstado } from "@/actions/solicitantes";
 import Pagination from "@/components/ui/pagination";
@@ -50,6 +50,9 @@ export default function Administration() {
     const [municipios, setMunicipios] = useState<any[]>([]);
     const [filtroEstado, setFiltroEstado] = useState<string>("");
     const [filtroMunicipio, setFiltroMunicipio] = useState<string>("");
+
+    // Semestres
+    const [filtroEstadoSemestre, setFiltroEstadoSemestre] = useState<string>("");
 
     // Cargar datos iniciales
     useEffect(() => {
@@ -151,6 +154,7 @@ export default function Administration() {
 
     // Active tab state
     const [activeTab, setActiveTab] = useState<"users" | "subcatalogs" | "legalfield" | "centers">("users");
+    const [activeTab, setActiveTab] = useState<"users" | "catalogs" | "formalities" | "centers" | "semestres">("users");
 
     // Limpiar selección cuando cambia la pestaña activa
     useEffect(() => {
@@ -162,7 +166,7 @@ export default function Administration() {
     useEffect(() => {
         setSelectedItems([]);
         setCurrentPage(1);
-    }, [searchTerm, filtroRol, filtroEstatus, filtroMateria, filtroCategoria, filtroEstado, filtroMunicipio]);
+    }, [searchTerm, filtroRol, filtroEstatus, filtroMateria, filtroCategoria, filtroEstado, filtroMunicipio, filtroEstadoSemestre]);
 
     // Pagination State
     const [currentPage, setCurrentPage] = useState(1);
@@ -247,6 +251,14 @@ export default function Administration() {
                     } else {
                         throw new Error(result.error || 'Error al crear núcleo');
                     }
+                } else if (activeTab === "semestres") {
+                    const result = await createSemestre(formData);
+                    if (result.success) {
+                        await loadData();
+                        setAdminModalOpen(false);
+                    } else {
+                        throw new Error(result.error || 'Error al crear semestre');
+                    }
                 }
             } else {
                 // Edit mode
@@ -282,6 +294,14 @@ export default function Administration() {
                     } else {
                         throw new Error(result.error || 'Error al actualizar núcleo');
                     }
+                } else if (activeTab === "semestres") {
+                    const result = await updateSemestre(currentItem.id, formData);
+                    if (result.success) {
+                        await loadData();
+                        setAdminModalOpen(false);
+                    } else {
+                        throw new Error(result.error || 'Error al actualizar semestre');
+                    }
                 }
             }
         } catch (err: any) {
@@ -303,6 +323,8 @@ export default function Administration() {
                         await deleteLegalField(item.id);
                     } else if (activeTab === "centers") {
                         await deleteNucleo(item.id);
+                    } else if (activeTab === "semestres") {
+                        await deleteSemestre(item.id);
                     }
                 }
                 setSelectedItems([]);
@@ -333,6 +355,12 @@ export default function Administration() {
                     const result = await deleteNucleo(id);
                     if (!result.success) {
                         alert(result.error || 'Error al eliminar núcleo');
+                        return;
+                    }
+                } else if (activeTab === "semestres") {
+                    const result = await deleteSemestre(id);
+                    if (!result.success) {
+                        alert(result.error || 'Error al eliminar semestre');
                         return;
                     }
                 }
@@ -426,6 +454,75 @@ export default function Administration() {
     const GenericColumns: Column<{ id: string; nombre: string }>[] = [
         { header: "ID", accessorKey: "id", className: "font-bold px-2 py-2 text-xs leading-tight" },
         { header: "Nombre", accessorKey: "nombre", className: "font-bold pl-2 py-2 text-sm" },
+        {
+            header: "Accion",
+            render: (row) => (
+                <div className="flex gap-2 justify-center">
+                    <button
+                        onClick={() => handleEdit(row)}
+                        className="w-10 h-10 flex justify-center items-center hover:bg-blue-100 rounded-lg transition-colors group cursor-pointer"
+                        title="Editar"
+                    >
+                        <span className="icon-[uil--pen] text-3xl text-[#003366] group-hover:scale-110 transition-transform"></span>
+                    </button>
+                    <button
+                        onClick={() => handleDelete(row)}
+                        className="w-10 h-10 flex justify-center items-center hover:bg-red-100 rounded-lg transition-colors group cursor-pointer"
+                        title="Eliminar"
+                    >
+                        <span className="icon-[mdi--trash-can-outline] text-3xl text-red-600 group-hover:scale-110 transition-transform"></span>
+                    </button>
+                </div>
+            ),
+            className: "text-gray-400 font-semibold text-sm pl-2 py-2",
+        },
+    ];
+
+    const SemestresColumns: Column<any>[] = [
+        { header: "Término", accessorKey: "term", className: "font-bold px-2 py-2 text-sm" },
+        {
+            header: "Fecha Inicio",
+            accessorKey: "fecha_inicio",
+            className: "text-center py-2",
+            render: (row) => {
+                const fecha = new Date(row.fecha_inicio);
+                return fecha.toLocaleDateString('es-ES', { year: 'numeric', month: 'short', day: 'numeric' });
+            }
+        },
+        {
+            header: "Fecha Final",
+            accessorKey: "fecha_final",
+            className: "text-center py-2",
+            render: (row) => {
+                const fecha = new Date(row.fecha_final);
+                return fecha.toLocaleDateString('es-ES', { year: 'numeric', month: 'short', day: 'numeric' });
+            }
+        },
+        {
+            header: "Estado",
+            accessorKey: "estado",
+            className: "text-center py-2",
+            render: (row) => {
+                const estado = row.estado || 'Finalizado';
+                let badgeClass = "bg-gray-100 text-gray-800"; // default
+
+                if (estado === "Activo") {
+                    badgeClass = "bg-[#D1F7D6] text-[#005C2B]"; // Green variant
+                } else if (estado === "Pendiente") {
+                    badgeClass = "bg-[#FFF8C5] text-[#8A6A00]"; // Yellow variant
+                } else if (estado === "Finalizado") {
+                    badgeClass = "bg-gray-200 text-gray-600"; // Gray variant
+                }
+
+                return (
+                    <div className="flex justify-center">
+                        <span className={`px-2 py-0.5 rounded-full font-bold text-xs ${badgeClass}`}>
+                            {estado}
+                        </span>
+                    </div>
+                );
+            }
+        },
         {
             header: "Accion",
             render: (row) => (
@@ -559,6 +656,24 @@ export default function Administration() {
                     }
                 }
                 break;
+
+            case "semestres":
+                // Filtro por búsqueda de texto (term)
+                if (searchTerm.trim()) {
+                    const searchLower = searchTerm.toLowerCase().trim();
+                    filtered = filtered.filter((item) =>
+                        searchInField(item.term, searchLower) ||
+                        searchInField(item.fecha_inicio, searchLower) ||
+                        searchInField(item.fecha_final, searchLower)
+                    );
+                }
+                // Filtro por estado
+                if (filtroEstadoSemestre) {
+                    filtered = filtered.filter((item) =>
+                        item.estado?.toLowerCase() === filtroEstadoSemestre.toLowerCase()
+                    );
+                }
+                break;
         }
 
         return filtered;
@@ -585,6 +700,10 @@ export default function Administration() {
             case "centers":
                 rawData = centers;
                 columns = GenericColumns;
+                break;
+            case "semestres":
+                rawData = semestres;
+                columns = SemestresColumns;
                 break;
             default:
                 rawData = users;
@@ -681,6 +800,17 @@ export default function Administration() {
                             className={`px-4 py-2 rounded-lg font-semibold transition-colors cursor-pointer ${activeTab === "centers" ? "bg-sky-950 text-white" : "bg-gray-200 text-sky-950 hover:bg-gray-300"}`}
                         >
                             Centros
+                        </button>
+                        <button
+                            onClick={() => {
+                                setActiveTab("semestres");
+                                setSelectedItems([]);
+                                setSearchTerm("");
+                                setFiltroEstadoSemestre("");
+                            }}
+                            className={`px-4 py-2 rounded-lg font-semibold transition-colors cursor-pointer ${activeTab === "semestres" ? "bg-sky-950 text-white" : "bg-gray-200 text-sky-950 hover:bg-gray-300"}`}
+                        >
+                            Semestres
                         </button>
                     </div>
 
@@ -824,8 +954,24 @@ export default function Administration() {
                             </>
                         )}
 
+                        {activeTab === "semestres" && (
+                            <div className="flex items-center gap-2">
+                                <span className="text-sky-950 font-semibold whitespace-nowrap">Estado:</span>
+                                <select
+                                    value={filtroEstadoSemestre}
+                                    onChange={(e) => setFiltroEstadoSemestre(e.target.value)}
+                                    className="bg-white border border-gray-300 text-sky-950 text-sm rounded-lg focus:ring-sky-950 focus:border-sky-950 block p-2.5 min-w-[150px]"
+                                >
+                                    <option value="">Todos</option>
+                                    <option value="Activo">Activo</option>
+                                    <option value="Pendiente">Pendiente</option>
+                                    <option value="Finalizado">Finalizado</option>
+                                </select>
+                            </div>
+                        )}
+
                         {/* Botón para limpiar filtros */}
-                        {(searchTerm || filtroRol || filtroEstatus || filtroMateria || filtroCategoria || filtroEstado || filtroMunicipio) && (
+                        {(searchTerm || filtroRol || filtroEstatus || filtroMateria || filtroCategoria || filtroEstado || filtroMunicipio || filtroEstadoSemestre) && (
                             <button
                                 onClick={() => {
                                     setSearchTerm("");
@@ -835,6 +981,7 @@ export default function Administration() {
                                     setFiltroCategoria("");
                                     setFiltroEstado("");
                                     setFiltroMunicipio("");
+                                    setFiltroEstadoSemestre("");
                                 }}
                                 className="bg-gray-500 text-white px-4 py-2 rounded-lg font-semibold hover:bg-gray-600 transition-colors cursor-pointer whitespace-nowrap"
                                 title="Limpiar filtros"
