@@ -415,41 +415,49 @@ export async function cambiarEstatus(nroCaso: number, idEstatus: number, motivo:
       VALUES ($1, $2, $3, $4)
     `, [nroCaso, idEstatus, cedulaUsuario || null, motivo]);
 
-        // Lógica de notificación para Estatus "Pausado"
+        // Lógica de notificación para cambio de Estatus
         const statusNameResult = await query('SELECT nombre_estatus FROM Estatus WHERE id_estatus = $1', [idEstatus]);
         if (statusNameResult.rows.length > 0) {
             const nombreEstatus = statusNameResult.rows[0].nombre_estatus;
 
-            if (nombreEstatus.toLowerCase() === 'pausado') {
-                const usuariosANotificar: string[] = [];
+            const usuariosANotificar: string[] = [];
 
-                // 1. Profesor activo
-                const profesorActivo = await query(`
-                    SELECT cedula_profesor FROM Supervisan 
-                    WHERE id_caso = $1 AND estatus = 'Activo'
-                `, [nroCaso]);
+            // 1. Profesor activo
+            const profesorActivo = await query(`
+                SELECT cedula_profesor FROM Supervisan 
+                WHERE id_caso = $1 AND estatus = 'Activo'
+            `, [nroCaso]);
 
-                if (profesorActivo.rows.length > 0) {
-                    usuariosANotificar.push(profesorActivo.rows[0].cedula_profesor);
-                }
+            if (profesorActivo.rows.length > 0) {
+                usuariosANotificar.push(...profesorActivo.rows.map((r: any) => r.cedula_profesor));
+            }
 
-                // 2. Coordinadores activos
-                const coordinadores = await query(`
-                    SELECT cedula_usuario FROM Usuarios_Sistema 
-                    WHERE rol = 'Coordinador' AND activo = true
-                `);
+            // 2. Alumnos activos
+            const alumnosActivos = await query(`
+                SELECT cedula_alumno FROM Se_Asignan 
+                WHERE id_caso = $1 AND estatus = 'Activo'
+            `, [nroCaso]);
 
-                if (coordinadores.rows.length > 0) {
-                    usuariosANotificar.push(...coordinadores.rows.map(c => c.cedula_usuario));
-                }
+            if (alumnosActivos.rows.length > 0) {
+                usuariosANotificar.push(...alumnosActivos.rows.map((r: any) => r.cedula_alumno));
+            }
 
-                if (usuariosANotificar.length > 0) {
-                    await createNotificacion({
-                        descripcion: `El caso #${nroCaso} ha cambiado su estatus a ${nombreEstatus}.`,
-                        fecha_notificacion: new Date(),
-                        usuarios: [...new Set(usuariosANotificar)] // Eliminar duplicados
-                    });
-                }
+            // 3. Coordinadores activos
+            const coordinadores = await query(`
+                SELECT cedula_usuario FROM Usuarios_Sistema 
+                WHERE rol = 'Coordinador' AND activo = true
+            `);
+
+            if (coordinadores.rows.length > 0) {
+                usuariosANotificar.push(...coordinadores.rows.map((c: any) => c.cedula_usuario));
+            }
+
+            if (usuariosANotificar.length > 0) {
+                await createNotificacion({
+                    descripcion: `El caso #${nroCaso} ha cambiado su estatus a ${nombreEstatus}.`,
+                    fecha_notificacion: new Date(),
+                    usuarios: [...new Set(usuariosANotificar)] // Eliminar duplicados
+                });
             }
         }
 
