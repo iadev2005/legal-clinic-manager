@@ -3,6 +3,7 @@
 import { query } from '@/lib/db';
 import { revalidatePath } from 'next/cache';
 import { getSession } from '@/lib/auth-utils';
+import { createNotificacion } from './notificaciones';
 
 // ============================================================================
 // INTERFACES Y TIPOS
@@ -84,11 +85,10 @@ export async function getCasos() {
           LIMIT 1
         ) as estatus_actual,
         (
-          SELECT u.nombres || ' ' || u.apellidos
+          SELECT STRING_AGG(u.nombres || ' ' || u.apellidos, ', ')
           FROM Se_Asignan sa
           JOIN Usuarios_Sistema u ON sa.cedula_alumno = u.cedula_usuario
           WHERE sa.id_caso = c.nro_caso AND sa.estatus = 'Activo'
-          LIMIT 1
         ) as alumno_asignado,
         (
           SELECT u.nombres || ' ' || u.apellidos
@@ -232,6 +232,30 @@ export async function createCaso(data: CreateCasoData) {
           INSERT INTO Supervisan (id_caso, cedula_profesor, term, estatus)
           VALUES ($1, $2, $3, 'Activo')
         `, [nroCaso, data.asignacion.cedula_profesor, data.asignacion.term]);
+
+                // Notificar al profesor
+                try {
+                    await createNotificacion({
+                        descripcion: `Se le ha asignado la supervisión del caso #${nroCaso}.`,
+                        fecha_notificacion: new Date(),
+                        usuarios: [data.asignacion.cedula_profesor]
+                    });
+                } catch (notifError) {
+                    console.error('Error enviando notificación de creación (profesor):', notifError);
+                }
+            }
+
+            // Notificar al alumno si fue asignado
+            if (data.asignacion.cedula_alumno) {
+                try {
+                    await createNotificacion({
+                        descripcion: `Se le ha asignado el caso #${nroCaso}.`,
+                        fecha_notificacion: new Date(),
+                        usuarios: [data.asignacion.cedula_alumno]
+                    });
+                } catch (notifError) {
+                    console.error('Error enviando notificación de creación (alumno):', notifError);
+                }
             }
         }
 
@@ -391,6 +415,44 @@ export async function cambiarEstatus(nroCaso: number, idEstatus: number, motivo:
       VALUES ($1, $2, $3, $4)
     `, [nroCaso, idEstatus, cedulaUsuario || null, motivo]);
 
+        // Lógica de notificación para Estatus "Pausado"
+        const statusNameResult = await query('SELECT nombre_estatus FROM Estatus WHERE id_estatus = $1', [idEstatus]);
+        if (statusNameResult.rows.length > 0) {
+            const nombreEstatus = statusNameResult.rows[0].nombre_estatus;
+
+            if (nombreEstatus.toLowerCase() === 'pausado') {
+                const usuariosANotificar: string[] = [];
+
+                // 1. Profesor activo
+                const profesorActivo = await query(`
+                    SELECT cedula_profesor FROM Supervisan 
+                    WHERE id_caso = $1 AND estatus = 'Activo'
+                `, [nroCaso]);
+
+                if (profesorActivo.rows.length > 0) {
+                    usuariosANotificar.push(profesorActivo.rows[0].cedula_profesor);
+                }
+
+                // 2. Coordinadores activos
+                const coordinadores = await query(`
+                    SELECT cedula_usuario FROM Usuarios_Sistema 
+                    WHERE rol = 'Coordinador' AND activo = true
+                `);
+
+                if (coordinadores.rows.length > 0) {
+                    usuariosANotificar.push(...coordinadores.rows.map(c => c.cedula_usuario));
+                }
+
+                if (usuariosANotificar.length > 0) {
+                    await createNotificacion({
+                        descripcion: `El caso #${nroCaso} ha cambiado su estatus a ${nombreEstatus}.`,
+                        fecha_notificacion: new Date(),
+                        usuarios: [...new Set(usuariosANotificar)] // Eliminar duplicados
+                    });
+                }
+            }
+        }
+
         revalidatePath('/cases');
         return { success: true };
     } catch (error: any) {
@@ -463,20 +525,35 @@ export async function getAsignacionesActivas(nroCaso: number) {
 export async function asignarAlumno(nroCaso: number, cedulaAlumno: string, term: string) {
     try {
         await query('BEGIN');
-        
-        // 1. Desactivar cualquier asignación activa previa para este caso
-        await query(`
-      UPDATE Se_Asignan
-      SET estatus = 'Inactivo'
-      WHERE id_caso = $1 AND estatus = 'Activo'
-    `, [nroCaso]);
-        
-        // 2. Insertar la nueva asignación activa
+
+        // Verificar si ya está asignado
+        const existing = await query(`
+            SELECT id_asignacion FROM Se_Asignan 
+            WHERE id_caso = $1 AND cedula_alumno = $2 AND estatus = 'Activo'
+        `, [nroCaso, cedulaAlumno]);
+
+        if (existing.rows.length > 0) {
+            await query('ROLLBACK');
+            return { success: true, message: 'El alumno ya está asignado a este caso.' };
+        }
+
+        // Insertar la nueva asignación activa (permitiendo múltiples)
         await query(`
       INSERT INTO Se_Asignan (id_caso, cedula_alumno, term, estatus)
       VALUES ($1, $2, $3, 'Activo')
     `, [nroCaso, cedulaAlumno, term]);
-        
+
+        // Notificar al alumno
+        try {
+            await createNotificacion({
+                descripcion: `Se le ha asignado el caso #${nroCaso}.`,
+                fecha_notificacion: new Date(),
+                usuarios: [cedulaAlumno]
+            });
+        } catch (notifError) {
+            console.error('Error enviando notificación (asignar alumno):', notifError);
+        }
+
         await query('COMMIT');
         revalidatePath('/cases');
         return { success: true };
@@ -490,20 +567,31 @@ export async function asignarAlumno(nroCaso: number, cedulaAlumno: string, term:
 export async function asignarProfesor(nroCaso: number, cedulaProfesor: string, term: string) {
     try {
         await query('BEGIN');
-        
+
         // 1. Desactivar cualquier supervisión activa previa para este caso
         await query(`
       UPDATE Supervisan
       SET estatus = 'Inactivo'
       WHERE id_caso = $1 AND estatus = 'Activo'
     `, [nroCaso]);
-        
+
         // 2. Insertar la nueva supervisión activa
         await query(`
       INSERT INTO Supervisan (id_caso, cedula_profesor, term, estatus)
       VALUES ($1, $2, $3, 'Activo')
     `, [nroCaso, cedulaProfesor, term]);
-        
+
+        // Notificar al profesor
+        try {
+            await createNotificacion({
+                descripcion: `Se le ha asignado la supervisión del caso #${nroCaso}.`,
+                fecha_notificacion: new Date(),
+                usuarios: [cedulaProfesor]
+            });
+        } catch (notifError) {
+            console.error('Error enviando notificación (asignar profesor):', notifError);
+        }
+
         await query('COMMIT');
         revalidatePath('/cases');
         return { success: true };
@@ -806,15 +894,15 @@ export async function getAlumnosDisponibles(term?: string) {
       INNER JOIN Alumnos a ON u.cedula_usuario = a.cedula_alumno
       WHERE u.rol = 'Estudiante' AND u.activo = TRUE
     `;
-        
+
         const params: any[] = [];
         if (term) {
             queryStr += ` AND a.term = $1`;
             params.push(term);
         }
-        
+
         queryStr += ` ORDER BY u.nombres, u.apellidos`;
-        
+
         const result = await query(queryStr, params);
         return { success: true, data: result.rows };
     } catch (error: any) {
@@ -837,15 +925,15 @@ export async function getProfesoresDisponibles(term?: string) {
       INNER JOIN Profesores p ON u.cedula_usuario = p.cedula_profesor
       WHERE u.rol = 'Profesor' AND u.activo = TRUE
     `;
-        
+
         const params: any[] = [];
         if (term) {
             queryStr += ` AND p.term = $1`;
             params.push(term);
         }
-        
+
         queryStr += ` ORDER BY u.nombres, u.apellidos`;
-        
+
         const result = await query(queryStr, params);
         return { success: true, data: result.rows };
     } catch (error: any) {

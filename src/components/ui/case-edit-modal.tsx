@@ -29,6 +29,7 @@ import {
   asignarAlumno,
   asignarProfesor,
   cambiarEstatus,
+  desactivarAsignacion,
   addBeneficiario,
   removeBeneficiario,
   type BeneficiarioData,
@@ -147,6 +148,14 @@ export default function CaseEditModal({
   const [cedulaProfesor, setCedulaProfesor] = useState("");
   const [termProfesor, setTermProfesor] = useState("");
 
+  // Estado para manejar múltiples estudiantes
+  const [currentStudents, setCurrentStudents] = useState<Array<{
+    id_asignacion: number;
+    cedula_alumno: string;
+    term: string;
+    nombre_completo: string;
+  }>>([]);
+
   // Beneficiarios y Soportes
   const [beneficiarios, setBeneficiarios] = useState<BeneficiarioForm[]>([]);
   const [soportes, setSoportes] = useState<SoporteForm[]>([]);
@@ -256,10 +265,18 @@ export default function CaseEditModal({
         let termToLoad: string | undefined;
         if (asignacionesRes.success && asignacionesRes.data) {
           if (asignacionesRes.data.alumnos?.length > 0) {
-            const alumno = asignacionesRes.data.alumnos[0];
-            setCedulaAlumno(alumno.cedula_alumno || "");
-            setTermAlumno(alumno.term || "");
-            termToLoad = alumno.term || undefined;
+            setCurrentStudents(asignacionesRes.data.alumnos.map((a: any) => ({
+              id_asignacion: a.id_asignacion,
+              cedula_alumno: a.cedula_alumno,
+              term: a.term,
+              nombre_completo: a.alumno_nombre
+            })));
+
+            // Usar el term del primer alumno para filtrar listas (opcional, o dejar nulo para ver todos)
+            // termToLoad = asignacionesRes.data.alumnos[0].term || undefined;
+            // Mejor no filtrar por term estricto para permitir asignar de cualquier term actual
+          } else {
+            setCurrentStudents([]);
           }
           if (asignacionesRes.data.profesores?.length > 0) {
             const profesor = asignacionesRes.data.profesores[0];
@@ -389,6 +406,24 @@ export default function CaseEditModal({
   const handleRemoveSoporte = (index: number) => {
     setSoportes(soportes.filter((_, i) => i !== index));
     setHasChanges(true);
+  };
+
+  const handleRemoveStudent = async (idAsignacion: number) => {
+    // Optimistic update
+    const previousStudents = [...currentStudents];
+    setCurrentStudents(currentStudents.filter(s => s.id_asignacion !== idAsignacion));
+
+    try {
+      const res = await desactivarAsignacion(idAsignacion, 'alumno');
+      if (!res.success) {
+        throw new Error(res.error);
+      }
+    } catch (error) {
+      console.error("Error removing student:", error);
+      // Revert if error
+      setCurrentStudents(previousStudents);
+      setSubmitError("Error al eliminar la asignación del estudiante");
+    }
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -681,9 +716,33 @@ export default function CaseEditModal({
 
               <div className="grid grid-cols-2 gap-4">
                 <div className="space-y-2">
-                  <Label className="text-sm font-semibold">Alumno</Label>
+                  <Label className="text-sm font-semibold">Alumnos Asignados Actuales</Label>
+                  {currentStudents.length > 0 ? (
+                    <div className="space-y-2 mb-4">
+                      {currentStudents.map((student) => (
+                        <div key={student.id_asignacion} className="flex justify-between items-center bg-blue-50/50 p-2 rounded-lg border border-blue-100">
+                          <div className="flex flex-col">
+                            <span className="text-sm font-medium text-sky-900">{student.nombre_completo}</span>
+                            <span className="text-xs text-sky-700/70">C.I: {student.cedula_alumno} | Term: {student.term}</span>
+                          </div>
+                          <button
+                            type="button"
+                            onClick={() => handleRemoveStudent(student.id_asignacion)}
+                            className="p-1 hover:bg-red-50 text-red-500 rounded-full transition-colors"
+                            title="Eliminar asignación"
+                          >
+                            <span className="icon-[mdi--close] text-lg"></span>
+                          </button>
+                        </div>
+                      ))}
+                    </div>
+                  ) : (
+                    <div className="text-sm text-gray-500 italic mb-3">No hay alumnos asignados actualmente.</div>
+                  )}
+
+                  <Label className="text-sm font-semibold text-green-700">Asignar Nuevo Alumno</Label>
                   <FilterSelect
-                    placeholder="Seleccionar alumno"
+                    placeholder="Seleccionar alumno para agregar"
                     value={cedulaAlumno}
                     onChange={(value) => {
                       const alumno = alumnos.find((a) => a.value === value);
