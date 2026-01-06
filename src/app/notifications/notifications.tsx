@@ -4,11 +4,10 @@ import {
     getNotificacionesByUsuario,
     marcarNotificacionRevisada,
     marcarTodasRevisadas,
+    verificarCasosPausados,
     type NotificacionUsuario
 } from "@/actions/notificaciones";
 import { cn } from "@/lib/utils";
-import { toast } from "sonner"; // Assuming sonner is used, or alert/console if not sure. I'll stick to simple logic or console if no toast.
-// I'll use standard nice UI.
 
 interface NotificationsProps {
     user: any;
@@ -42,7 +41,6 @@ export default function Notifications({ user }: NotificationsProps) {
         try {
             const res = await marcarNotificacionRevisada(id, user.cedula);
             if (res.success) {
-                // Update local state
                 setNotifications(prev => prev.map(n =>
                     n.id_notificacion === id ? { ...n, revisado: true, fecha_revision: new Date().toISOString() } : n
                 ));
@@ -75,6 +73,18 @@ export default function Notifications({ user }: NotificationsProps) {
         });
     };
 
+    const handleCheckAlerts = async () => {
+        setLoading(true);
+        try {
+            await verificarCasosPausados();
+            await loadNotifications();
+        } catch (error) {
+            console.error("Error checking alerts", error);
+        } finally {
+            setLoading(false);
+        }
+    };
+
     return (
         <div className="w-full h-screen min-h-screen bg-neutral-50 flex flex-col justify-start items-center overflow-hidden">
             <div className="w-full h-full p-6 flex flex-col overflow-hidden">
@@ -82,14 +92,22 @@ export default function Notifications({ user }: NotificationsProps) {
                     <h1 className="self-stretch justify-start text-sky-950 text-6xl font-semibold">Notificaciones</h1>
                     <div className="flex justify-between items-center w-full">
                         <h1 className="text-[#325B84] text-2xl font-semibold">Tus notificaciones y alertas del sistema</h1>
-                        {notifications.length > 0 && notifications.some(n => !n.revisado) && (
+                        <div className="flex gap-4">
                             <button
-                                onClick={handleMarkAllAsRead}
+                                onClick={handleCheckAlerts}
                                 className="text-sm text-sky-600 hover:text-sky-800 font-medium underline cursor-pointer"
                             >
-                                Marcar todas como leídas
+                                Verificar Alertas
                             </button>
-                        )}
+                            {notifications.length > 0 && notifications.some(n => !n.revisado) && (
+                                <button
+                                    onClick={handleMarkAllAsRead}
+                                    className="text-sm text-sky-600 hover:text-sky-800 font-medium underline cursor-pointer"
+                                >
+                                    Marcar todas como leídas
+                                </button>
+                            )}
+                        </div>
                     </div>
                 </div>
 
