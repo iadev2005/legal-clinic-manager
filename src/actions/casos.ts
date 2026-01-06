@@ -565,15 +565,15 @@ export async function asignarAlumno(nroCaso: number, cedulaAlumno: string, term:
     try {
         await query('BEGIN');
 
-        // Verificar si ya está asignado
+        // Verificar si ya está asignado en ESTE semestre
         const existing = await query(`
             SELECT id_asignacion FROM Se_Asignan 
-            WHERE id_caso = $1 AND cedula_alumno = $2 AND estatus = 'Activo'
-        `, [nroCaso, cedulaAlumno]);
+            WHERE id_caso = $1 AND cedula_alumno = $2 AND term = $3 AND estatus = 'Activo'
+        `, [nroCaso, cedulaAlumno, term]);
 
         if (existing.rows.length > 0) {
             await query('ROLLBACK');
-            return { success: true, message: 'El alumno ya está asignado a este caso.' };
+            return { success: true, message: 'El alumno ya está asignado a este caso en este semestre.' };
         }
 
         // Insertar la nueva asignación activa (permitiendo múltiples)
@@ -607,18 +607,29 @@ export async function asignarProfesor(nroCaso: number, cedulaProfesor: string, t
     try {
         await query('BEGIN');
 
-        // 1. Desactivar cualquier supervisión activa previa para este caso
-        await query(`
-      UPDATE Supervisan
-      SET estatus = 'Inactivo'
-      WHERE id_caso = $1 AND estatus = 'Activo'
-    `, [nroCaso]);
+        // Verificar si ya está asignado en ESTE semestre
+        const existing = await query(`
+            SELECT id_supervision FROM Supervisan 
+            WHERE id_caso = $1 AND cedula_profesor = $2 AND term = $3 AND estatus = 'Activo'
+        `, [nroCaso, cedulaProfesor, term]);
 
-        // 2. Insertar la nueva supervisión activa
+        if (existing.rows.length > 0) {
+            await query('ROLLBACK');
+            return { success: true, message: 'El profesor ya está supervisando este caso en este semestre.' };
+        }
+
+        // Desactivar cualquier otro supervisor activo en ESTE MISMO semestre
         await query(`
-      INSERT INTO Supervisan (id_caso, cedula_profesor, term, estatus)
-      VALUES ($1, $2, $3, 'Activo')
-    `, [nroCaso, cedulaProfesor, term]);
+            UPDATE Supervisan
+            SET estatus = 'Inactivo'
+            WHERE id_caso = $1 AND term = $2 AND estatus = 'Activo'
+        `, [nroCaso, term]);
+
+        // Insertar la nueva supervisión activa
+        await query(`
+            INSERT INTO Supervisan (id_caso, cedula_profesor, term, estatus)
+            VALUES ($1, $2, $3, 'Activo')
+        `, [nroCaso, cedulaProfesor, term]);
 
         // Notificar al profesor
         try {
@@ -764,6 +775,27 @@ export async function getCasoSemestre(nroCaso: number, term: string) {
         }
     } catch (error: any) {
         console.error('Error al obtener estado de caso en semestre:', error);
+        return { success: false, error: error.message };
+    }
+}
+
+
+export async function getSemestresCaso(nroCaso: number) {
+    try {
+        const result = await query(`
+            SELECT 
+                cs.*,
+                e.nombre_estatus,
+                s.fecha_inicio
+            FROM Casos_Semestres cs
+            JOIN Estatus e ON cs.id_estatus = e.id_estatus
+            JOIN Semestres s ON cs.term = s.term
+            WHERE cs.nro_caso = $1
+            ORDER BY s.fecha_inicio DESC
+        `, [nroCaso]);
+        return { success: true, data: result.rows };
+    } catch (error: any) {
+        console.error('Error al obtener semestres del caso:', error);
         return { success: false, error: error.message };
     }
 }

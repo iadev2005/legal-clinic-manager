@@ -36,6 +36,7 @@ import {
   type UpdateCasoData,
   vincularCasoSemestre,
   getCasoSemestre,
+  getSemestresCaso,
 } from "@/actions/casos";
 import { getSolicitantes } from "@/actions/solicitantes";
 import { getSemestres } from "@/actions/administracion";
@@ -131,6 +132,8 @@ export default function CaseEditModal({
   const [alumnos, setAlumnos] = useState<Array<{ value: string; label: string; term: string }>>([]);
   const [profesores, setProfesores] = useState<Array<{ value: string; label: string; term: string }>>([]);
   const [semestres, setSemestres] = useState<Array<{ value: string; label: string }>>([]);
+  const [rawSemestres, setRawSemestres] = useState<any[]>([]);
+  const [caseHistory, setCaseHistory] = useState<any[]>([]);
   const [selectedTerm, setSelectedTerm] = useState<string>(""); // Semestre seleccionado para gestión
 
   // Form data
@@ -152,31 +155,93 @@ export default function CaseEditModal({
   const [cedulaProfesor, setCedulaProfesor] = useState("");
   const [termProfesor, setTermProfesor] = useState("");
 
+  // Combinar semestres y historial para generar opciones visuales
+  useEffect(() => {
+    if (rawSemestres.length > 0) {
+      const options = rawSemestres.map((sem) => {
+        const historyItem = caseHistory.find((ch) => ch.term === sem.term);
+        let label = sem.term;
+
+        // Lógica de visualización
+        if (historyItem) {
+          // Verificar si es el más reciente del historial (asumiendo orden DESC en caseHistory)
+          const isMostRecent = caseHistory[0]?.term === sem.term;
+          if (isMostRecent) {
+            label = `⭐ ${sem.term} (Actual)`;
+          } else {
+            label = `🕒 ${sem.term} (Histórico)`;
+          }
+        } else {
+          label = `🆕 ${sem.term} (Nuevo)`;
+        }
+
+        return {
+          value: sem.term,
+          label: label,
+        };
+      });
+      setSemestres(options);
+
+      // Pre-seleccionar: Si hay historial, el más reciente. Si no, el primer semestre global.
+      if (!selectedTerm) {
+        if (caseHistory.length > 0) {
+          setSelectedTerm(caseHistory[0].term);
+        } else if (rawSemestres.length > 0) {
+          setSelectedTerm(rawSemestres[0].term);
+        }
+      }
+    }
+  }, [rawSemestres, caseHistory]);
+
+
   // Cuando cambia el semestre seleccionado, recargar listas y estatus específico
   useEffect(() => {
     if (selectedTerm && caseData) {
       setLoadingData(true);
       const fetchData = async () => {
+        const nroCaso = parseInt(caseData.id);
+
+        // Recargar asignaciones y filtrar por el semestre seleccionado
+        const asignacionesRes = await getAsignacionesActivas(nroCaso);
+
+        if (asignacionesRes.success && asignacionesRes.data) {
+          // Filtrar alumnos por el semestre seleccionado
+          const alumnosFiltrados = asignacionesRes.data.alumnos?.filter(
+            (a: any) => a.term === selectedTerm
+          ) || [];
+
+          setCurrentStudents(alumnosFiltrados.map((a: any) => ({
+            id_asignacion: a.id_asignacion,
+            cedula_alumno: a.cedula_alumno,
+            term: a.term,
+            nombre_completo: a.alumno_nombre
+          })));
+
+          // Filtrar profesor por el semestre seleccionado
+          const profesorFiltrado = asignacionesRes.data.profesores?.find(
+            (p: any) => p.term === selectedTerm
+          );
+
+          if (profesorFiltrado) {
+            setCedulaProfesor(profesorFiltrado.cedula_profesor || "");
+            setTermProfesor(profesorFiltrado.term || "");
+          } else {
+            // Limpiar si no hay profesor para este semestre
+            setCedulaProfesor("");
+            setTermProfesor("");
+          }
+        }
+
         await loadAlumnosAndProfesores(selectedTerm);
 
         // Cargar estatus específico de este semestre
-        // Si existe en Casos_Semestres, usar ese. Si no, mantener el actual o default?
-        // "Si no existe, el estatus es 'Activo' (abierto) o 'En Proceso'?"
-        // Mejor: consultar si existe vinculo.
-        const statusRes = await getCasoSemestre(parseInt(caseData.id), selectedTerm);
+        const statusRes = await getCasoSemestre(nroCaso, selectedTerm);
         if (statusRes.success && statusRes.data) {
-          // Si hay registro específico, usar su estatus
-          // Necesitamos mapear id_estatus a string del frontend
-          // Como no tengo el nombre aquí directo en el enum, tengo que buscar en estatusList
-          // Pero getCasoSemestre devuelve nombre_estatus gracias al JOIN
           if (statusRes.data.nombre_estatus) {
             setStatus(mapEstatusToFrontend(statusRes.data.nombre_estatus));
           }
-        } else {
-          // Si no hay registro para este semestre, ¿qué mostramos?
-          // Podría ser el estatus global actual, o resetear a En Proceso.
-          // Mantenemos el estatus actual visualmente pero el usuario debe confirmar al guardar.
         }
+
         setLoadingData(false);
       };
       fetchData();
@@ -246,16 +311,7 @@ export default function CaseEditModal({
       }
 
       if (semestresRes.success && semestresRes.data) {
-        setSemestres(
-          semestresRes.data.map((s: any) => ({
-            value: s.term,
-            label: s.term,
-          }))
-        );
-        // Pre-seleccionar el primer semestre (el más reciente) por defecto
-        if (semestresRes.data.length > 0 && !selectedTerm) {
-          setSelectedTerm(semestresRes.data[0].term);
-        }
+        setRawSemestres(semestresRes.data);
       }
     } catch (error) {
       console.error("Error loading catalogs:", error);
@@ -273,11 +329,13 @@ export default function CaseEditModal({
         beneficiariosRes,
         soportesRes,
         asignacionesRes,
+        semestresCasoRes,
       ] = await Promise.all([
         getCasoById(nroCaso),
         getBeneficiariosCaso(nroCaso),
         getSoportesCaso(nroCaso),
         getAsignacionesActivas(nroCaso),
+        getSemestresCaso(nroCaso),
       ]);
 
       if (casoRes.success && casoRes.data) {
@@ -347,6 +405,15 @@ export default function CaseEditModal({
       if (soportesRes.success && soportesRes.data) {
         setSoportesExistentes(soportesRes.data);
       }
+
+      if (semestresCasoRes.success && semestresCasoRes.data) {
+        setCaseHistory(semestresCasoRes.data);
+      }
+
+      // Historial de Semestres (Result[4] si agregamos uno más a Promise.all)
+      // Nota: Promise.all devuelve array en orden. Agregué getSemestresCaso al final.
+      // Ajustemos el destructuring arriba o accedamos por índice.
+      // Mejor ajustar destructuring en loadCaseData
     } catch (error) {
       console.error("Error loading case data:", error);
       setSubmitError("Error al cargar los datos del caso");
@@ -522,13 +589,20 @@ export default function CaseEditModal({
       }
 
       // 3. Asignar alumno/profesor si cambió
-      // Usar selectedTerm para la asignación si está disponible, sino el del alumno (que ya debe coincidir)
+      // Si hay un semestre seleccionado, DEBEMOS usar ese para la asignación.
+      // Si no, usamos el del alumno (caso legacy o sin contexto de semestre).
+      // CRITICAL FIX: Si selectedTerm está set, ignorar termAlumno porque el usuario quiere asignar EN ESE semestre.
       const termToAssign = selectedTerm || termAlumno;
+
       if (cedulaAlumno && termToAssign) {
-        await asignarAlumno(nroCaso, cedulaAlumno, termToAssign);
+        const res = await asignarAlumno(nroCaso, cedulaAlumno, termToAssign);
+        if (!res.success) throw new Error(res.error);
+        if (res.message) console.warn(res.message); // Log warning if already assigned
       }
-      if (cedulaProfesor && selectedTerm) { // Profesor también usa el semestre seleccionado
-        await asignarProfesor(nroCaso, cedulaProfesor, selectedTerm);
+      if (cedulaProfesor && selectedTerm) {
+        const res = await asignarProfesor(nroCaso, cedulaProfesor, selectedTerm);
+        if (!res.success) throw new Error(res.error);
+        if (res.message) console.warn(res.message);
       }
 
       // 4. Agregar nuevos beneficiarios (los existentes no se eliminan, solo se agregan nuevos)
