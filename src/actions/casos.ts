@@ -77,11 +77,12 @@ export async function getCasos() {
         sub.nombre_subcategoria,
         amb.nombre_ambito_legal,
         (
-          SELECT nombre_estatus 
-          FROM Se_Le_Adjudican sla
-          JOIN Estatus e ON sla.id_estatus = e.id_estatus
-          WHERE sla.id_caso = c.nro_caso
-          ORDER BY sla.fecha_registro DESC
+          SELECT e.nombre_estatus 
+          FROM Casos_Semestres cs
+          JOIN Estatus e ON cs.id_estatus = e.id_estatus
+          JOIN Semestres sem ON cs.term = sem.term
+          WHERE cs.nro_caso = c.nro_caso
+          ORDER BY sem.fecha_inicio DESC
           LIMIT 1
         ) as estatus_actual,
         (
@@ -130,7 +131,16 @@ export async function getCasoById(nroCaso: number) {
         m.nombre_materia,
         cat.nombre_categoria,
         sub.nombre_subcategoria,
-        amb.nombre_ambito_legal
+        amb.nombre_ambito_legal,
+        (
+          SELECT e.nombre_estatus 
+          FROM Casos_Semestres cs
+          JOIN Estatus e ON cs.id_estatus = e.id_estatus
+          JOIN Semestres sem ON cs.term = sem.term
+          WHERE cs.nro_caso = c.nro_caso
+          ORDER BY sem.fecha_inicio DESC
+          LIMIT 1
+        ) as estatus_actual
       FROM Casos c
       JOIN Solicitantes s ON c.cedula_solicitante = s.cedula_solicitante
       JOIN Nucleos n ON c.id_nucleo = n.id_nucleo
@@ -216,6 +226,27 @@ export async function createCaso(data: CreateCasoData) {
         INSERT INTO Se_Le_Adjudican (id_caso, id_estatus, cedula_usuario, motivo)
         VALUES ($1, $2, $3, $4)
       `, [nroCaso, estatusResult.rows[0].id_estatus, session?.cedula || null, 'Caso creado']);
+
+            // NUEVO: Vincular automáticamente con el semestre actual (o el indicado en asignación)
+            if (data.asignacion?.term) {
+                await query(`
+                    INSERT INTO Casos_Semestres (nro_caso, term, id_estatus, cedula_usuario)
+                    VALUES ($1, $2, $3, $4)
+                    ON CONFLICT DO NOTHING
+                `, [nroCaso, data.asignacion.term, estatusResult.rows[0].id_estatus, session?.cedula || null]);
+            } else {
+                // Intentar buscar semestre activo
+                const termResult = await query(
+                    'SELECT term FROM Semestres WHERE CURRENT_DATE BETWEEN fecha_inicio AND fecha_final ORDER BY fecha_inicio DESC LIMIT 1'
+                );
+                if (termResult.rows.length > 0) {
+                    await query(`
+                        INSERT INTO Casos_Semestres (nro_caso, term, id_estatus, cedula_usuario)
+                        VALUES ($1, $2, $3, $4)
+                        ON CONFLICT DO NOTHING
+                    `, [nroCaso, termResult.rows[0].term, estatusResult.rows[0].id_estatus, session?.cedula || null]);
+                }
+            }
         }
 
         // 4. Asignar alumno/profesor si se proporcionó
@@ -679,6 +710,52 @@ export async function removeBeneficiario(cedulaBeneficiario: string, nroCaso: nu
         return { success: true };
     } catch (error: any) {
         console.error('Error al eliminar beneficiario:', error);
+        return { success: false, error: error.message };
+    }
+}
+
+// ============================================================================
+// GESTIÓN DE SEMESTRES (NUEVO)
+// ============================================================================
+
+export async function vincularCasoSemestre(nroCaso: number, term: string, idEstatus: number) {
+    try {
+        const session = await getSession();
+
+        await query(`
+            INSERT INTO Casos_Semestres (nro_caso, term, id_estatus, cedula_usuario)
+            VALUES ($1, $2, $3, $4)
+            ON CONFLICT (nro_caso, term) 
+            DO UPDATE SET 
+                id_estatus = EXCLUDED.id_estatus,
+                cedula_usuario = EXCLUDED.cedula_usuario,
+                fecha_registro = CURRENT_TIMESTAMP
+        `, [nroCaso, term, idEstatus, session?.cedula || null]);
+
+        revalidatePath('/cases');
+        return { success: true };
+    } catch (error: any) {
+        console.error('Error al vincular caso con semestre:', error);
+        return { success: false, error: error.message };
+    }
+}
+
+export async function getCasoSemestre(nroCaso: number, term: string) {
+    try {
+        const result = await query(`
+            SELECT cs.*, e.nombre_estatus
+            FROM Casos_Semestres cs
+            JOIN Estatus e ON cs.id_estatus = e.id_estatus
+            WHERE cs.nro_caso = $1 AND cs.term = $2
+        `, [nroCaso, term]);
+
+        if (result.rows.length > 0) {
+            return { success: true, data: result.rows[0] };
+        } else {
+            return { success: true, data: null };
+        }
+    } catch (error: any) {
+        console.error('Error al obtener estado de caso en semestre:', error);
         return { success: false, error: error.message };
     }
 }

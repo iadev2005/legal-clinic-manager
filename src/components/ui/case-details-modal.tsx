@@ -25,7 +25,7 @@ interface CaseDetailsModalProps {
     tribunal: string;
     period: string;
     assignedStudent: string;
-    status: "EN_PROCESO" | "ARCHIVADO" | "ENTREGADO" | "ASESORIA";
+    status: "EN_PROCESO" | "ARCHIVADO" | "ENTREGADO" | "ASESORIA" | "PAUSADO";
     createdAt: string;
   } | null;
   preloadedDetails?: any;

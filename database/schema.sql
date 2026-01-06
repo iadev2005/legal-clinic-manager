@@ -257,7 +257,7 @@ CREATE TABLE Estatus (
 );
 
 INSERT INTO Estatus (nombre_estatus) VALUES 
-('En proceso'), ('Archivado'), ('Entregado'), ('Asesoría');
+('En proceso'), ('Archivado'), ('Entregado'), ('Asesoría'), ('Pausado');
 
 -- Tabla 1 (La Tabla Maestra)
 CREATE TABLE Casos (

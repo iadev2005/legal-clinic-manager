@@ -824,16 +824,16 @@ export async function deleteSemestre(term: string) {
         const checkAsignaciones = await query('SELECT COUNT(*) as count FROM Se_Asignan WHERE term = $1', [term]);
         const checkSupervisiones = await query('SELECT COUNT(*) as count FROM Supervisan WHERE term = $1', [term]);
 
-        const totalAsociaciones = 
+        const totalAsociaciones =
             parseInt(checkAlumnos.rows[0].count) +
             parseInt(checkProfesores.rows[0].count) +
             parseInt(checkAsignaciones.rows[0].count) +
             parseInt(checkSupervisiones.rows[0].count);
 
         if (totalAsociaciones > 0) {
-            return { 
-                success: false, 
-                error: `No se puede eliminar el semestre porque tiene ${totalAsociaciones} registro(s) asociado(s) (alumnos, profesores, asignaciones o supervisiones)` 
+            return {
+                success: false,
+                error: `No se puede eliminar el semestre porque tiene ${totalAsociaciones} registro(s) asociado(s) (alumnos, profesores, asignaciones o supervisiones)`
             };
         }
 

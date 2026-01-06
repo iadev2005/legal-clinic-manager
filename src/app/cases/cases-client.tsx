@@ -42,7 +42,7 @@ interface Case {
   tribunal: string;
   period: string;
   assignedStudent: string;
-  status: "EN_PROCESO" | "ARCHIVADO" | "ENTREGADO" | "ASESORIA";
+  status: "EN_PROCESO" | "ARCHIVADO" | "ENTREGADO" | "ASESORIA" | "PAUSADO";
   createdAt: string;
 }
 
@@ -54,13 +54,14 @@ interface CasesClientProps {
 const ITEMS_PER_PAGE = 10;
 
 // Mapear estatus de BD a formato del frontend
-const mapEstatusToFrontend = (estatus: string | null): "EN_PROCESO" | "ARCHIVADO" | "ENTREGADO" | "ASESORIA" => {
+const mapEstatusToFrontend = (estatus: string | null): "EN_PROCESO" | "ARCHIVADO" | "ENTREGADO" | "ASESORIA" | "PAUSADO" => {
   if (!estatus) return "EN_PROCESO";
   const upper = estatus.toUpperCase();
   if (upper.includes("PROCESO")) return "EN_PROCESO";
   if (upper.includes("ARCHIVADO")) return "ARCHIVADO";
   if (upper.includes("ENTREGADO")) return "ENTREGADO";
   if (upper.includes("ASESORIA") || upper.includes("ASESORÍA")) return "ASESORIA";
+  if (upper.includes("PAUSADO")) return "PAUSADO";
   return "EN_PROCESO";
 };
 

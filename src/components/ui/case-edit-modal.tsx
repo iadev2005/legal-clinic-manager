@@ -34,6 +34,8 @@ import {
   removeBeneficiario,
   type BeneficiarioData,
   type UpdateCasoData,
+  vincularCasoSemestre,
+  getCasoSemestre,
 } from "@/actions/casos";
 import { getSolicitantes } from "@/actions/solicitantes";
 import { getSemestres } from "@/actions/administracion";
@@ -47,7 +49,7 @@ interface CaseEditModalProps {
     id: string;
     caseNumber: string;
     applicantName: string;
-    status: "EN_PROCESO" | "ARCHIVADO" | "ENTREGADO" | "ASESORIA";
+    status: "EN_PROCESO" | "ARCHIVADO" | "ENTREGADO" | "ASESORIA" | "PAUSADO";
     assignedStudent: string;
   } | null;
   estatusList?: Array<{ id_estatus: number; nombre_estatus: string }>;
@@ -68,7 +70,7 @@ export interface CaseEditData {
   sintesis_caso?: string;
   fecha_caso_inicio?: string;
   fecha_caso_final?: string | null;
-  status: "EN_PROCESO" | "ARCHIVADO" | "ENTREGADO" | "ASESORIA";
+  status: "EN_PROCESO" | "ARCHIVADO" | "ENTREGADO" | "ASESORIA" | "PAUSADO";
   assignedStudentCedula?: string;
   assignedStudentTerm?: string;
   assignedProfesorCedula?: string;
@@ -82,12 +84,13 @@ export interface CaseEditData {
 }
 
 // Mapear estatus de BD a formato del frontend
-const mapEstatusToFrontend = (estatus: string): "EN_PROCESO" | "ARCHIVADO" | "ENTREGADO" | "ASESORIA" => {
+const mapEstatusToFrontend = (estatus: string): "EN_PROCESO" | "ARCHIVADO" | "ENTREGADO" | "ASESORIA" | "PAUSADO" => {
   const upper = estatus.toUpperCase();
   if (upper.includes("PROCESO")) return "EN_PROCESO";
   if (upper.includes("ARCHIVADO")) return "ARCHIVADO";
   if (upper.includes("ENTREGADO")) return "ENTREGADO";
   if (upper.includes("ASESORIA") || upper.includes("ASESORÍA")) return "ASESORIA";
+  if (upper.includes("PAUSADO")) return "PAUSADO";
   return "EN_PROCESO";
 };
 
@@ -128,6 +131,7 @@ export default function CaseEditModal({
   const [alumnos, setAlumnos] = useState<Array<{ value: string; label: string; term: string }>>([]);
   const [profesores, setProfesores] = useState<Array<{ value: string; label: string; term: string }>>([]);
   const [semestres, setSemestres] = useState<Array<{ value: string; label: string }>>([]);
+  const [selectedTerm, setSelectedTerm] = useState<string>(""); // Semestre seleccionado para gestión
 
   // Form data
   const [cedulaSolicitante, setCedulaSolicitante] = useState("");
@@ -142,11 +146,42 @@ export default function CaseEditModal({
   const [sintesis, setSintesis] = useState("");
   const [fechaInicio, setFechaInicio] = useState("");
   const [fechaFinal, setFechaFinal] = useState<string | null>(null);
-  const [status, setStatus] = useState<"EN_PROCESO" | "ARCHIVADO" | "ENTREGADO" | "ASESORIA">("EN_PROCESO");
+  const [status, setStatus] = useState<"EN_PROCESO" | "ARCHIVADO" | "ENTREGADO" | "ASESORIA" | "PAUSADO">("EN_PROCESO");
   const [cedulaAlumno, setCedulaAlumno] = useState("");
   const [termAlumno, setTermAlumno] = useState("");
   const [cedulaProfesor, setCedulaProfesor] = useState("");
   const [termProfesor, setTermProfesor] = useState("");
+
+  // Cuando cambia el semestre seleccionado, recargar listas y estatus específico
+  useEffect(() => {
+    if (selectedTerm && caseData) {
+      setLoadingData(true);
+      const fetchData = async () => {
+        await loadAlumnosAndProfesores(selectedTerm);
+
+        // Cargar estatus específico de este semestre
+        // Si existe en Casos_Semestres, usar ese. Si no, mantener el actual o default?
+        // "Si no existe, el estatus es 'Activo' (abierto) o 'En Proceso'?"
+        // Mejor: consultar si existe vinculo.
+        const statusRes = await getCasoSemestre(parseInt(caseData.id), selectedTerm);
+        if (statusRes.success && statusRes.data) {
+          // Si hay registro específico, usar su estatus
+          // Necesitamos mapear id_estatus a string del frontend
+          // Como no tengo el nombre aquí directo en el enum, tengo que buscar en estatusList
+          // Pero getCasoSemestre devuelve nombre_estatus gracias al JOIN
+          if (statusRes.data.nombre_estatus) {
+            setStatus(mapEstatusToFrontend(statusRes.data.nombre_estatus));
+          }
+        } else {
+          // Si no hay registro para este semestre, ¿qué mostramos?
+          // Podría ser el estatus global actual, o resetear a En Proceso.
+          // Mantenemos el estatus actual visualmente pero el usuario debe confirmar al guardar.
+        }
+        setLoadingData(false);
+      };
+      fetchData();
+    }
+  }, [selectedTerm, caseData]);
 
   // Estado para manejar múltiples estudiantes
   const [currentStudents, setCurrentStudents] = useState<Array<{
@@ -217,6 +252,10 @@ export default function CaseEditModal({
             label: s.term,
           }))
         );
+        // Pre-seleccionar el primer semestre (el más reciente) por defecto
+        if (semestresRes.data.length > 0 && !selectedTerm) {
+          setSelectedTerm(semestresRes.data[0].term);
+        }
       }
     } catch (error) {
       console.error("Error loading catalogs:", error);
@@ -468,20 +507,28 @@ export default function CaseEditModal({
           "ARCHIVADO": "ARCHIVADO",
           "ENTREGADO": "ENTREGADO",
           "ASESORIA": "ASESORÍA",
+          "PAUSADO": "PAUSADO",
         };
         return nombre.includes(statusMap[status] || "");
       });
 
       if (estatusObj && userCedula) {
         await cambiarEstatus(nroCaso, estatusObj.id_estatus, "Cambio de estatus desde la edición", userCedula);
+
+        // NUEVO: Guardar también en Casos_Semestres si tenemos un semestre seleccionado
+        if (selectedTerm) {
+          await vincularCasoSemestre(nroCaso, selectedTerm, estatusObj.id_estatus);
+        }
       }
 
       // 3. Asignar alumno/profesor si cambió
-      if (cedulaAlumno && termAlumno) {
-        await asignarAlumno(nroCaso, cedulaAlumno, termAlumno);
+      // Usar selectedTerm para la asignación si está disponible, sino el del alumno (que ya debe coincidir)
+      const termToAssign = selectedTerm || termAlumno;
+      if (cedulaAlumno && termToAssign) {
+        await asignarAlumno(nroCaso, cedulaAlumno, termToAssign);
       }
-      if (cedulaProfesor && termProfesor) {
-        await asignarProfesor(nroCaso, cedulaProfesor, termProfesor);
+      if (cedulaProfesor && selectedTerm) { // Profesor también usa el semestre seleccionado
+        await asignarProfesor(nroCaso, cedulaProfesor, selectedTerm);
       }
 
       // 4. Agregar nuevos beneficiarios (los existentes no se eliminan, solo se agregan nuevos)
@@ -680,6 +727,28 @@ export default function CaseEditModal({
               </div>
             </div>
 
+            {/* SELECTOR DE SEMESTRE DE GESTIÓN */}
+            <div className="bg-yellow-50 p-4 rounded-xl border-2 border-yellow-200 space-y-2">
+              <Label className="text-yellow-900 font-bold text-lg flex items-center gap-2">
+                <span className="icon-[mdi--calendar-clock] text-xl"></span>
+                Semestre de Gestión
+              </Label>
+              <p className="text-sm text-yellow-800/80 mb-2">
+                Selecciona el semestre para gestionar el estatus y las asignaciones de este periodo.
+              </p>
+              <FilterSelect
+                placeholder="Seleccionar semestre de trabajo"
+                value={selectedTerm}
+                onChange={(value) => {
+                  setSelectedTerm(value);
+                  // Limpiar selecciones de alumno/profe al cambiar de semestre context
+                  setCedulaAlumno("");
+                  setCedulaProfesor("");
+                }}
+                options={semestres}
+              />
+            </div>
+
             {/* Estatus */}
             <div className="space-y-2">
               <Label htmlFor="status" className="text-sky-950 font-semibold text-lg">
@@ -703,6 +772,7 @@ export default function CaseEditModal({
                       { value: "ENTREGADO", label: "Entregado" },
                       { value: "ARCHIVADO", label: "Archivado" },
                       { value: "ASESORIA", label: "Asesoría" },
+                      { value: "PAUSADO", label: "Pausado" },
                     ]
                 }
               />

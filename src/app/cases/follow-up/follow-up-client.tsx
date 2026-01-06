@@ -148,7 +148,17 @@ function ActionHistoryModal({ open, onClose, data }: ActionHistoryModalProps) {
     );
 }
 
-
+// Mapear estatus de BD a formato del frontend
+const mapEstatusToFrontend = (estatus: string | null): "EN_PROCESO" | "ARCHIVADO" | "ENTREGADO" | "ASESORIA" | "PAUSADO" => {
+    if (!estatus) return "EN_PROCESO";
+    const upper = estatus.toUpperCase();
+    if (upper.includes("PROCESO")) return "EN_PROCESO";
+    if (upper.includes("ARCHIVADO")) return "ARCHIVADO";
+    if (upper.includes("ENTREGADO")) return "ENTREGADO";
+    if (upper.includes("ASESORIA") || upper.includes("ASESORÍA")) return "ASESORIA";
+    if (upper.includes("PAUSADO")) return "PAUSADO";
+    return "EN_PROCESO";
+};
 export default function FollowUpClient() {
     const searchParams = useSearchParams();
     const router = useRouter();
@@ -614,7 +624,7 @@ export default function FollowUpClient() {
                         tribunal: caseDetails.caseInfo?.nombre_nucleo || "",
                         period: "2024-2025",
                         assignedStudent: caseDetails.students?.[0] ? `${caseDetails.students[0].nombres} ${caseDetails.students[0].apellidos}` : "Sin Asignar",
-                        status: caseDetails.caseInfo?.estatus_actual || "EN_PROCESO",
+                        status: mapEstatusToFrontend(caseDetails.caseInfo?.estatus_actual),
                         createdAt: caseDetails.caseInfo?.fecha_caso_inicio || ""
                     }}
                     preloadedDetails={caseDetails}
