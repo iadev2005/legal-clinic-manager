@@ -15,7 +15,9 @@ import { Input } from "@/components/shadcn/input";
 
 import {
     getHistorialEstatus,
-    getAccionesCaso
+    getAccionesCaso,
+    createAccion,
+    type CreateAccionData
 } from "@/actions/casos";
 import { getCaseReportData } from "@/actions/cases";
 import CaseDetailsModal from "@/components/ui/case-details-modal";
@@ -211,6 +213,9 @@ export default function FollowUpClient() {
     const [newActionOrientation, setNewActionOrientation] = useState("");
     const [isHistoryModalOpen, setIsHistoryModalOpen] = useState(false);
     const [isDetailsModalOpen, setIsDetailsModalOpen] = useState(false);
+    const [isSavingAction, setIsSavingAction] = useState(false);
+    const [actionError, setActionError] = useState<string | null>(null);
+    const [actionSuccess, setActionSuccess] = useState(false);
 
     // Redirect if no caseId
     useEffect(() => {
@@ -251,15 +256,56 @@ export default function FollowUpClient() {
 
     // Handlers removed (search/click)
 
-    const handleSaveAction = () => {
-        // Placeholder as requested - No real mutation yet
-        if (!newActionProblem.trim() && !newActionOrientation.trim()) return;
+    const handleSaveAction = async () => {
+        if (!selectedCaseId) return;
+        if (!newActionProblem.trim() && !newActionOrientation.trim()) {
+            setActionError('Por favor ingrese al menos una descripción');
+            return;
+        }
 
-        console.log("Saving action (UI only):", { problem: newActionProblem, orientation: newActionOrientation });
+        setIsSavingAction(true);
+        setActionError(null);
+        setActionSuccess(false);
 
-        // Mock update UI for immediate feedback if needed, restricted as requested.
-        setNewActionProblem("");
-        setNewActionOrientation("");
+        try {
+            // Combinar problema y orientación en el formato esperado
+            const titulo = newActionProblem.trim() || 'Actuación registrada';
+            const observacion = [
+                newActionProblem.trim() && `Problema: ${newActionProblem.trim()}`,
+                newActionOrientation.trim() && `Orientación: ${newActionOrientation.trim()}`
+            ].filter(Boolean).join('\n\n');
+
+            const result = await createAccion({
+                nro_caso: selectedCaseId,
+                titulo_accion: titulo,
+                observacion: observacion || undefined
+            });
+
+            if (result.success) {
+                // Limpiar formulario
+                setNewActionProblem("");
+                setNewActionOrientation("");
+                setActionSuccess(true);
+
+                // Recargar datos del caso para mostrar la nueva acción
+                const [details, history] = await Promise.all([
+                    getCaseReportData(selectedCaseId.toString()),
+                    getHistorialEstatus(selectedCaseId)
+                ]);
+
+                if (details) setCaseDetails(details);
+                if (history.success) setStatusHistory(history.data || []);
+
+                // Ocultar mensaje de éxito después de 3 segundos
+                setTimeout(() => setActionSuccess(false), 3000);
+            } else {
+                setActionError(result.error || 'Error al guardar la acción');
+            }
+        } catch (error: any) {
+            setActionError(error.message || 'Error al guardar la acción');
+        } finally {
+            setIsSavingAction(false);
+        }
     };
 
     const handleAttachFile = () => {
@@ -557,7 +603,8 @@ export default function FollowUpClient() {
                                                 placeholder="Síntesis del problema..."
                                                 value={newActionProblem}
                                                 onChange={(e) => setNewActionProblem(e.target.value)}
-                                                className="w-full px-4 py-3 bg-neutral-50 rounded-xl border-2 border-neutral-200 text-sky-950 text-sm font-medium placeholder:text-sky-950/40 focus:outline-none focus:border-[#3E7DBB] focus:bg-white transition-all resize-none h-24"
+                                                disabled={isSavingAction}
+                                                className="w-full px-4 py-3 bg-neutral-50 rounded-xl border-2 border-neutral-200 text-sky-950 text-sm font-medium placeholder:text-sky-950/40 focus:outline-none focus:border-[#3E7DBB] focus:bg-white transition-all resize-none h-24 disabled:opacity-50 disabled:cursor-not-allowed"
                                             />
                                         </div>
                                         <div>
@@ -565,17 +612,43 @@ export default function FollowUpClient() {
                                                 placeholder="Orientación dada por el alumno..."
                                                 value={newActionOrientation}
                                                 onChange={(e) => setNewActionOrientation(e.target.value)}
-                                                className="w-full px-4 py-3 bg-neutral-50 rounded-xl border-2 border-neutral-200 text-sky-950 text-sm font-medium placeholder:text-sky-950/40 focus:outline-none focus:border-[#3E7DBB] focus:bg-white transition-all resize-none h-24"
+                                                disabled={isSavingAction}
+                                                className="w-full px-4 py-3 bg-neutral-50 rounded-xl border-2 border-neutral-200 text-sky-950 text-sm font-medium placeholder:text-sky-950/40 focus:outline-none focus:border-[#3E7DBB] focus:bg-white transition-all resize-none h-24 disabled:opacity-50 disabled:cursor-not-allowed"
                                             />
                                         </div>
-                                        <div className="flex gap-3">
 
+                                        {/* Error Message */}
+                                        {actionError && (
+                                            <div className="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded-xl text-sm flex items-center gap-2">
+                                                <span className="icon-[mdi--alert-circle] text-lg"></span>
+                                                {actionError}
+                                            </div>
+                                        )}
+
+                                        {/* Success Message */}
+                                        {actionSuccess && (
+                                            <div className="bg-green-50 border border-green-200 text-green-700 px-4 py-3 rounded-xl text-sm flex items-center gap-2">
+                                                <span className="icon-[mdi--check-circle] text-lg"></span>
+                                                Actuación guardada exitosamente
+                                            </div>
+                                        )}
+                                        <div className="flex gap-3">
                                             <button
                                                 onClick={handleSaveAction}
-                                                className="flex-1 px-5 py-2.5 bg-[#003366] hover:bg-[#002244] text-white text-sm font-bold rounded-xl transition-colors cursor-pointer flex items-center justify-center gap-2"
+                                                disabled={isSavingAction}
+                                                className="flex-1 px-5 py-2.5 bg-[#003366] hover:bg-[#002244] text-white text-sm font-bold rounded-xl transition-colors cursor-pointer flex items-center justify-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed"
                                             >
-                                                <span className="icon-[mdi--content-save] text-lg"></span>
-                                                Guardar Actuación
+                                                {isSavingAction ? (
+                                                    <>
+                                                        <span className="icon-[svg-spinners--180-ring-with-bg] text-lg"></span>
+                                                        Guardando...
+                                                    </>
+                                                ) : (
+                                                    <>
+                                                        <span className="icon-[mdi--content-save] text-lg"></span>
+                                                        Guardar Actuación
+                                                    </>
+                                                )}
                                             </button>
                                         </div>
                                     </div>

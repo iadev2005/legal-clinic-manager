@@ -994,6 +994,133 @@ export async function getAccionesCaso(nroCaso: number) {
 }
 
 // ============================================================================
+// CRUD DE ACCIONES
+// ============================================================================
+
+export interface CreateAccionData {
+    nro_caso: number;
+    titulo_accion: string;
+    observacion?: string;
+    fecha_realizacion?: string; // ISO date string, defaults to today
+    cedula_usuario_ejecutor?: string; // Optional, will use session if not provided
+}
+
+export interface UpdateAccionData {
+    titulo_accion?: string;
+    observacion?: string;
+    fecha_realizacion?: string;
+}
+
+export async function createAccion(data: CreateAccionData) {
+    try {
+        const session = await getSession();
+        const cedulaEjecutor = data.cedula_usuario_ejecutor || session?.cedula || null;
+        const fechaRealizacion = data.fecha_realizacion || new Date().toISOString().split('T')[0];
+
+        const result = await query(`
+            INSERT INTO Acciones (
+                nro_caso, 
+                titulo_accion, 
+                observacion, 
+                fecha_realizacion, 
+                cedula_usuario_ejecutor
+            )
+            VALUES ($1, $2, $3, $4, $5)
+            RETURNING *
+        `, [
+            data.nro_caso,
+            data.titulo_accion,
+            data.observacion || null,
+            fechaRealizacion,
+            cedulaEjecutor
+        ]);
+
+        revalidatePath('/cases/follow-up');
+        revalidatePath('/cases');
+        return { success: true, data: result.rows[0] };
+    } catch (error: any) {
+        console.error('Error al crear acción:', error);
+        return { success: false, error: error.message || 'Error al crear acción' };
+    }
+}
+
+export async function updateAccion(
+    nroAccion: number,
+    nroCaso: number,
+    data: UpdateAccionData
+) {
+    try {
+        // Construir la consulta UPDATE dinámicamente
+        const updates: string[] = [];
+        const values: any[] = [];
+        let paramIndex = 1;
+
+        if (data.titulo_accion !== undefined) {
+            updates.push(`titulo_accion = $${paramIndex}`);
+            values.push(data.titulo_accion);
+            paramIndex++;
+        }
+        if (data.observacion !== undefined) {
+            updates.push(`observacion = $${paramIndex}`);
+            values.push(data.observacion || null);
+            paramIndex++;
+        }
+        if (data.fecha_realizacion !== undefined) {
+            updates.push(`fecha_realizacion = $${paramIndex}`);
+            values.push(data.fecha_realizacion);
+            paramIndex++;
+        }
+
+        if (updates.length === 0) {
+            return { success: false, error: 'No hay campos para actualizar' };
+        }
+
+        // Agregar nro_accion y nro_caso para el WHERE
+        values.push(nroAccion, nroCaso);
+        const sql = `
+            UPDATE Acciones 
+            SET ${updates.join(', ')} 
+            WHERE nro_accion = $${paramIndex} AND nro_caso = $${paramIndex + 1}
+            RETURNING *
+        `;
+
+        const result = await query(sql, values);
+
+        if (result.rows.length === 0) {
+            return { success: false, error: 'Acción no encontrada' };
+        }
+
+        revalidatePath('/cases/follow-up');
+        revalidatePath('/cases');
+        return { success: true, data: result.rows[0] };
+    } catch (error: any) {
+        console.error('Error al actualizar acción:', error);
+        return { success: false, error: error.message || 'Error al actualizar acción' };
+    }
+}
+
+export async function deleteAccion(nroAccion: number, nroCaso: number) {
+    try {
+        const result = await query(`
+            DELETE FROM Acciones
+            WHERE nro_accion = $1 AND nro_caso = $2
+            RETURNING nro_accion
+        `, [nroAccion, nroCaso]);
+
+        if (result.rows.length === 0) {
+            return { success: false, error: 'Acción no encontrada' };
+        }
+
+        revalidatePath('/cases/follow-up');
+        revalidatePath('/cases');
+        return { success: true };
+    } catch (error: any) {
+        console.error('Error al eliminar acción:', error);
+        return { success: false, error: error.message || 'Error al eliminar acción' };
+    }
+}
+
+// ============================================================================
 // OBTENER ALUMNOS Y PROFESORES DISPONIBLES
 // ============================================================================
 
