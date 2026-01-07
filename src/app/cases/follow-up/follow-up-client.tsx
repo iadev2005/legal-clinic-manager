@@ -48,6 +48,13 @@ interface ActionHistoryModalProps {
 function ActionHistoryModal({ open, onClose, data }: ActionHistoryModalProps) {
     const [filterText, setFilterText] = useState("");
     const [roleFilter, setRoleFilter] = useState("Todos");
+    const [currentPage, setCurrentPage] = useState(1);
+    const itemsPerPage = 10;
+
+    // Reset pagination when filters change
+    useEffect(() => {
+        setCurrentPage(1);
+    }, [filterText, roleFilter]);
 
     // Filter logic
     const filteredData = data.filter(item => {
@@ -64,6 +71,9 @@ function ActionHistoryModal({ open, onClose, data }: ActionHistoryModalProps) {
 
         return matchesText && matchesRole;
     });
+
+    const totalPages = Math.ceil(filteredData.length / itemsPerPage);
+    const paginatedData = filteredData.slice((currentPage - 1) * itemsPerPage, currentPage * itemsPerPage);
 
     const columns: Column<Action>[] = [
         {
@@ -134,13 +144,39 @@ function ActionHistoryModal({ open, onClose, data }: ActionHistoryModalProps) {
                     </div>
                 </DialogHeader>
 
-                <div className="flex-1 p-8 overflow-hidden bg-neutral-50">
-                    <div className="h-full bg-white rounded-2xl border border-neutral-200 shadow-sm overflow-hidden flex flex-col">
+                <div className="flex-1 p-8 overflow-hidden bg-neutral-50 flex flex-col min-h-0">
+                    <div className="flex-1 bg-white rounded-2xl border border-neutral-200 shadow-sm overflow-hidden flex flex-col min-h-0">
                         <CustomTable
-                            data={filteredData}
+                            data={paginatedData}
                             columns={columns}
-                            className="h-full border-0 rounded-none shadow-none"
+                            className="flex-1 border-0 rounded-none shadow-none"
+                            minRows={10}
                         />
+                        {/* Pagination Footer */}
+                        <div className="flex-none p-4 border-t border-neutral-200 bg-white flex items-center justify-between">
+                            <p className="text-sm text-sky-950/60 font-medium">
+                                Mostrando {filteredData.length > 0 ? ((currentPage - 1) * itemsPerPage) + 1 : 0} a {Math.min(currentPage * itemsPerPage, filteredData.length)} de {filteredData.length} actuaciones
+                            </p>
+                            <div className="flex items-center gap-2">
+                                <button
+                                    onClick={() => setCurrentPage(prev => Math.max(prev - 1, 1))}
+                                    disabled={currentPage === 1}
+                                    className="p-2 rounded-lg text-sky-950 hover:bg-neutral-100 disabled:opacity-30 disabled:hover:bg-transparent transition-colors cursor-pointer"
+                                >
+                                    <span className="icon-[mdi--chevron-left] text-2xl"></span>
+                                </button>
+                                <span className="text-sm font-bold text-sky-950">
+                                    Página {currentPage} de {totalPages || 1}
+                                </span>
+                                <button
+                                    onClick={() => setCurrentPage(prev => Math.min(prev + 1, totalPages))}
+                                    disabled={currentPage === totalPages || totalPages === 0}
+                                    className="p-2 rounded-lg text-sky-950 hover:bg-neutral-100 disabled:opacity-30 disabled:hover:bg-transparent transition-colors cursor-pointer"
+                                >
+                                    <span className="icon-[mdi--chevron-right] text-2xl"></span>
+                                </button>
+                            </div>
+                        </div>
                     </div>
                 </div>
             </DialogContent>
@@ -560,7 +596,7 @@ export default function FollowUpClient() {
                                         </button>
                                     </div>
 
-                                    <div className="space-y-6">
+                                    <div className="flex flex-col">
                                         {historyPreview.length > 0 ? historyPreview.map((action: any, index: number) => (
                                             <div key={action.id} className="flex gap-4">
                                                 {/* Timeline Icon */}
@@ -569,7 +605,7 @@ export default function FollowUpClient() {
                                                         <span className={`text-lg ${action.isStatusChange ? "icon-[mdi--swap-horizontal] text-yellow-600" : "icon-[mdi--file-document-outline] text-[#3E7DBB]"}`}></span>
                                                     </div>
                                                     {index < historyPreview.length - 1 && (
-                                                        <div className="w-0.5 flex-1 bg-neutral-200 my-2"></div>
+                                                        <div className="w-0.5 flex-1 bg-neutral-200"></div>
                                                     )}
                                                 </div>
 

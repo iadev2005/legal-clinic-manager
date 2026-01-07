@@ -3,6 +3,8 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { logout } from "@/actions/auth";
+import { useState, useEffect } from "react";
+import { getNotificacionesByUsuario } from "@/actions/notificaciones";
 
 interface SidebarProps {
     user: {
@@ -14,6 +16,27 @@ interface SidebarProps {
 
 export default function Sidebar({ user }: SidebarProps) {
     const pathname = usePathname();
+    const [hasUnread, setHasUnread] = useState(false);
+
+    useEffect(() => {
+        const checkNotifications = async () => {
+            if (user?.cedula) {
+                try {
+                    const res = await getNotificacionesByUsuario(user.cedula);
+                    if (res.success && res.data) {
+                        setHasUnread(res.data.some(n => !n.revisado));
+                    }
+                } catch (error) {
+                    console.error("Error checking notifications sidebar:", error);
+                }
+            }
+        };
+
+        checkNotifications();
+        // Check every minute
+        const interval = setInterval(checkNotifications, 60000);
+        return () => clearInterval(interval);
+    }, [user]);
 
     const sidebarItems = [
         { label: "Inicio/Dashboard", href: "/dashboard", icon: "icon-[material-symbols--dashboard-outline-rounded]", activeIcon: "icon-[material-symbols--dashboard-rounded]" },
@@ -21,8 +44,13 @@ export default function Sidebar({ user }: SidebarProps) {
         { label: "Gestión de Casos", href: "/cases", icon: "icon-[icon-park-outline--gavel]", activeIcon: "icon-[icon-park-solid--gavel]" },
         { label: "Gestión de Citas", href: "/citations", icon: "icon-[mdi--calendar-outline]", activeIcon: "icon-[mdi--calendar]" },
         { label: "Reportes y\nEstadísticas", href: "/statistics", icon: "icon-[material-symbols--pie-chart-outline]", activeIcon: "icon-[material-symbols--pie-chart]" },
-        { label: "Administración", href: "/administration", icon: "icon-[ph--sliders-horizontal]", activeIcon: "icon-[ph--sliders-horizontal-fill]" },
-        { label: "Notificaciones", href: "/notifications", icon: "icon-[ph--sliders-horizontal]", activeIcon: "icon-[ph--sliders-horizontal-fill]" },
+        { label: "Administración", href: "/administration", icon: "icon-[mdi--shield-account-outline]", activeIcon: "icon-[mdi--shield-account]" },
+        {
+            label: "Notificaciones",
+            href: "/notifications",
+            icon: hasUnread ? "icon-[mdi--bell-badge-outline]" : "icon-[mdi--bell-outline]",
+            activeIcon: hasUnread ? "icon-[mdi--bell-badge]" : "icon-[mdi--bell]"
+        },
     ];
 
     const safeUser = user || { nombre: "Usuario", rol: "Invitado" };

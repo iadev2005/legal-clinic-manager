@@ -336,7 +336,7 @@ function AppointmentModal({ open, onClose, onSave, editingAppointment, onUpdate 
                                 setFechaProximaCita(fechaProx.toISOString().slice(0, 16));
                             }
 
-                            if (usuariosRes.success) {
+                            if (usuariosRes.success && usuariosRes.data) {
                                 setUsuariosAsignados(usuariosRes.data.map((u: any) => u.cedula_usuario));
                             }
                         }
@@ -372,7 +372,7 @@ function AppointmentModal({ open, onClose, onSave, editingAppointment, onUpdate 
                         getProfesoresDisponibles()
                     ]);
 
-                    if (casosRes.success) {
+                    if (casosRes.success && casosRes.data) {
                         const casosOptions = casosRes.data.map((caso: any) => ({
                             value: caso.nro_caso.toString(),
                             label: `Caso #${caso.nro_caso} - ${caso.solicitante_nombre || 'Sin solicitante'}`
@@ -383,9 +383,9 @@ function AppointmentModal({ open, onClose, onSave, editingAppointment, onUpdate 
                     if (alumnosRes.success && profesoresRes.success) {
                         // Usar un Map para evitar duplicados por cédula
                         const usuariosMap = new Map<string, { value: string; label: string }>();
-                        
-                        // Agregar alumnos primero
-                        alumnosRes.data.forEach((u: any) => {
+
+                        // Agregar alumnos primero, verificando que data exista
+                        alumnosRes.data?.forEach((u: any) => {
                             if (!usuariosMap.has(u.cedula_usuario)) {
                                 usuariosMap.set(u.cedula_usuario, {
                                     value: u.cedula_usuario,
@@ -393,9 +393,9 @@ function AppointmentModal({ open, onClose, onSave, editingAppointment, onUpdate 
                                 });
                             }
                         });
-                        
+
                         // Agregar profesores (si no están ya como estudiantes, o actualizar el label)
-                        profesoresRes.data.forEach((u: any) => {
+                        profesoresRes.data?.forEach((u: any) => {
                             if (usuariosMap.has(u.cedula_usuario)) {
                                 // Si ya existe, actualizar el label para indicar ambos roles
                                 const existing = usuariosMap.get(u.cedula_usuario)!;
@@ -409,7 +409,7 @@ function AppointmentModal({ open, onClose, onSave, editingAppointment, onUpdate 
                                 });
                             }
                         });
-                        
+
                         setAvailableUsers(Array.from(usuariosMap.values()));
                     }
                 } catch (err: any) {
@@ -718,7 +718,7 @@ function Calendar({ appointments, currentMonth, currentYear, onPrevMonth, onNext
     };
 
     return (
-        <div className="w-full h-full flex flex-col">
+        <div className="w-full h-full flex flex-col min-h-0">
             {/* Calendar Header */}
             <div className="flex justify-between items-center mb-4 flex-none">
                 <h2 className="text-sky-950 text-2xl font-bold">{monthNames[currentMonth]} {currentYear}</h2>
@@ -744,58 +744,61 @@ function Calendar({ appointments, currentMonth, currentYear, onPrevMonth, onNext
                 </div>
             </div>
 
-            {/* Day Headers */}
-            <div className="grid grid-cols-7 gap-2 mb-2 flex-none">
-                {dayNames.map((day) => (
-                    <div key={day} className="text-center text-xs font-bold text-white bg-[#003366] py-2 rounded-lg">
-                        {day}
-                    </div>
-                ))}
-            </div>
-
-            {/* Calendar Grid */}
-            <div className="flex-1 grid grid-cols-7 grid-rows-6 gap-2 min-h-0">
-                {calendarDays.map((day, index) => {
-                    const dayAppointments = getAppointmentsForDay(day);
-                    const isToday = day &&
-                        day === new Date().getDate() &&
-                        currentMonth === new Date().getMonth() &&
-                        currentYear === new Date().getFullYear();
-
-                    return (
-                        <div
-                            key={index}
-                            className={cn(
-                                "border border-neutral-200 rounded-lg p-2 transition-all flex flex-col h-full overflow-hidden",
-                                day ? "bg-white hover:shadow-md cursor-pointer" : "bg-neutral-50",
-                                isToday && "ring-2 ring-[#3E7DBB] bg-blue-50/30"
-                            )}
-                            onClick={() => day && onDayClick(day)}
-                        >
-                            {day && (
-                                <>
-                                    <div className={cn(
-                                        "text-sm font-bold mb-1 flex-none",
-                                        isToday ? "text-[#3E7DBB]" : "text-sky-950"
-                                    )}>
-                                        {day}
-                                    </div>
-                                    <div className="space-y-1 flex-1 overflow-y-auto custom-scrollbar">
-                                        {dayAppointments.map((apt) => (
-                                            <div
-                                                key={apt.id}
-                                                className="text-[10px] font-semibold bg-[#3E7DBB] text-white px-2 py-1 rounded truncate w-full"
-                                                title={`${apt.time} - ${apt.caseName}`}
-                                            >
-                                                {apt.time} {apt.caseName}
-                                            </div>
-                                        ))}
-                                    </div>
-                                </>
-                            )}
+            {/* Scrollable Container for Calendar */}
+            <div className="flex-1 overflow-y-auto min-h-0 pr-2 pb-2">
+                {/* Day Headers */}
+                <div className="grid grid-cols-7 gap-2 mb-2 flex-none">
+                    {dayNames.map((day) => (
+                        <div key={day} className="text-center text-xs font-bold text-white bg-[#003366] py-2 rounded-lg">
+                            {day}
                         </div>
-                    );
-                })}
+                    ))}
+                </div>
+
+                {/* Calendar Grid */}
+                <div className="grid grid-cols-7 auto-rows-[minmax(80px,_1fr)] gap-2">
+                    {calendarDays.map((day, index) => {
+                        const dayAppointments = getAppointmentsForDay(day);
+                        const isToday = day &&
+                            day === new Date().getDate() &&
+                            currentMonth === new Date().getMonth() &&
+                            currentYear === new Date().getFullYear();
+
+                        return (
+                            <div
+                                key={index}
+                                className={cn(
+                                    "border border-neutral-200 rounded-lg p-2 transition-all flex flex-col h-full overflow-hidden min-h-[80px]",
+                                    day ? "bg-white hover:shadow-md cursor-pointer" : "bg-neutral-50",
+                                    isToday && "ring-2 ring-[#3E7DBB] bg-blue-50/30"
+                                )}
+                                onClick={() => day && onDayClick(day)}
+                            >
+                                {day && (
+                                    <>
+                                        <div className={cn(
+                                            "text-sm font-bold mb-1 flex-none",
+                                            isToday ? "text-[#3E7DBB]" : "text-sky-950"
+                                        )}>
+                                            {day}
+                                        </div>
+                                        <div className="space-y-1 flex-1 overflow-y-auto custom-scrollbar">
+                                            {dayAppointments.map((apt) => (
+                                                <div
+                                                    key={apt.id}
+                                                    className="text-[10px] font-semibold bg-[#3E7DBB] text-white px-2 py-1 rounded truncate w-full"
+                                                    title={`${apt.time} - ${apt.caseName}`}
+                                                >
+                                                    {apt.time} {apt.caseName}
+                                                </div>
+                                            ))}
+                                        </div>
+                                    </>
+                                )}
+                            </div>
+                        );
+                    })}
+                </div>
             </div>
         </div>
     );
@@ -814,12 +817,12 @@ export default function CitationsClient() {
     const [error, setError] = useState<string | null>(null);
     const [currentMonth, setCurrentMonth] = useState(new Date().getMonth());
     const [currentYear, setCurrentYear] = useState(new Date().getFullYear());
-    
+
     // Estados para edición y eliminación
     const [editingAppointment, setEditingAppointment] = useState<Appointment | null>(null);
     const [deletingAppointment, setDeletingAppointment] = useState<Appointment | null>(null);
     const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
-    
+
     // Estados para filtros
     const [filterCaso, setFilterCaso] = useState<string>("");
     const [filterUsuario, setFilterUsuario] = useState<string>("");
@@ -836,7 +839,7 @@ export default function CitationsClient() {
             const minutos = fechaAtencion.getMinutes().toString().padStart(2, '0');
             const timeStr = `${hora}:${minutos}`;
 
-            const participantes = cita.atendido_por && Array.isArray(cita.atendido_por) 
+            const participantes = cita.atendido_por && Array.isArray(cita.atendido_por)
                 ? cita.atendido_por.filter((p: any) => p).join(', ')
                 : 'Sin asignar';
 
@@ -868,7 +871,7 @@ export default function CitationsClient() {
                 if (filterFechaFin) filters.fechaFin = filterFechaFin;
 
                 const result = await getCitas(filters);
-                if (result.success) {
+                if (result.success && result.data) {
                     const citasFormateadas = transformCitas(result.data);
                     setAllAppointments(citasFormateadas);
                     setAppointments(citasFormateadas);
@@ -894,7 +897,7 @@ export default function CitationsClient() {
                     getProfesoresDisponibles()
                 ]);
 
-                if (casosRes.success) {
+                if (casosRes.success && casosRes.data) {
                     const casosOptions = casosRes.data.map((caso: any) => ({
                         value: caso.nro_caso.toString(),
                         label: `Caso #${caso.nro_caso} - ${caso.solicitante_nombre || 'Sin solicitante'}`
@@ -902,9 +905,9 @@ export default function CitationsClient() {
                     setAvailableCasesForFilter(casosOptions);
                 }
 
-                if (alumnosRes.success && profesoresRes.success) {
+                if (alumnosRes.success && profesoresRes.success && alumnosRes.data && profesoresRes.data) {
                     const usuariosMap = new Map<string, { value: string; label: string }>();
-                    
+
                     alumnosRes.data.forEach((u: any) => {
                         if (!usuariosMap.has(u.cedula_usuario)) {
                             usuariosMap.set(u.cedula_usuario, {
@@ -913,7 +916,7 @@ export default function CitationsClient() {
                             });
                         }
                     });
-                    
+
                     profesoresRes.data.forEach((u: any) => {
                         if (usuariosMap.has(u.cedula_usuario)) {
                             const existing = usuariosMap.get(u.cedula_usuario)!;
@@ -927,7 +930,7 @@ export default function CitationsClient() {
                             });
                         }
                     });
-                    
+
                     setAvailableUsersForFilter(Array.from(usuariosMap.values()));
                 }
             } catch (err: any) {
@@ -946,7 +949,7 @@ export default function CitationsClient() {
         if (filterFechaFin) filters.fechaFin = filterFechaFin;
 
         const result = await getCitas(filters);
-        if (result.success) {
+        if (result.success && result.data) {
             const citasFormateadas = transformCitas(result.data);
             setAllAppointments(citasFormateadas);
             setAppointments(citasFormateadas);
@@ -962,7 +965,7 @@ export default function CitationsClient() {
         if (filterFechaFin) filters.fechaFin = filterFechaFin;
 
         const result = await getCitas(filters);
-        if (result.success) {
+        if (result.success && result.data) {
             const citasFormateadas = transformCitas(result.data);
             setAllAppointments(citasFormateadas);
             setAppointments(citasFormateadas);
@@ -996,7 +999,7 @@ export default function CitationsClient() {
                     if (filterFechaFin) filters.fechaFin = filterFechaFin;
 
                     const citasResult = await getCitas(filters);
-                    if (citasResult.success) {
+                    if (citasResult.success && citasResult.data) {
                         const citasFormateadas = transformCitas(citasResult.data);
                         setAllAppointments(citasFormateadas);
                         setAppointments(citasFormateadas);
@@ -1142,33 +1145,33 @@ export default function CitationsClient() {
                     </div>
 
                     <div className="flex items-center gap-4">
-                    {/* View Toggle (Segmented Control) */}
-                    <div className="bg-neutral-100 p-1.5 rounded-xl flex gap-1 shadow-inner h-fit">
-                        <button
-                            onClick={() => setViewMode("calendar")}
-                            className={cn(
-                                "px-6 py-2 rounded-[10px] text-sm font-bold flex items-center gap-2 transition-all duration-300 cursor-pointer",
-                                viewMode === "calendar"
-                                    ? "bg-white text-[#003366] shadow-sm"
-                                    : "text-gray-400 hover:text-gray-600 hover:bg-white/50"
-                            )}
-                        >
-                            <span className="icon-[mdi--calendar-month] text-lg"></span>
-                            Calendario
-                        </button>
-                        <button
-                            onClick={() => setViewMode("chart")}
-                            className={cn(
-                                "px-6 py-2 rounded-[10px] text-sm font-bold flex items-center gap-2 transition-all duration-300 cursor-pointer",
-                                viewMode === "chart"
-                                    ? "bg-white text-[#003366] shadow-sm"
-                                    : "text-gray-400 hover:text-gray-600 hover:bg-white/50"
-                            )}
-                        >
-                            <span className="icon-[mdi--chart-bar] text-lg"></span>
-                            Estadísticas
-                        </button>
-                    </div>
+                        {/* View Toggle (Segmented Control) */}
+                        <div className="bg-neutral-100 p-1.5 rounded-xl flex gap-1 shadow-inner h-fit">
+                            <button
+                                onClick={() => setViewMode("calendar")}
+                                className={cn(
+                                    "px-6 py-2 rounded-[10px] text-sm font-bold flex items-center gap-2 transition-all duration-300 cursor-pointer",
+                                    viewMode === "calendar"
+                                        ? "bg-white text-[#003366] shadow-sm"
+                                        : "text-gray-400 hover:text-gray-600 hover:bg-white/50"
+                                )}
+                            >
+                                <span className="icon-[mdi--calendar-month] text-lg"></span>
+                                Calendario
+                            </button>
+                            <button
+                                onClick={() => setViewMode("chart")}
+                                className={cn(
+                                    "px-6 py-2 rounded-[10px] text-sm font-bold flex items-center gap-2 transition-all duration-300 cursor-pointer",
+                                    viewMode === "chart"
+                                        ? "bg-white text-[#003366] shadow-sm"
+                                        : "text-gray-400 hover:text-gray-600 hover:bg-white/50"
+                                )}
+                            >
+                                <span className="icon-[mdi--chart-bar] text-lg"></span>
+                                Estadísticas
+                            </button>
+                        </div>
 
                         <PrimaryButton
                             onClick={handleNewAppointment}
@@ -1302,7 +1305,7 @@ export default function CitationsClient() {
                 {viewMode === "calendar" && !loading && (
                     <div className="h-full w-full animate-in fade-in slide-in-from-left-4 duration-300 grid grid-cols-12 gap-8">
                         {/* Main Calendar */}
-                        <div className="col-span-9 h-full flex flex-col">
+                        <div className="col-span-9 h-full flex flex-col min-h-0">
                             <Calendar
                                 appointments={appointments}
                                 currentMonth={currentMonth}
@@ -1315,7 +1318,7 @@ export default function CitationsClient() {
                         </div>
 
                         {/* Upcoming Sidebar */}
-                        <div className="col-span-3 h-full flex flex-col border-l border-neutral-100 pl-6">
+                        <div className="col-span-3 h-full flex flex-col border-l border-neutral-100 pl-6 min-h-0">
                             <h3 className="text-sky-950 font-bold text-xl mb-4 flex items-center gap-2">
                                 <span className="icon-[mdi--playlist-clock] text-[#3E7DBB]"></span>
                                 Agenda Próxima
