@@ -328,6 +328,19 @@ function ActivityLogModal({ open, onClose, data }: ActivityLogModalProps) {
         currentPage * itemsPerPage
     );
 
+    const getActivityIcon = (type: string) => {
+        switch (type?.toLowerCase()) {
+            case 'cita':
+                return "icon-[mdi--calendar-clock] text-blue-500";
+            case 'soporte':
+                return "icon-[mdi--file-document-outline] text-green-500";
+            case 'estatus':
+                return "icon-[mdi--progress-check] text-orange-500";
+            default:
+                return "icon-[mdi--flash-outline] text-purple-500";
+        }
+    };
+
     const columns: Column<any>[] = [
         {
             header: "Usuario",
@@ -342,7 +355,8 @@ function ActivityLogModal({ open, onClose, data }: ActivityLogModalProps) {
                     "px-2 py-0.5 rounded-md text-[10px] font-bold uppercase",
                     item.role === "Profesor" ? "bg-purple-100 text-purple-600" :
                         item.role === "Coordinador" ? "bg-orange-100 text-orange-600" :
-                            "bg-blue-50 text-blue-600"
+                            item.role === "Sistema" ? "bg-gray-100 text-gray-600" :
+                                "bg-blue-50 text-blue-600"
                 )}>
                     {item.role}
                 </span>
@@ -352,6 +366,12 @@ function ActivityLogModal({ open, onClose, data }: ActivityLogModalProps) {
         {
             header: "Acción",
             accessorKey: "action",
+            render: (item) => (
+                <div className="flex items-center gap-2">
+                    <span className={cn("text-lg", getActivityIcon(item.type))}></span>
+                    <span>{item.action}</span>
+                </div>
+            ),
             className: "font-medium text-sky-950/80 px-2 leading-tight text-xs",
         },
         {
@@ -579,6 +599,19 @@ export default function DashboardClient({ user }: DashboardClientProps) {
     // Activity Log Columns
     const recentAccessData = actions.slice(0, 5);
 
+    const getActivityIcon = (type: string) => {
+        switch (type?.toLowerCase()) {
+            case 'cita':
+                return "icon-[mdi--calendar-clock] text-blue-500";
+            case 'soporte':
+                return "icon-[mdi--file-document-outline] text-green-500";
+            case 'estatus':
+                return "icon-[mdi--progress-check] text-orange-500";
+            default:
+                return "icon-[mdi--flash-outline] text-purple-500";
+        }
+    };
+
     const recentAccessColumns: Column<any>[] = [
         {
             header: "Usuario",
@@ -593,7 +626,8 @@ export default function DashboardClient({ user }: DashboardClientProps) {
                     "px-2 py-0.5 rounded-md text-[10px] font-bold uppercase",
                     item.role?.includes("Profesor") ? "bg-purple-100 text-purple-600" :
                         item.role?.includes("Coordinador") ? "bg-orange-100 text-orange-600" :
-                            "bg-blue-50 text-blue-600"
+                            item.role?.includes("Sistema") ? "bg-gray-100 text-gray-600" :
+                                "bg-blue-50 text-blue-600"
                 )}>
                     {item.role}
                 </span>
@@ -603,6 +637,12 @@ export default function DashboardClient({ user }: DashboardClientProps) {
         {
             header: "Acción",
             accessorKey: "action",
+            render: (item) => (
+                <div className="flex items-center gap-2">
+                    <span className={cn("text-lg", getActivityIcon(item.type))}></span>
+                    <span>{item.action}</span>
+                </div>
+            ),
             className: "font-medium text-sky-950/80 px-2 leading-tight text-xs",
             headerClassName: "w-[45%]",
         },
