@@ -16,7 +16,7 @@ import { getParroquias, getEstados, getMunicipiosByEstado } from "@/actions/soli
 import Pagination from "@/components/ui/pagination";
 
 
-export default function Administration() {
+export default function Administration({ currentUser }: { currentUser: any }) {
     // State management for all tabs
     const [users, setUsers] = useState<any[]>([]);
     const [students, setStudents] = useState<any[]>([]);
@@ -477,24 +477,51 @@ export default function Administration() {
         },
         {
             header: "Accion",
-            render: (row) => (
-                <div className="flex gap-2 justify-center">
-                    <button
-                        onClick={() => handleEdit(row)}
-                        className="w-10 h-10 flex justify-center items-center hover:bg-blue-100 rounded-lg transition-colors group cursor-pointer"
-                        title="Editar"
-                    >
-                        <span className="icon-[uil--pen] text-3xl text-[#003366] group-hover:scale-110 transition-transform"></span>
-                    </button>
-                    <button
-                        onClick={() => handleDelete(row)}
-                        className="w-10 h-10 flex justify-center items-center hover:bg-red-100 rounded-lg transition-colors group cursor-pointer"
-                        title="Eliminar"
-                    >
-                        <span className="icon-[mdi--trash-can-outline] text-3xl text-red-600 group-hover:scale-110 transition-transform"></span>
-                    </button>
-                </div>
-            ),
+            render: (row) => {
+                const canChangeStatus = () => {
+                    const myRole = currentUser?.rol;
+                    const targetRole = row.role;
+
+                    // Si soy Profesor, no puedo tocar Coordinador ni Admin
+                    if (myRole === 'Profesor') {
+                        if (targetRole === 'Coordinador' || targetRole === 'Administrador' || targetRole === 'Admin') return false;
+                    }
+
+                    // Si soy Coordinador, no puedo tocar Admin
+                    if (myRole === 'Coordinador') {
+                        if (targetRole === 'Administrador' || targetRole === 'Admin') return false;
+                    }
+
+                    return true;
+                };
+
+                const isDisabled = !canChangeStatus();
+
+                const onToggle = () => {
+                    if (isDisabled) return;
+                    handleToggleStatus(row);
+                };
+
+                return (
+                    <div className="flex gap-2 justify-center">
+                        <button
+                            onClick={() => handleEdit(row)}
+                            className="w-10 h-10 flex justify-center items-center hover:bg-blue-100 rounded-lg transition-colors group cursor-pointer"
+                            title="Editar"
+                        >
+                            <span className="icon-[uil--pen] text-3xl text-[#003366] group-hover:scale-110 transition-transform"></span>
+                        </button>
+                        <button
+                            onClick={onToggle}
+                            disabled={isDisabled}
+                            className={`w-10 h-10 flex justify-center items-center rounded-lg transition-colors group cursor-pointer ${isDisabled ? 'opacity-30 cursor-not-allowed bg-gray-100' : 'hover:bg-red-100'}`}
+                            title={isDisabled ? "No tienes permisos para modificar este usuario" : "Cambiar Estatus"}
+                        >
+                            <span className={`icon-[mdi--swap-horizontal] text-3xl ${isDisabled ? 'text-gray-400' : 'text-red-600'} group-hover:scale-110 transition-transform`}></span>
+                        </button>
+                    </div>
+                );
+            },
             className: "text-gray-400 font-semibold text-sm pl-2 py-2",
         }
     ];
