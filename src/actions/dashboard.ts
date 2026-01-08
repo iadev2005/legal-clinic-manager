@@ -36,28 +36,86 @@ export async function getCaseStatusStats() {
 export async function getHistoryofchanges(cedulauser: string) {
     try {
         const stats = await query(`
-            SELECT 
-                a.*, 
-                u.nombres as executor_nombres, 
-                u.apellidos as executor_apellidos,
-                u.rol as role
-            FROM Acciones a
-            INNER JOIN (
+            WITH UserCases AS (
                 SELECT id_caso FROM Se_Asignan WHERE cedula_alumno = $1 AND estatus = 'Activo'
                 UNION
                 SELECT id_caso FROM Supervisan WHERE cedula_profesor = $1 AND estatus = 'Activo'
-            ) related ON a.nro_caso = related.id_caso
-            LEFT JOIN Usuarios_Sistema u ON a.cedula_usuario_ejecutor = u.cedula_usuario
-            ORDER BY a.fecha_registro DESC
+            )
+            SELECT * FROM (
+                -- 1. Acciones
+                SELECT 
+                    'accion_' || a.nro_accion as unique_id,
+                    a.nro_caso,
+                    'Acción' as type,
+                    a.titulo_accion as description,
+                    a.fecha_registro as date,
+                    u.nombres as executor_nombres, 
+                    u.apellidos as executor_apellidos,
+                    u.rol as role
+                FROM Acciones a
+                JOIN UserCases uc ON a.nro_caso = uc.id_caso
+                LEFT JOIN Usuarios_Sistema u ON a.cedula_usuario_ejecutor = u.cedula_usuario
+
+                UNION ALL
+
+                -- 2. Citas (via Atienden)
+                SELECT 
+                    'cita_' || c.id_cita || '_' || ati.cedula_usuario as unique_id,
+                    c.nro_caso,
+                    'Cita' as type,
+                    'Cita realizada: ' || COALESCE(c.observacion, 'Sin observación') as description,
+                    ati.fecha_registro as date,
+                    u.nombres as executor_nombres,
+                    u.apellidos as executor_apellidos,
+                    u.rol as role
+                FROM Citas c
+                JOIN UserCases uc ON c.nro_caso = uc.id_caso
+                JOIN Atienden ati ON c.id_cita = ati.id_cita
+                LEFT JOIN Usuarios_Sistema u ON ati.cedula_usuario = u.cedula_usuario
+
+                UNION ALL
+
+                -- 3. Soportes Legales
+                SELECT 
+                    'soporte_' || s.id_soporte as unique_id,
+                    s.nro_caso,
+                    'Soporte' as type,
+                    'Soporte cargado: ' || COALESCE(s.descripcion, 'Documento') as description,
+                    s.fecha_soporte::timestamp as date,
+                    'Sistema' as executor_nombres, 
+                    '' as executor_apellidos, 
+                    'Sistema' as role
+                FROM Soportes_Legales s
+                JOIN UserCases uc ON s.nro_caso = uc.id_caso
+
+                UNION ALL
+
+                -- 4. Cambios de Estatus
+                SELECT 
+                    'estatus_' || sla.id_historial as unique_id,
+                    sla.id_caso,
+                    'Estatus' as type,
+                    'Cambio de estatus a ' || e.nombre_estatus as description,
+                    sla.fecha_registro as date,
+                    u.nombres as executor_nombres,
+                    u.apellidos as executor_apellidos,
+                    u.rol as role
+                FROM Se_Le_Adjudican sla
+                JOIN UserCases uc ON sla.id_caso = uc.id_caso
+                JOIN Estatus e ON sla.id_estatus = e.id_estatus
+                LEFT JOIN Usuarios_Sistema u ON sla.cedula_usuario = u.cedula_usuario
+            ) combined_activity
+            ORDER BY date DESC
             LIMIT 50
-            `, [cedulauser])
+        `, [cedulauser]);
 
         const formattedData = stats.rows.map(row => ({
-            id: row.id_accion,
+            id: row.unique_id,
             user: `${row.executor_nombres || ''} ${row.executor_apellidos || ''}`.trim() || 'Sistema',
-            role: row.role || 'Usuario',
-            action: row.descripcion || row.tipo_accion || 'Acción realizada',
-            date: row.fecha_registro ? new Date(row.fecha_registro).toLocaleString('es-ES', {
+            role: row.role || 'Sistema',
+            action: row.description || 'Actividad registrada', // Mapped description to action column in UI
+            type: row.type, // Added type for potential UI filtering/icons
+            date: row.date ? new Date(row.date).toLocaleString('es-ES', {
                 day: '2-digit',
                 month: 'short',
                 hour: '2-digit',
