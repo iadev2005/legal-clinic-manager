@@ -5,7 +5,7 @@ import AdministrationModal from "@/components/ui/administration-modal";
 import DeleteConfirmationModal from "@/components/ui/delete-confirmation-modal";
 import BulkUploadModal from "@/components/ui/bulk-upload-modal";
 import {
-    getUsuarios, createUsuario, updateUsuario, deleteUsuario, getParticipacionesUsuario,
+    getUsuarios, createUsuario, updateUsuario, deleteUsuario, toggleUsuarioStatus, getParticipacionesUsuario,
     getCategorias, createCategoria, updateCategoria, deleteCategoria,
     getSubCategorias, createSubCategoria, updateSubCategoria, deleteSubCategoria,
     getLegalField, createLegalField, updateLegalField, deleteLegalField,
@@ -38,6 +38,7 @@ export default function Administration() {
     // Usuarios
     const [filtroRol, setFiltroRol] = useState<string>("");
     const [filtroEstatus, setFiltroEstatus] = useState<string>("");
+    const [filtroSemestre, setFiltroSemestre] = useState<string>("");
 
     // Categorías
     const [filtroMateria, setFiltroMateria] = useState<string>("");
@@ -209,10 +210,58 @@ export default function Administration() {
         setDeleteModalOpen(true);
     };
 
+    const [toggleModalOpen, setToggleModalOpen] = useState(false);
+
     const handleCreate = () => {
         setCurrentItem(null);
         setCurrentMode("create");
         setAdminModalOpen(true);
+    };
+
+    const handleToggleStatus = (item: any) => {
+        setCurrentItem(item);
+        setToggleModalOpen(true);
+    };
+
+    const handleBulkToggle = () => {
+        setCurrentItem(null); // Indicates multiple
+        setToggleModalOpen(true);
+    };
+
+    const confirmToggleStatus = async () => {
+        const itemsToProcess = currentItem ? [currentItem] : selectedItems;
+
+        if (itemsToProcess.length === 0) return;
+
+        let errorCount = 0;
+        let successCount = 0;
+
+        for (const item of itemsToProcess) {
+            try {
+                const result = await toggleUsuarioStatus(item.id);
+                if (!result.success) {
+                    // console.error(`Error with ${item.user}: ${result.error}`);
+                    errorCount++;
+                } else {
+                    successCount++;
+                }
+            } catch (err: any) {
+                errorCount++;
+            }
+        }
+
+        if (errorCount > 0) {
+            if (successCount > 0) {
+                alert(`Se procesaron ${successCount} usuarios. Hubo ${errorCount} errores (posiblemente por permisos).`);
+            } else {
+                alert(`No se pudieron procesar los usuarios seleccionados (posiblemente por permisos).`);
+            }
+        }
+
+        await loadData();
+        setToggleModalOpen(false);
+        setCurrentItem(null);
+        setSelectedItems([]); // Clear selection after processing
     };
 
     const handleSave = async (formData: any) => {
@@ -583,6 +632,12 @@ export default function Administration() {
                 if (filtroEstatus) {
                     filtered = filtered.filter((item) =>
                         item.status?.toLowerCase() === filtroEstatus.toLowerCase()
+                    );
+                }
+                // Filtro por semestre
+                if (filtroSemestre) {
+                    filtered = filtered.filter((item) =>
+                        item.semesters?.includes(filtroSemestre)
                     );
                 }
                 break;
@@ -992,11 +1047,11 @@ export default function Administration() {
                         {/*boton de agregar */}
                         {selectedItems.length > 0 ? (
                             <button
-                                onClick={handleBulkDelete}
-                                className="bg-red-600 text-white px-4 py-2 rounded-lg font-semibold hover:bg-red-700 transition-colors cursor-pointer flex items-center gap-2"
+                                onClick={activeTab === 'users' ? handleBulkToggle : handleBulkDelete}
+                                className={`${activeTab === 'users' ? 'bg-sky-950 hover:bg-[#325B84]' : 'bg-red-600 hover:bg-red-700'} text-white px-4 py-2 rounded-lg font-semibold transition-colors cursor-pointer flex items-center gap-2`}
                             >
-                                <span className="icon-[mdi--trash-can-outline] text-xl"></span>
-                                Eliminar ({selectedItems.length})
+                                <span className={activeTab === 'users' ? "icon-[mdi--account-convert-outline] text-xl" : "icon-[mdi--trash-can-outline] text-xl"}></span>
+                                {activeTab === 'users' ? `Cambiar Estatus (${selectedItems.length})` : `Eliminar (${selectedItems.length})`}
                             </button>
                         ) : (
                             <div className="flex gap-2">
@@ -1079,12 +1134,6 @@ export default function Administration() {
                 }
             />
 
-            <DeleteConfirmationModal
-                open={deleteModalOpen}
-                onClose={() => setDeleteModalOpen(false)}
-                onConfirm={confirmDelete}
-            />
-
             <BulkUploadModal
                 open={bulkUploadModalOpen}
                 onClose={() => setBulkUploadModalOpen(false)}
@@ -1092,6 +1141,48 @@ export default function Administration() {
                 semestres={semestres}
             />
 
+            {/* Modal de eliminación */}
+            <DeleteConfirmationModal
+                open={deleteModalOpen}
+                onClose={() => {
+                    setDeleteModalOpen(false);
+                    setCurrentItem(null);
+                }}
+                onConfirm={confirmDelete}
+                title={currentItem ? (activeTab === 'users' ? "¿Eliminar Usuario?" : "Eliminar Elemento") : "Eliminación Múltiple"}
+                description={
+                    currentItem
+                        ? `¿Estás seguro de que deseas eliminar a "${currentItem.user || currentItem.nombre}"? Esta acción no se puede deshacer.`
+                        : "¿Estás seguro de que deseas eliminar los elementos seleccionados? Esta acción no se puede deshacer."
+                }
+            />
+
+            {/* Modal de cambio de estatus */}
+            <DeleteConfirmationModal
+                open={toggleModalOpen}
+                onClose={() => {
+                    setToggleModalOpen(false);
+                    setCurrentItem(null);
+                }}
+                onConfirm={confirmToggleStatus}
+                title={
+                    currentItem
+                        ? (currentItem.status === 'Activo' ? "Desactivar Usuario" : "Activar Usuario")
+                        : "Cambiar Estatus Múltiple"
+                }
+                description={
+                    currentItem
+                        ? `¿Estás seguro de que deseas ${currentItem.status === 'Activo' ? 'desactivar' : 'activar'} a "${currentItem.user}"?`
+                        : `¿Estás seguro de que deseas invertir el estatus de los ${selectedItems.length} usuarios seleccionados?`
+                }
+                confirmText={
+                    currentItem
+                        ? (currentItem.status === 'Activo' ? "Desactivar" : "Activar")
+                        : "Confirmar Cambios"
+                }
+                cancelText="Cancelar"
+                isDestructive={currentItem ? currentItem.status === 'Activo' : false} // Blue for bulk safely
+            />
         </div>
     );
 }

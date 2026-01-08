@@ -44,14 +44,20 @@ export default function Sidebar({ user }: SidebarProps) {
         { label: "Gestión de Casos", href: "/cases", icon: "icon-[icon-park-outline--gavel]", activeIcon: "icon-[icon-park-solid--gavel]" },
         { label: "Gestión de Citas", href: "/citations", icon: "icon-[mdi--calendar-outline]", activeIcon: "icon-[mdi--calendar]" },
         { label: "Reportes y\nEstadísticas", href: "/statistics", icon: "icon-[material-symbols--pie-chart-outline]", activeIcon: "icon-[material-symbols--pie-chart]" },
-        { label: "Administración", href: "/administration", icon: "icon-[mdi--shield-account-outline]", activeIcon: "icon-[mdi--shield-account]" },
+        { label: "Administración", href: "/administration", icon: "icon-[mdi--shield-account-outline]", activeIcon: "icon-[mdi--shield-account]", restricted: true },
         {
             label: "Notificaciones",
             href: "/notifications",
             icon: hasUnread ? "icon-[mdi--bell-badge-outline]" : "icon-[mdi--bell-outline]",
             activeIcon: hasUnread ? "icon-[mdi--bell-badge]" : "icon-[mdi--bell]"
         },
-    ];
+    ].filter(item => {
+        if (item.restricted) {
+            const adminRoles = ['Profesor', 'Coordinador', 'Administrador'];
+            return user && adminRoles.includes(user.rol);
+        }
+        return true;
+    });
 
     const safeUser = user || { nombre: "Usuario", rol: "Invitado" };
     const initials = safeUser.nombre.charAt(0).toUpperCase();

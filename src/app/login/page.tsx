@@ -1,6 +1,8 @@
 "use client";
 
 import Link from "next/link";
+
+
 import { useActionState, useState } from "react";
 import { LabeledInput } from "@/components/inputs/LabeledInput";
 import { InputContainer } from "@/components/inputs/InputContainer";
@@ -28,6 +30,11 @@ export default function Login() {
         <div className="w-full h-screen relative overflow-hidden">
             <img src="/bg.svg" className="w-full h-full object-cover" />
             <div className="w-full h-full left-0 top-0 absolute" style={{ background: "linear-gradient(111deg, #036 42.22%, rgba(0, 102, 204, 0.64) 102.14%)" }} />
+
+            <Link href="/" className="absolute top-8 left-8 transition-all duration-300 z-50 group">
+                <span className="icon-[mingcute--arrow-left-line] text-6xl text-white group-hover:-translate-x-1 transition-transform"></span>
+            </Link>
+
             <div className="w-full h-full px-[19%] py-[3%] left-0 top-0 absolute inline-flex flex-col justify-center items-center gap-6 overflow-hidden">
                 <img src="/logo.svg" className="w-[47%]" />
                 <div className="self-stretch px-[3%] py-[2%] bg-neutral-50 rounded-[20px] shadow-[0px_5px_24.600000381469727px_0px_rgba(0,0,0,0.25)] flex flex-col justify-start items-center gap-5">
@@ -119,12 +126,7 @@ export default function Login() {
                                 </div>
                             </button>
 
-                            <div className="self-stretch text-center justify-start">
-                                <span className="text-sky-950 text-base font-semibold">¿No tienes una cuenta? </span>
-                                <Link href="/auth/register" className="text-[#3E7DBB] text-base font-semibold underline hover:text-[#3E7DBB]/80 transition-colors">
-                                    Registrarse
-                                </Link>
-                            </div>
+
                         </div>
                     </form>
                 </div>

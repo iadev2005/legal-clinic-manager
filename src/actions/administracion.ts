@@ -2,7 +2,7 @@
 
 import { query } from '@/lib/db';
 import { revalidatePath } from 'next/cache';
-import { hashPassword } from '@/lib/auth-utils';
+import { hashPassword, getSession } from '@/lib/auth-utils';
 
 // ============================================================================
 // USUARIOS
@@ -29,28 +29,36 @@ export async function getUsuarios() {
     try {
         const result = await query(`
             SELECT 
-                cedula_usuario as id,
-                nombres || ' ' || apellidos as user,
-                rol as role,
+                u.cedula_usuario as id,
+                u.nombres || ' ' || u.apellidos as user,
+                u.rol as role,
                 CASE 
-                    WHEN SUBSTRING(cedula_usuario, 1, 1) = 'V' THEN 'V'
-                    WHEN SUBSTRING(cedula_usuario, 1, 1) = 'E' THEN 'E'
+                    WHEN SUBSTRING(u.cedula_usuario, 1, 1) = 'V' THEN 'V'
+                    WHEN SUBSTRING(u.cedula_usuario, 1, 1) = 'E' THEN 'E'
                     ELSE 'V'
                 END as "cedulaPrefix",
                 CASE 
-                    WHEN POSITION('-' IN cedula_usuario) > 0 
-                    THEN SUBSTRING(cedula_usuario FROM POSITION('-' IN cedula_usuario) + 1)
-                    ELSE SUBSTRING(cedula_usuario FROM 2)
+                    WHEN POSITION('-' IN u.cedula_usuario) > 0 
+                    THEN SUBSTRING(u.cedula_usuario FROM POSITION('-' IN u.cedula_usuario) + 1)
+                    ELSE SUBSTRING(u.cedula_usuario FROM 2)
                 END as "cedulaNumber",
-                nombres,
-                apellidos,
-                correo_electronico as correo,
+                u.nombres,
+                u.apellidos,
+                u.correo_electronico as correo,
                 'M' as sexo,
-                telefono_local as "telefonoLocal",
-                telefono_celular as "telefonoCelular",
-                CASE WHEN activo THEN 'Activo' ELSE 'Inactivo' END as status
-            FROM Usuarios_Sistema
-            ORDER BY activo, nombres, apellidos
+                u.telefono_local as "telefonoLocal",
+                u.telefono_celular as "telefonoCelular",
+                CASE WHEN u.activo THEN 'Activo' ELSE 'Inactivo' END as status,
+                (
+                    SELECT STRING_AGG(DISTINCT p.term, ', ')
+                    FROM (
+                        SELECT term FROM Alumnos WHERE cedula_alumno = u.cedula_usuario
+                        UNION
+                        SELECT term FROM Profesores WHERE cedula_profesor = u.cedula_usuario
+                    ) p
+                ) as semesters
+            FROM Usuarios_Sistema u
+            ORDER BY u.activo DESC, u.nombres, u.apellidos
         `);
         return { success: true, data: result.rows };
     } catch (error) {
@@ -262,12 +270,81 @@ export async function updateUsuario(id: string, data: Partial<Usuario> & { passw
 
 export async function deleteUsuario(id: string) {
     try {
+        const session = await getSession();
+        if (!session) {
+            return { success: false, error: 'No autorizado' };
+        }
+
+        // Obtener rol del usuario a eliminar
+        const targetUserRes = await query('SELECT rol FROM Usuarios_Sistema WHERE cedula_usuario = $1', [id]);
+        if (targetUserRes.rows.length === 0) {
+            return { success: false, error: 'Usuario no encontrado' };
+        }
+
+        const targetRole = targetUserRes.rows[0].rol;
+        const currentRole = session.rol;
+
+        // Reglas de restricción
+        if (currentRole === 'Profesor') {
+            if (targetRole === 'Coordinador' || targetRole === 'Administrador' || targetRole === 'Admin') {
+                return { success: false, error: 'No tienes permisos para eliminar a Coordinadores o Administradores.' };
+            }
+        }
+
+        if (currentRole === 'Coordinador') {
+            if (targetRole === 'Administrador' || targetRole === 'Admin') {
+                return { success: false, error: 'No tienes permisos para eliminar a Administradores.' };
+            }
+        }
+
         await query('DELETE FROM Usuarios_Sistema WHERE cedula_usuario = $1', [id]);
         revalidatePath('/administration');
         return { success: true };
     } catch (error: any) {
         console.error('Error al eliminar usuario:', error);
         return { success: false, error: error.message || 'Error al eliminar usuario' };
+    }
+}
+
+export async function toggleUsuarioStatus(id: string) {
+    try {
+        const session = await getSession();
+        if (!session) {
+            return { success: false, error: 'No autorizado' };
+        }
+
+        // Obtener datos del usuario objetivo
+        const targetUserRes = await query('SELECT rol, activo FROM Usuarios_Sistema WHERE cedula_usuario = $1', [id]);
+        if (targetUserRes.rows.length === 0) {
+            return { success: false, error: 'Usuario no encontrado' };
+        }
+
+        const targetUser = targetUserRes.rows[0];
+        const targetRole = targetUser.rol;
+        const currentRole = session.rol;
+        const currentStatus = targetUser.activo;
+
+        // Reglas de restricción (mismas que delete)
+        if (currentRole === 'Profesor') {
+            if (targetRole === 'Coordinador' || targetRole === 'Administrador' || targetRole === 'Admin') {
+                return { success: false, error: 'No tienes permisos para modificar Coordinadores o Administradores.' };
+            }
+        }
+
+        if (currentRole === 'Coordinador') {
+            if (targetRole === 'Administrador' || targetRole === 'Admin') {
+                return { success: false, error: 'No tienes permisos para modificar Administradores.' };
+            }
+        }
+
+        // Toggle status
+        await query('UPDATE Usuarios_Sistema SET activo = $1 WHERE cedula_usuario = $2', [!currentStatus, id]);
+
+        revalidatePath('/administration');
+        return { success: true, newStatus: !currentStatus ? 'Activo' : 'Inactivo' };
+    } catch (error: any) {
+        console.error('Error al cambiar estatus de usuario:', error);
+        return { success: false, error: error.message || 'Error al cambiar estatus' };
     }
 }
 
