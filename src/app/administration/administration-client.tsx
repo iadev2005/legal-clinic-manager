@@ -936,6 +936,21 @@ export default function Administration({ currentUser }: { currentUser: any }) {
                                         <option value="Inactivo">Inactivo</option>
                                     </select>
                                 </div>
+                                <div className="flex items-center gap-2">
+                                    <span className="text-sky-950 font-semibold whitespace-nowrap">Semestre:</span>
+                                    <select
+                                        value={filtroSemestre}
+                                        onChange={(e) => setFiltroSemestre(e.target.value)}
+                                        className="bg-white border border-gray-300 text-sky-950 text-sm rounded-lg focus:ring-sky-950 focus:border-sky-950 block p-2.5 min-w-[120px]"
+                                    >
+                                        <option value="">Todos</option>
+                                        {semestres.map((sem: any) => (
+                                            <option key={sem.id} value={sem.term}>
+                                                {sem.term}
+                                            </option>
+                                        ))}
+                                    </select>
+                                </div>
                             </>
                         )}
 

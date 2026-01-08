@@ -575,7 +575,7 @@ export default function DashboardClient({ user }: DashboardClientProps) {
         //    iconBgColor: "bg-[#FEF9C3]",
         // },
         {
-            label: "Pendientes Hoy",
+            label: "Citas Pendientes Hoy:",
             value: todayAppointments.toString(),
             icon: "icon-[tabler--alert-triangle]",
             iconColor: "text-[#E03E3E]",
