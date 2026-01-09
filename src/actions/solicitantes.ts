@@ -3,6 +3,7 @@
 import { query } from '@/lib/db';
 import pool from '@/lib/db';
 import { revalidatePath } from 'next/cache';
+import { verificarPermisoAlumno } from '@/lib/permissions';
 
 export interface Solicitante {
     cedula_solicitante: string;
@@ -80,6 +81,12 @@ export async function createSolicitante(data: Partial<Solicitante> & {
     familia?: Partial<FamiliaHogar>;
     bienes?: number[];
 }) {
+    // Verificar permisos
+    const permiso = await verificarPermisoAlumno('crear', 'solicitante');
+    if (!permiso.allowed) {
+        return { success: false, error: permiso.error || 'No tienes permisos para crear solicitantes' };
+    }
+    
     const client = await pool.connect();
     try {
         await client.query('BEGIN');
@@ -234,6 +241,12 @@ export async function updateSolicitante(cedula: string, data: Partial<Solicitant
     familia?: Partial<FamiliaHogar>;
     bienes?: number[];
 }) {
+    // Verificar permisos
+    const permiso = await verificarPermisoAlumno('editar', 'solicitante');
+    if (!permiso.allowed) {
+        return { success: false, error: permiso.error || 'No tienes permisos para editar solicitantes' };
+    }
+    
     const client = await pool.connect();
     try {
         await client.query('BEGIN');
@@ -401,6 +414,12 @@ export async function updateSolicitante(cedula: string, data: Partial<Solicitant
 
 export async function deleteSolicitante(cedula: string) {
     try {
+        // Verificar permisos - solo docentes pueden eliminar
+        const permiso = await verificarPermisoAlumno('eliminar', 'solicitante');
+        if (!permiso.allowed) {
+            return { success: false, error: permiso.error || 'Los alumnos no pueden eliminar solicitantes' };
+        }
+        
         await query(
             'DELETE FROM Solicitantes WHERE cedula_solicitante = $1',
             [cedula]

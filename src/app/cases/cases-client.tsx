@@ -44,6 +44,7 @@ interface Case {
   assignedStudent: string;
   status: "EN_PROCESO" | "ARCHIVADO" | "ENTREGADO" | "ASESORIA" | "PAUSADO";
   createdAt: string;
+  usuario_participa?: boolean; // Indica si el usuario actual participa en el caso
 }
 
 interface CasesClientProps {
@@ -160,6 +161,7 @@ export default function CasesClient({ userRole, userCedula }: CasesClientProps) 
             assignedStudent: caso.alumno_asignado || "Sin asignar",
             status: mapEstatusToFrontend(caso.estatus_actual),
             createdAt: fechaStr,
+            usuario_participa: caso.usuario_participa || false,
           };
         });
         setCases(mappedCases);
@@ -427,24 +429,39 @@ export default function CasesClient({ userRole, userCedula }: CasesClientProps) 
     // Columna de acciones
     baseColumns.push({
       header: "Acciones",
-      render: (caso) => (
-        <div className="flex justify-center items-center gap-2">
-          <button
-            onClick={() => router.push(`/cases/follow-up?caseId=${caso.id}`)}
-            className="w-10 h-10 flex justify-center items-center hover:bg-blue-100 rounded-lg transition-colors group cursor-pointer"
-            title="Seguimiento y Control"
-          >
-            <span className="icon-[mdi--clipboard-text-clock-outline] text-3xl text-[#3E7DBB] group-hover:scale-110 transition-transform"></span>
-          </button>
-          <button
-            onClick={() => handleEdit(caso.id)}
-            className="w-10 h-10 flex justify-center items-center hover:bg-blue-100 rounded-lg transition-colors group cursor-pointer"
-            title="Editar"
-          >
-            <span className="icon-[uil--pen] text-3xl text-[#003366] group-hover:scale-110 transition-transform"></span>
-          </button>
-        </div>
-      ),
+      render: (caso) => {
+        // Para estudiantes, solo mostrar botón de editar si participan en el caso
+        const puedeEditar = userRole !== "STUDENT" || caso.usuario_participa === true;
+        
+        return (
+          <div className="flex justify-center items-center gap-2">
+            <button
+              onClick={() => router.push(`/cases/follow-up?caseId=${caso.id}`)}
+              className="w-10 h-10 flex justify-center items-center hover:bg-blue-100 rounded-lg transition-colors group cursor-pointer"
+              title="Seguimiento y Control"
+            >
+              <span className="icon-[mdi--clipboard-text-clock-outline] text-3xl text-[#3E7DBB] group-hover:scale-110 transition-transform"></span>
+            </button>
+            {puedeEditar ? (
+              <button
+                onClick={() => handleEdit(caso.id)}
+                className="w-10 h-10 flex justify-center items-center hover:bg-blue-100 rounded-lg transition-colors group cursor-pointer"
+                title="Editar"
+              >
+                <span className="icon-[uil--pen] text-3xl text-[#003366] group-hover:scale-110 transition-transform"></span>
+              </button>
+            ) : (
+              <button
+                disabled
+                className="w-10 h-10 flex justify-center items-center opacity-30 cursor-not-allowed"
+                title="No tienes permisos para editar este caso"
+              >
+                <span className="icon-[uil--pen] text-3xl text-[#003366]"></span>
+              </button>
+            )}
+          </div>
+        );
+      },
       className: "text-center",
       headerClassName: "w-[10%]",
     });

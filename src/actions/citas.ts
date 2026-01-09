@@ -3,6 +3,7 @@
 import { query } from '@/lib/db';
 import { revalidatePath } from 'next/cache';
 import { getSession } from '@/lib/auth-utils';
+import { verificarPermisoAlumno } from '@/lib/permissions';
 
 // ============================================================================
 // INTERFACES Y TIPOS
@@ -160,6 +161,12 @@ export async function getCitaById(idCita: number, nroCaso: number) {
  */
 export async function createCita(data: CreateCitaData) {
     try {
+        // Verificar permisos
+        const permiso = await verificarPermisoAlumno('crear', 'cita', { nroCaso: data.nro_caso });
+        if (!permiso.allowed) {
+            return { success: false, error: permiso.error || 'No tienes permisos para crear citas en este caso' };
+        }
+        
         await query('BEGIN');
 
         // Validar que el caso existe
@@ -232,6 +239,12 @@ export async function createCita(data: CreateCitaData) {
  */
 export async function updateCita(idCita: number, nroCaso: number, data: UpdateCitaData) {
     try {
+        // Verificar permisos
+        const permiso = await verificarPermisoAlumno('editar', 'cita', { nroCaso, idCita });
+        if (!permiso.allowed) {
+            return { success: false, error: permiso.error || 'No tienes permisos para editar esta cita' };
+        }
+        
         await query('BEGIN');
 
         // Verificar que la cita existe
@@ -336,6 +349,12 @@ export async function updateCita(idCita: number, nroCaso: number, data: UpdateCi
  */
 export async function deleteCita(idCita: number, nroCaso: number) {
     try {
+        // Verificar permisos - solo docentes pueden eliminar
+        const permiso = await verificarPermisoAlumno('eliminar', 'cita', { nroCaso, idCita });
+        if (!permiso.allowed) {
+            return { success: false, error: permiso.error || 'Solo los docentes pueden eliminar citas' };
+        }
+        
         await query('BEGIN');
 
         // Verificar que la cita existe

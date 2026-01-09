@@ -2,6 +2,7 @@
 
 import { query } from '@/lib/db';
 import { revalidatePath } from 'next/cache';
+import { verificarPermisoAlumno } from '@/lib/permissions';
 
 export interface SoporteLegalInput {
     nro_caso: number;
@@ -12,6 +13,15 @@ export interface SoporteLegalInput {
 
 export async function crearSoporteLegalDirecto(data: SoporteLegalInput) {
     try {
+        // Verificar permisos
+        const permiso = await verificarPermisoAlumno('crear', 'soporte', { nroCaso: data.nro_caso });
+        if (!permiso.allowed) {
+            return {
+                success: false,
+                message: permiso.error || 'No tienes permisos para crear anexos en este caso'
+            };
+        }
+        
         const sql = `
       INSERT INTO Soportes_Legales (nro_caso, descripcion, documento_url, observacion)
       VALUES ($1, $2, $3, $4)
@@ -61,6 +71,15 @@ export async function crearSoporteLegal(prevState: any, formData: FormData) {
     }
 
     try {
+        // Verificar permisos
+        const permiso = await verificarPermisoAlumno('crear', 'soporte', { nroCaso: parseInt(nro_caso as string) });
+        if (!permiso.allowed) {
+            return {
+                success: false,
+                message: permiso.error || 'No tienes permisos para crear anexos en este caso'
+            };
+        }
+        
         const sql = `
       INSERT INTO Soportes_Legales (nro_caso, descripcion, documento_url, observacion)
       VALUES ($1, $2, $3, $4)

@@ -3,6 +3,7 @@
 import { query } from '@/lib/db';
 import { revalidatePath } from 'next/cache';
 import { hashPassword, getSession } from '@/lib/auth-utils';
+import { verificarPermisoAlumno } from '@/lib/permissions';
 
 // ============================================================================
 // USUARIOS
@@ -69,6 +70,12 @@ export async function getUsuarios() {
 
 export async function getUsuarioById(id: string) {
     try {
+        // Verificar permisos - alumnos solo pueden ver su propia información
+        const permiso = await verificarPermisoAlumno('ver', 'usuario', { cedula: id });
+        if (!permiso.allowed) {
+            return { success: false, error: permiso.error || 'No tienes permisos para ver este usuario' };
+        }
+        
         const result = await query(`
             SELECT 
                 cedula_usuario as id,
@@ -210,6 +217,24 @@ export async function createUsuario(data: Partial<Usuario> & { password?: string
 
 export async function updateUsuario(id: string, data: Partial<Usuario> & { password?: string }) {
     try {
+        // Verificar permisos - alumnos solo pueden editar su propia información
+        const permiso = await verificarPermisoAlumno('editar', 'usuario', { cedula: id });
+        if (!permiso.allowed) {
+            return { success: false, error: permiso.error || 'No tienes permisos para editar este usuario' };
+        }
+        
+        // Si es alumno, no puede cambiar su rol o estado
+        const session = await getSession();
+        if (session?.rol === 'Estudiante' && id === session.cedula) {
+            // Remover campos que no puede modificar
+            if (data.role) {
+                delete data.role;
+            }
+            if (data.status) {
+                delete data.status;
+            }
+        }
+        
         const updates: string[] = [];
         const values: any[] = [];
         let paramCount = 1;
@@ -270,6 +295,12 @@ export async function updateUsuario(id: string, data: Partial<Usuario> & { passw
 
 export async function deleteUsuario(id: string) {
     try {
+        // Verificar permisos - alumnos no pueden eliminar usuarios
+        const permiso = await verificarPermisoAlumno('eliminar', 'usuario', { cedula: id });
+        if (!permiso.allowed) {
+            return { success: false, error: permiso.error || 'Los alumnos no pueden eliminar usuarios' };
+        }
+        
         const session = await getSession();
         if (!session) {
             return { success: false, error: 'No autorizado' };

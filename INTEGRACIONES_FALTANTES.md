@@ -279,3 +279,8 @@
 - **Faltan principalmente funcionalidades de UI/UX para completar el CRUD**
 
 
+
+
+
+
+
