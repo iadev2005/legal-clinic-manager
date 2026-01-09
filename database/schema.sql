@@ -422,6 +422,29 @@ CREATE TABLE Notificaciones_Usuarios (
     PRIMARY KEY (id_notificacion, cedula_usuario)
 );
 
+/* ==========================================================================
+   AGREGADO: SEGUIMIENTO DE CASOS POR SEMESTRE (BITÁCORA)
+   ========================================================================== */
+
+-- Tabla 33 (Seguimiento Histórico)
+CREATE TABLE casos_semestres (
+    id_caso_semestre SERIAL PRIMARY KEY,
+    nro_caso INTEGER NOT NULL,
+    term VARCHAR(10) NOT NULL,
+    id_estatus INTEGER NOT NULL,
+    cedula_usuario VARCHAR(20),
+    fecha_registro TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+
+    -- Restricciones de Integridad
+    CONSTRAINT casos_semestres_nro_caso_term_key UNIQUE (nro_caso, term),
+    
+    -- Llaves Foráneas
+    FOREIGN KEY (nro_caso) REFERENCES Casos(nro_caso),
+    FOREIGN KEY (term) REFERENCES Semestres(term),
+    FOREIGN KEY (id_estatus) REFERENCES Estatus(id_estatus),
+    FOREIGN KEY (cedula_usuario) REFERENCES Usuarios_Sistema(cedula_usuario)
+);
+
 -- Índice para búsquedas frecuentes de notificaciones no revisadas por usuario
 CREATE INDEX idx_notificaciones_usuario_revisado 
 ON Notificaciones_Usuarios (cedula_usuario, revisado) 
