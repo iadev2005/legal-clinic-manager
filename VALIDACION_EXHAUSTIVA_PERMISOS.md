@@ -250,3 +250,4 @@ case 'caso':
 4. ✅ Probar como estudiante editando un caso en el que SÍ participa
    - Debe funcionar correctamente
 
+
