@@ -15,6 +15,7 @@ import { Textarea } from "@/components/shadcn/textarea";
 import PrimaryButton from "./primary-button";
 import LocationCascadeSelect from "./location-cascade-select";
 import FilterSelect from "./filter-select";
+import LoadingScreen from "./loading-screen";
 import {
   getNivelesEducativos,
   getTrabajos,
@@ -120,6 +121,7 @@ export default function ApplicantModal({
   const [cedulaNumber, setCedulaNumber] = useState<string>("");
 
   const [loading, setLoading] = useState(false);
+  const [loadingCatalogs, setLoadingCatalogs] = useState(true);
   const [errors, setErrors] = useState<
     Partial<Record<keyof ApplicantFormData, string>>
   >({});
@@ -227,12 +229,14 @@ export default function ApplicantModal({
   }, [applicant, mode, open]);
 
   const loadCatalogs = async () => {
-    const [niveles, jobs, acts, bienesData] = await Promise.all([
-      getNivelesEducativos(),
-      getTrabajos(),
-      getActividadesSolicitantes(),
-      getBienes(),
-    ]);
+    setLoadingCatalogs(true);
+    try {
+      const [niveles, jobs, acts, bienesData] = await Promise.all([
+        getNivelesEducativos(),
+        getTrabajos(),
+        getActividadesSolicitantes(),
+        getBienes(),
+      ]);
 
     if (niveles.success && niveles.data) {
       setNivelesEducativos(
@@ -268,6 +272,11 @@ export default function ApplicantModal({
           label: b.descripcion,
         }))
       );
+    }
+    } catch (error) {
+      console.error("Error loading catalogs:", error);
+    } finally {
+      setLoadingCatalogs(false);
     }
   };
 
@@ -385,26 +394,33 @@ export default function ApplicantModal({
           </DialogDescription>
         </DialogHeader>
 
-        {submitError && (
-          <div className="mx-6 mt-4 p-4 bg-red-50 border border-red-200 rounded-lg">
-            <div className="flex items-start gap-3">
-              <span className="icon-[mdi--alert-circle] text-2xl text-red-500 flex-shrink-0 mt-0.5"></span>
-              <div className="flex-1">
-                <h4 className="text-red-800 font-semibold mb-1">Error al guardar</h4>
-                <p className="text-red-700 text-sm">{submitError}</p>
+        {loadingCatalogs ? (
+          <LoadingScreen
+            message="Cargando información del solicitante..."
+            subMessage="Por favor espera mientras se cargan los catálogos y datos"
+          />
+        ) : (
+          <>
+            {submitError && (
+              <div className="mx-6 mt-4 p-4 bg-red-50 border border-red-200 rounded-lg">
+                <div className="flex items-start gap-3">
+                  <span className="icon-[mdi--alert-circle] text-2xl text-red-500 flex-shrink-0 mt-0.5"></span>
+                  <div className="flex-1">
+                    <h4 className="text-red-800 font-semibold mb-1">Error al guardar</h4>
+                    <p className="text-red-700 text-sm">{submitError}</p>
+                  </div>
+                  <button
+                    onClick={() => setSubmitError(null)}
+                    className="text-red-500 hover:text-red-700 flex-shrink-0"
+                    type="button"
+                  >
+                    <span className="icon-[mdi--close] text-xl"></span>
+                  </button>
+                </div>
               </div>
-              <button
-                onClick={() => setSubmitError(null)}
-                className="text-red-500 hover:text-red-700 flex-shrink-0"
-                type="button"
-              >
-                <span className="icon-[mdi--close] text-xl"></span>
-              </button>
-            </div>
-          </div>
-        )}
+            )}
 
-        <div className="max-h-[calc(90vh-200px)] overflow-y-auto pr-2 custom-scrollbar">
+            <div className="max-h-[calc(90vh-200px)] overflow-y-auto pr-2 custom-scrollbar">
           <form id="applicant-form" onSubmit={handleSubmit} className="space-y-6">
             {/* Sección 1: Datos Personales */}
             <div className="space-y-4">
@@ -1204,9 +1220,9 @@ export default function ApplicantModal({
               </div>
             </div>
           </form>
-        </div>
+            </div>
 
-        <DialogFooter className="gap-2 pt-4">
+            <DialogFooter className="gap-2 pt-4">
           <button
             type="button"
             onClick={onClose}
@@ -1233,6 +1249,8 @@ export default function ApplicantModal({
                 : "Guardar Cambios"}
           </PrimaryButton>
         </DialogFooter>
+          </>
+        )}
       </DialogContent>
     </Dialog>
   );

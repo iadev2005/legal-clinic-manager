@@ -42,6 +42,7 @@ import {
 import { getSolicitantes } from "@/actions/solicitantes";
 import { getSemestres } from "@/actions/administracion";
 import { crearSoporteLegalDirecto } from "@/actions/soportes";
+import LoadingScreen from "./loading-screen";
 
 interface CaseEditModalProps {
   open: boolean;
@@ -123,7 +124,6 @@ export default function CaseEditModal({
 }: CaseEditModalProps) {
   const [loading, setLoading] = useState(false);
   const [loadingData, setLoadingData] = useState(false);
-  const [hasChanges, setHasChanges] = useState(false);
   const [submitError, setSubmitError] = useState<string | null>(null);
 
   // Catálogos
@@ -156,18 +156,6 @@ export default function CaseEditModal({
   const [cedulaProfesor, setCedulaProfesor] = useState("");
   const [termProfesor, setTermProfesor] = useState("");
 
-  // Valores originales para comparación
-  const [originalValues, setOriginalValues] = useState<{
-    cedulaSolicitante: string;
-    legalHierarchy: { id_materia: number; num_categoria: number; num_subcategoria: number; num_ambito_legal: number } | null;
-    idTramite: string;
-    idNucleo: string;
-    sintesis: string;
-    fechaInicio: string;
-    fechaFinal: string | null;
-    status: string;
-    beneficiarios: BeneficiarioForm[];
-  } | null>(null);
 
   // Alumnos pendientes de agregar (sin guardar)
   const [pendingStudents, setPendingStudents] = useState<Array<{
@@ -343,7 +331,6 @@ export default function CaseEditModal({
     if (!caseData) return;
 
     setLoadingData(true);
-    setHasChanges(false); // Resetear cambios al cargar
     try {
       const nroCaso = parseInt(caseData.id);
       // Cargar datos en paralelo para optimizar tiempo de respuesta
@@ -375,29 +362,14 @@ export default function CaseEditModal({
         setStatus(mapEstatusToFrontend(casoRes.data.estatus_actual || "EN_PROCESO"));
 
         // Jerarquía legal
-        let hierarchy = null;
         if (caso.id_materia && caso.num_categoria && caso.num_subcategoria && caso.num_ambito_legal) {
-          hierarchy = {
+          setLegalHierarchy({
             id_materia: caso.id_materia,
             num_categoria: caso.num_categoria,
             num_subcategoria: caso.num_subcategoria,
             num_ambito_legal: caso.num_ambito_legal,
-          };
-          setLegalHierarchy(hierarchy);
+          });
         }
-
-        // Guardar valores originales para comparación
-        setOriginalValues({
-          cedulaSolicitante: caso.cedula_solicitante || "",
-          legalHierarchy: hierarchy,
-          idTramite: caso.id_tramite?.toString() || "",
-          idNucleo: caso.id_nucleo?.toString() || "",
-          sintesis: caso.sintesis_caso || "",
-          fechaInicio: fechaInicioValue,
-          fechaFinal: fechaFinalValue,
-          status: mapEstatusToFrontend(casoRes.data.estatus_actual || "EN_PROCESO"),
-          beneficiarios: [],
-        });
 
         // Asignaciones
         let termToLoad: string | undefined;
@@ -440,11 +412,6 @@ export default function CaseEditModal({
           parentesco: b.parentesco || "",
         }));
         setBeneficiarios(beneficiariosData);
-        
-        // Actualizar valores originales
-        if (originalValues) {
-          setOriginalValues({ ...originalValues, beneficiarios: beneficiariosData });
-        }
       }
 
       if (soportesRes.success && soportesRes.data) {
@@ -455,8 +422,6 @@ export default function CaseEditModal({
         setCaseHistory(semestresCasoRes.data);
       }
 
-      // Resetear cambios después de cargar
-      setHasChanges(false);
       setPendingStudents([]);
     } catch (error) {
       console.error("Error loading case data:", error);
@@ -497,54 +462,6 @@ export default function CaseEditModal({
     }
   };
 
-  // Función para verificar si hay cambios
-  const checkForChanges = () => {
-    if (!originalValues) return false;
-    
-    // Comparar valores básicos
-    if (cedulaSolicitante !== originalValues.cedulaSolicitante) return true;
-    if (idTramite !== originalValues.idTramite) return true;
-    if (idNucleo !== originalValues.idNucleo) return true;
-    if (sintesis !== originalValues.sintesis) return true;
-    if (fechaInicio !== originalValues.fechaInicio) return true;
-    if (fechaFinal !== originalValues.fechaFinal) return true;
-    if (status !== originalValues.status) return true;
-    
-    // Comparar jerarquía legal
-    if (legalHierarchy && originalValues.legalHierarchy) {
-      if (legalHierarchy.id_materia !== originalValues.legalHierarchy.id_materia ||
-          legalHierarchy.num_categoria !== originalValues.legalHierarchy.num_categoria ||
-          legalHierarchy.num_subcategoria !== originalValues.legalHierarchy.num_subcategoria ||
-          legalHierarchy.num_ambito_legal !== originalValues.legalHierarchy.num_ambito_legal) {
-        return true;
-      }
-    } else if (legalHierarchy !== originalValues.legalHierarchy) {
-      return true;
-    }
-    
-    // Comparar beneficiarios
-    if (beneficiarios.length !== originalValues.beneficiarios.length) return true;
-    for (let i = 0; i < beneficiarios.length; i++) {
-      const ben = beneficiarios[i];
-      const origBen = originalValues.beneficiarios[i];
-      if (!origBen || JSON.stringify(ben) !== JSON.stringify(origBen)) {
-        return true;
-      }
-    }
-    
-    // Verificar si hay alumnos pendientes o soportes nuevos
-    if (pendingStudents.length > 0) return true;
-    if (soportes.length > 0) return true;
-    
-    return false;
-  };
-
-  // Efecto para verificar cambios
-  useEffect(() => {
-    if (originalValues) {
-      setHasChanges(checkForChanges());
-    }
-  }, [cedulaSolicitante, legalHierarchy, idTramite, idNucleo, sintesis, fechaInicio, fechaFinal, status, beneficiarios, pendingStudents, soportes, originalValues]);
 
   const handleBeneficiarioChange = (
     index: number,
@@ -659,11 +576,6 @@ export default function CaseEditModal({
     e.preventDefault();
     setSubmitError(null);
 
-    if (!hasChanges) {
-      onClose();
-      return;
-    }
-
     if (!caseData) return;
 
     setLoading(true);
@@ -766,7 +678,6 @@ export default function CaseEditModal({
 
       // Limpiar estado
       setPendingStudents([]);
-      setHasChanges(false);
       onClose();
     } catch (error: any) {
       console.error("Error saving case:", error);
@@ -778,8 +689,14 @@ export default function CaseEditModal({
 
   if (!caseData) return null;
 
+  // Prevenir cierre durante la carga
+  const handleClose = () => {
+    if (loadingData) return; // No permitir cerrar durante la carga
+    onClose();
+  };
+
   return (
-    <Dialog open={open} onOpenChange={onClose}>
+    <Dialog open={open} onOpenChange={handleClose}>
       <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
         <DialogHeader>
           <DialogTitle className="text-sky-950 text-3xl font-semibold flex items-center gap-3">
@@ -792,9 +709,10 @@ export default function CaseEditModal({
         </DialogHeader>
 
         {loadingData ? (
-          <div className="flex items-center justify-center py-8">
-            <p className="text-sky-950">Cargando datos del caso...</p>
-          </div>
+          <LoadingScreen
+            message="Cargando información del caso..."
+            subMessage="Por favor espera mientras se cargan todos los datos"
+          />
         ) : (
           <form onSubmit={handleSubmit} className="space-y-6 py-4">
             {/* Información del caso (solo lectura) */}
@@ -1352,16 +1270,6 @@ export default function CaseEditModal({
               ))}
             </div>
 
-            {/* Indicador de cambios */}
-            {hasChanges && (
-              <div className="bg-yellow-50 border-2 border-yellow-400 rounded-xl p-3 flex items-center gap-2">
-                <span className="icon-[mdi--alert] text-2xl text-yellow-600"></span>
-                <p className="text-yellow-800 font-semibold">
-                  Hay cambios sin guardar
-                </p>
-              </div>
-            )}
-
             {/* Error general */}
             {submitError && (
               <div className="bg-red-50 border-2 border-red-400 rounded-xl p-4">
@@ -1381,8 +1289,7 @@ export default function CaseEditModal({
               <PrimaryButton
                 type="submit"
                 icon="icon-[mdi--content-save]"
-                disabled={loading || !hasChanges}
-                className={!hasChanges ? "opacity-50 cursor-not-allowed" : ""}
+                disabled={loading}
               >
                 {loading ? "Guardando..." : "Guardar Cambios"}
               </PrimaryButton>

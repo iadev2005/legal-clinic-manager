@@ -12,6 +12,7 @@ import ApplicantModal, {
 import ApplicantDetailsModal from "@/components/ui/applicant-details-modal";
 import Pagination from "@/components/ui/pagination";
 import DeleteConfirmationModal from "@/components/ui/delete-confirmation-modal";
+import LoadingScreen from "@/components/ui/loading-screen";
 import {
   getSolicitantes,
   createSolicitante,
@@ -53,6 +54,7 @@ export default function ApplicantsClient() {
   const router = useRouter();
   const [applicants, setApplicants] = useState<Solicitante[]>([]);
   const [loading, setLoading] = useState(true);
+  const [loadingEdit, setLoadingEdit] = useState(false);
   const [searchTerm, setSearchTerm] = useState("");
   const [parroquiaFilter, setParroquiaFilter] = useState("");
   const [trabajoFilter, setTrabajoFilter] = useState("");
@@ -154,24 +156,23 @@ export default function ApplicantsClient() {
 
   const handleEdit = async (applicant: Solicitante) => {
     setModalMode("edit");
-    setLoading(true);
+    setLoadingEdit(true);
     try {
       // Cargar datos completos del solicitante
       const result = await getSolicitanteCompleto(applicant.cedula_solicitante);
       if (result.success && result.data) {
         setSelectedApplicant(result.data as any);
-        setModalOpen(true);
       } else {
         // Si falla, usar los datos básicos
         setSelectedApplicant(applicant);
-        setModalOpen(true);
       }
     } catch (error) {
       console.error("Error loading applicant details:", error);
       setSelectedApplicant(applicant);
-      setModalOpen(true);
     } finally {
-      setLoading(false);
+      setLoadingEdit(false);
+      // Abrir el modal después de que termine la carga
+      setModalOpen(true);
     }
   };
 
@@ -318,7 +319,23 @@ export default function ApplicantsClient() {
   if (loading) {
     return (
       <div className="w-full h-full flex items-center justify-center">
-        <div className="text-2xl text-sky-950">Cargando solicitantes...</div>
+        <LoadingScreen
+          message="Cargando solicitantes..."
+          subMessage="Por favor espera mientras se cargan los datos"
+          size="lg"
+        />
+      </div>
+    );
+  }
+
+  if (loadingEdit) {
+    return (
+      <div className="w-full h-full flex items-center justify-center">
+        <LoadingScreen
+          message="Cargando información del solicitante..."
+          subMessage="Por favor espera mientras se cargan los datos completos"
+          size="lg"
+        />
       </div>
     );
   }

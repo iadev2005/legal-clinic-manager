@@ -108,7 +108,7 @@ function ActionHistoryModal({ open, onClose, data }: ActionHistoryModalProps) {
                         <div className="flex flex-col gap-1">
                             <DialogTitle className="text-sky-950 font-bold text-3xl flex items-center gap-3">
                                 <span className="icon-[mdi--history] text-[#3E7DBB]"></span>
-                                Historial Completo de Actuaciones
+                                Historial Completo de Acciones
                             </DialogTitle>
                             <DialogDescription className="text-lg text-sky-950/60">
                                 Visualiza y filtra todas las acciones registradas en este expediente.
@@ -157,7 +157,7 @@ function ActionHistoryModal({ open, onClose, data }: ActionHistoryModalProps) {
                         {/* Pagination Footer */}
                         <div className="flex-none p-4 border-t border-neutral-200 bg-white flex items-center justify-between">
                             <p className="text-sm text-sky-950/60 font-medium">
-                                Mostrando {filteredData.length > 0 ? ((currentPage - 1) * itemsPerPage) + 1 : 0} a {Math.min(currentPage * itemsPerPage, filteredData.length)} de {filteredData.length} actuaciones
+                                Mostrando {filteredData.length > 0 ? ((currentPage - 1) * itemsPerPage) + 1 : 0} a {Math.min(currentPage * itemsPerPage, filteredData.length)} de {filteredData.length} acciones
                             </p>
                             <div className="flex items-center gap-2">
                                 <button
@@ -269,7 +269,7 @@ export default function FollowUpClient() {
 
         try {
             // Combinar problema y orientación en el formato esperado
-            const titulo = newActionProblem.trim() || 'Actuación registrada';
+            const titulo = newActionProblem.trim() || 'Acción registrada';
             const observacion = [
                 newActionProblem.trim() && `Problema: ${newActionProblem.trim()}`,
                 newActionOrientation.trim() && `Orientación: ${newActionOrientation.trim()}`
@@ -330,7 +330,7 @@ export default function FollowUpClient() {
 
     const actionsDisplay = caseDetails?.actions?.map((action: any) => ({
         id: `action-${action.id_accion}`,
-        type: action.titulo_accion || "Actuación",
+        type: action.titulo_accion || "Acción",
         dateObj: new Date(action.fecha_realizacion),
         date: new Date(action.fecha_realizacion).toLocaleDateString("es-ES", { day: '2-digit', month: 'long', year: 'numeric' }),
         author: action.nombres ? `${action.nombres} ${action.apellidos}` : "Usuario",
@@ -367,7 +367,7 @@ export default function FollowUpClient() {
                         Gestión de Casos
                     </h1>
                     <p className="text-[#325B84] text-lg font-medium mt-2">
-                        Visualiza el historial de actuaciones, citas y recaudos de un caso específico.
+                        Visualiza el historial de acciones, citas y recaudos de un caso específico.
                     </p>
                 </div>
                 <button
@@ -595,7 +595,7 @@ export default function FollowUpClient() {
                                 {/* Register New Action Card */}
                                 <div className="bg-white rounded-2xl border-2 border-neutral-200 p-6 shadow-sm">
                                     <h3 className="text-sky-950 text-xl font-bold mb-4">
-                                        Registrar Nueva Actuación:
+                                        Registrar Nueva Acción:
                                     </h3>
                                     <div className="space-y-4">
                                         <div>
@@ -629,7 +629,7 @@ export default function FollowUpClient() {
                                         {actionSuccess && (
                                             <div className="bg-green-50 border border-green-200 text-green-700 px-4 py-3 rounded-xl text-sm flex items-center gap-2">
                                                 <span className="icon-[mdi--check-circle] text-lg"></span>
-                                                Actuación guardada exitosamente
+                                                Acción guardada exitosamente
                                             </div>
                                         )}
                                         <div className="flex gap-3">
@@ -646,7 +646,7 @@ export default function FollowUpClient() {
                                                 ) : (
                                                     <>
                                                         <span className="icon-[mdi--content-save] text-lg"></span>
-                                                        Guardar Actuación
+                                                        Guardar Acción
                                                     </>
                                                 )}
                                             </button>
@@ -658,7 +658,7 @@ export default function FollowUpClient() {
                                 <div className="bg-white rounded-2xl border-2 border-neutral-200 p-6 shadow-sm">
                                     <div className="flex items-center justify-between mb-6">
                                         <h3 className="text-sky-950 text-xl font-bold">
-                                            Historial de Actuaciones:
+                                            Historial de Acciones:
                                         </h3>
                                         <button
                                             onClick={() => setIsHistoryModalOpen(true)}
