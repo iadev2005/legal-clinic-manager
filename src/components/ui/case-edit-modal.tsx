@@ -13,6 +13,7 @@ import { Label } from "@/components/shadcn/label";
 import { Input } from "@/components/shadcn/input";
 import { Textarea } from "@/components/shadcn/textarea";
 import FilterSelect from "./filter-select";
+import SolicitanteSearchSelect from "./solicitante-search-select";
 import PrimaryButton from "./primary-button";
 import LegalHierarchySelect from "./legal-hierarchy-select";
 import CloudinaryUploadButton from "./cloudinary-upload-button";
@@ -694,8 +695,8 @@ export default function CaseEditModal({
               <Label htmlFor="solicitante" className="text-sky-950 font-semibold text-lg">
                 Solicitante
               </Label>
-              <FilterSelect
-                placeholder="Buscar y seleccionar solicitante"
+              <SolicitanteSearchSelect
+                placeholder="Buscar por cédula o nombre..."
                 value={cedulaSolicitante}
                 onChange={(value) => {
                   setCedulaSolicitante(value);

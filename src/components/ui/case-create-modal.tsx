@@ -13,6 +13,7 @@ import { Label } from "@/components/shadcn/label";
 import { Input } from "@/components/shadcn/input";
 import { Textarea } from "@/components/shadcn/textarea";
 import FilterSelect from "./filter-select";
+import SolicitanteSearchSelect from "./solicitante-search-select";
 import PrimaryButton from "./primary-button";
 import LegalHierarchySelect from "./legal-hierarchy-select";
 import {
@@ -466,15 +467,13 @@ export default function CaseCreateModal({
             <Label htmlFor="solicitante" className="text-sky-950 font-semibold text-lg">
               Solicitante <span className="text-red-500">*</span>
             </Label>
-            <FilterSelect
-              placeholder="Buscar y seleccionar solicitante"
+            <SolicitanteSearchSelect
+              placeholder="Buscar por cédula o nombre..."
               value={cedulaSolicitante}
               onChange={setCedulaSolicitante}
               options={solicitantes}
+              error={errors.cedulaSolicitante}
             />
-            {errors.cedulaSolicitante && (
-              <p className="text-red-500 text-sm">{errors.cedulaSolicitante}</p>
-            )}
           </div>
 
           {/* Jerarquía Legal */}
