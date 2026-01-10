@@ -27,7 +27,7 @@ import {
   type BeneficiarioData,
   type SoporteLegalData,
 } from "@/actions/casos";
-import { getSolicitantes } from "@/actions/solicitantes";
+import { getSolicitantes, getSolicitanteCompleto } from "@/actions/solicitantes";
 import { getSemestres } from "@/actions/administracion";
 import CloudinaryUploadButton from "./cloudinary-upload-button";
 
@@ -146,6 +146,65 @@ export default function CaseCreateModal({
       loadAlumnosAndProfesores(term);
     }
   }, [term, open]);
+
+  // Cargar datos del solicitante y llenar el primer beneficiario automáticamente
+  useEffect(() => {
+    const loadSolicitanteData = async () => {
+      if (cedulaSolicitante && open) {
+        try {
+          const result = await getSolicitanteCompleto(cedulaSolicitante);
+          if (result.success && result.data) {
+            const solicitante = result.data;
+            
+            // Formatear fecha de nacimiento para el input date (YYYY-MM-DD)
+            let fechaNacimiento = "";
+            if (solicitante.fecha_nacimiento) {
+              const fecha = new Date(solicitante.fecha_nacimiento);
+              if (!isNaN(fecha.getTime())) {
+                fechaNacimiento = fecha.toISOString().split('T')[0];
+              }
+            }
+
+            // Actualizar el primer beneficiario con los datos del solicitante
+            setBeneficiarios((prev) => {
+              const updated = [...prev];
+              // Asegurar que existe al menos un beneficiario
+              if (updated.length === 0) {
+                updated.push({
+                  cedula_beneficiario: "",
+                  cedula_es_propia: true,
+                  nombres: "",
+                  apellidos: "",
+                  sexo: "",
+                  fecha_nacimiento: "",
+                  tipo_beneficiario: "",
+                  parentesco: "",
+                });
+              }
+              
+              // Llenar el primer beneficiario con los datos del solicitante
+              updated[0] = {
+                cedula_beneficiario: solicitante.cedula_solicitante || "",
+                cedula_es_propia: true,
+                nombres: solicitante.nombres || "",
+                apellidos: solicitante.apellidos || "",
+                sexo: (solicitante.sexo as "M" | "F") || "",
+                fecha_nacimiento: fechaNacimiento,
+                tipo_beneficiario: "Directo",
+                parentesco: "",
+              };
+              
+              return updated;
+            });
+          }
+        } catch (error) {
+          console.error("Error loading solicitante data:", error);
+        }
+      }
+    };
+
+    loadSolicitanteData();
+  }, [cedulaSolicitante, open]);
 
   const loadCatalogs = async () => {
     try {
@@ -361,6 +420,10 @@ export default function CaseCreateModal({
   };
 
   const handleRemoveBeneficiario = (index: number) => {
+    // No permitir eliminar el primer beneficiario (siempre es el solicitante)
+    if (index === 0) {
+      return;
+    }
     if (beneficiarios.length > 1) {
       setBeneficiarios(beneficiarios.filter((_, i) => i !== index));
     }
@@ -653,9 +716,14 @@ export default function CaseCreateModal({
           {/* Beneficiarios */}
           <div className="space-y-4 border-t pt-4">
             <div className="flex justify-between items-center">
-              <Label className="text-sky-950 font-semibold text-lg">
-                Beneficiarios <span className="text-red-500">*</span>
-              </Label>
+              <div className="flex flex-col">
+                <Label className="text-sky-950 font-semibold text-lg">
+                  Beneficiarios <span className="text-red-500">*</span>
+                </Label>
+                <p className="text-xs text-sky-950/60 mt-1">
+                  * El primer beneficiario se llena automáticamente con los datos del solicitante
+                </p>
+              </div>
               <button
                 type="button"
                 onClick={handleAddBeneficiario}
@@ -669,13 +737,24 @@ export default function CaseCreateModal({
             {beneficiarios.map((ben, index) => (
               <div
                 key={index}
-                className="bg-gray-50 p-4 rounded-xl border border-gray-200 space-y-4"
+                className={`p-4 rounded-xl border space-y-4 ${
+                  index === 0 && cedulaSolicitante
+                    ? "bg-blue-50 border-blue-200"
+                    : "bg-gray-50 border-gray-200"
+                }`}
               >
                 <div className="flex justify-between items-center">
-                  <h4 className="font-semibold text-sky-950">
-                    Beneficiario {index + 1}
-                  </h4>
-                  {beneficiarios.length > 1 && (
+                  <div className="flex items-center gap-2">
+                    <h4 className="font-semibold text-sky-950">
+                      Beneficiario {index + 1}
+                    </h4>
+                    {index === 0 && cedulaSolicitante && (
+                      <span className="text-xs bg-blue-100 text-blue-700 px-2 py-1 rounded-full font-medium">
+                        Solicitante
+                      </span>
+                    )}
+                  </div>
+                  {beneficiarios.length > 1 && index !== 0 && (
                     <button
                       type="button"
                       onClick={() => handleRemoveBeneficiario(index)}

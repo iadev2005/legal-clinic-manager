@@ -207,39 +207,78 @@ export default function CaseReportPage() {
                     ) : <div className="text-center py-8 bg-gray-50 rounded-xl text-gray-400 italic">Sin soportes vinculados</div>}
                 </div>
 
-                <h2 className="text-2xl font-bold text-sky-950 mb-6 border-b-2 border-gray-100 pb-2">Grupo Familiar / Beneficiarios</h2>
-                <table className="w-full border-collapse mb-8">
-                    <thead>
-                        <tr className="bg-sky-950 text-white text-xs uppercase tracking-wider">
-                            <th className="p-3 text-left rounded-tl-lg">Nombre Completo</th>
-                            <th className="p-3 text-center">Cédula</th>
-                            <th className="p-3 text-center">Edad</th>
-                            <th className="p-3 text-center">Parentesco</th>
-                            <th className="p-3 text-center rounded-tr-lg">Tipo</th>
-                        </tr>
-                    </thead>
-                    <tbody className="text-sm">
-                        {beneficiaries.length > 0 ? (
-                            beneficiaries.map((b: any, idx: number) => (
-                                <tr key={idx} className={idx % 2 === 0 ? 'bg-white' : 'bg-gray-50'}>
-                                    <td className="p-3 font-semibold border-b border-gray-100">{b.nombres} {b.apellidos}</td>
-                                    <td className="p-3 text-center border-b border-gray-100">{b.cedula_beneficiario || 'N/A'}</td>
-                                    <td className="p-3 text-center border-b border-gray-100">{b.edad} años</td>
-                                    <td className="p-3 text-center border-b border-gray-100">{b.parentesco}</td>
-                                    <td className="p-3 text-center border-b border-gray-100">
-                                        <span className={`px-2 py-0.5 rounded text-[10px] font-bold ${b.tipo_beneficiario === 'Directo' ? 'bg-green-100 text-green-700' : 'bg-blue-100 text-blue-700'}`}>
-                                            {b.tipo_beneficiario}
+                <h2 className="text-2xl font-bold text-sky-950 mb-4 flex items-center gap-2 border-l-4 border-pink-500 pl-3">
+                    <span className="icon-[mdi--account-group] text-2xl text-pink-600"></span>
+                    Lista de Beneficiarios ({beneficiaries.length})
+                </h2>
+                {beneficiaries.length > 0 ? (
+                    <table className="w-full border-collapse mb-8 border-2 border-gray-200 rounded-lg overflow-hidden">
+                        <thead>
+                            <tr className="bg-sky-950 text-white text-xs uppercase tracking-wider">
+                                <th className="p-3 text-left rounded-tl-lg font-bold">#</th>
+                                <th className="p-3 text-left font-bold">Nombre Completo</th>
+                                <th className="p-3 text-center font-bold">Cédula</th>
+                                <th className="p-3 text-center font-bold">Sexo</th>
+                                <th className="p-3 text-center font-bold">Fecha Nac.</th>
+                                <th className="p-3 text-center font-bold">Edad</th>
+                                <th className="p-3 text-center font-bold">Tipo</th>
+                                <th className="p-3 text-center font-bold rounded-tr-lg">Parentesco</th>
+                            </tr>
+                        </thead>
+                        <tbody className="text-sm">
+                            {beneficiaries.map((b: any, idx: number) => (
+                                <tr key={idx} className={idx % 2 === 0 ? 'bg-white' : 'bg-gray-50'} style={{ pageBreakInside: 'avoid' }}>
+                                    <td className="p-3 font-bold text-sky-950 border-b border-gray-200">{idx + 1}</td>
+                                    <td className="p-3 font-semibold text-sky-950 border-b border-gray-200">
+                                        {b.nombres && b.apellidos 
+                                            ? `${b.nombres} ${b.apellidos}` 
+                                            : (b.nombres || b.apellidos || 'N/A')}
+                                    </td>
+                                    <td className="p-3 text-center border-b border-gray-200">
+                                        <div className="flex flex-col items-center gap-1">
+                                            <span className="font-semibold">{b.cedula_beneficiario || 'N/A'}</span>
+                                            {b.cedula_es_propia && (
+                                                <span className="text-[9px] bg-green-100 text-green-700 px-2 py-0.5 rounded font-bold uppercase">
+                                                    Propia
+                                                </span>
+                                            )}
+                                        </div>
+                                    </td>
+                                    <td className="p-3 text-center border-b border-gray-200">
+                                        {b.sexo === 'M' ? 'Masculino' : b.sexo === 'F' ? 'Femenino' : 'N/A'}
+                                    </td>
+                                    <td className="p-3 text-center border-b border-gray-200">
+                                        {b.fecha_nacimiento 
+                                            ? new Date(b.fecha_nacimiento).toLocaleDateString('es-ES', { 
+                                                year: 'numeric', 
+                                                month: '2-digit', 
+                                                day: '2-digit' 
+                                            })
+                                            : 'N/A'}
+                                    </td>
+                                    <td className="p-3 text-center border-b border-gray-200 font-semibold">
+                                        {b.edad !== null && b.edad !== undefined 
+                                            ? `${Math.floor(Number(b.edad))} años` 
+                                            : 'N/A'}
+                                    </td>
+                                    <td className="p-3 text-center border-b border-gray-200">
+                                        <span className={`px-2 py-1 rounded text-[10px] font-bold uppercase ${b.tipo_beneficiario === 'Directo' ? 'bg-green-100 text-green-700' : 'bg-blue-100 text-blue-700'}`}>
+                                            {b.tipo_beneficiario || 'N/A'}
                                         </span>
                                     </td>
+                                    <td className="p-3 text-center border-b border-gray-200">
+                                        {b.parentesco || (b.tipo_beneficiario === 'Directo' ? 'Solicitante' : 'N/A')}
+                                    </td>
                                 </tr>
-                            ))
-                        ) : (
-                            <tr>
-                                <td colSpan={5} className="p-8 text-center text-gray-400 italic border-b border-gray-100">No hay beneficiarios registrados en este caso</td>
-                            </tr>
-                        )}
-                    </tbody>
-                </table>
+                            ))}
+                        </tbody>
+                    </table>
+                ) : (
+                    <div className="bg-gray-50 border-2 border-dashed border-gray-300 rounded-xl p-8 text-center mb-8">
+                        <span className="icon-[mdi--account-off] text-4xl text-gray-400 block mb-2"></span>
+                        <p className="text-gray-500 font-semibold">No hay beneficiarios registrados en este caso</p>
+                    </div>
+                )}
 
                 <div className="mt-auto border-t-2 border-gray-100 pt-8">
                     <h3 className="text-xl font-bold text-sky-950 mb-2">Síntesis Final del Caso</h3>

@@ -647,17 +647,23 @@ export default function CaseDetailsModal({
         ) : null}
 
         {/* Footer con botones de acción */}
-        <div className="flex justify-end gap-3 pt-4 border-t">
-          <PrintButton
-            caseId={caseData.id}
-            caseNumber={caseData.caseNumber}
-          />
-          <button
-            onClick={onClose}
-            className="px-6 py-3 bg-neutral-200 hover:bg-neutral-300 rounded-2xl text-sky-950 text-lg font-semibold transition-all duration-300 hover:scale-105"
-          >
-            Cerrar
-          </button>
+        <div className="flex justify-between items-center pt-4 border-t">
+          <div className="flex items-center gap-2 text-sm text-sky-950/60">
+            <span className="icon-[mdi--information-outline] text-lg"></span>
+            <span>El reporte incluye toda la información del caso, incluyendo la lista completa de beneficiarios</span>
+          </div>
+          <div className="flex gap-3">
+            <PrintButton
+              caseId={caseData.id}
+              caseNumber={caseData.caseNumber}
+            />
+            <button
+              onClick={onClose}
+              className="px-6 py-3 bg-neutral-200 hover:bg-neutral-300 rounded-2xl text-sky-950 text-lg font-semibold transition-all duration-300 hover:scale-105"
+            >
+              Cerrar
+            </button>
+          </div>
         </div>
       </DialogContent>
     </Dialog>
