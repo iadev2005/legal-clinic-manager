@@ -7,6 +7,7 @@ import {
     getEstados,
     getMunicipiosByEstado,
     getParroquiasByMunicipio,
+    getParroquiaById,
 } from "@/actions/solicitantes";
 
 interface LocationCascadeSelectProps {
@@ -54,10 +55,10 @@ export default function LocationCascadeSelect({
 
     // Si hay un valor inicial, cargar la cascada completa
     useEffect(() => {
-        if (value && estados.length > 0) {
+        if (value && value > 0 && estados.length > 0 && selectedParroquia !== value.toString()) {
             loadInitialValue(value);
         }
-    }, [value, estados]);
+    }, [value, estados.length]);
 
     const loadEstados = async () => {
         setLoading(true);
@@ -69,9 +70,39 @@ export default function LocationCascadeSelect({
     };
 
     const loadInitialValue = async (idParroquia: number) => {
-        // Aquí deberías hacer una query para obtener el estado y municipio de la parroquia
-        // Por ahora, simplemente establecemos el valor de la parroquia
-        setSelectedParroquia(idParroquia.toString());
+        setLoading(true);
+        try {
+            // Obtener información completa de la parroquia (estado y municipio)
+            const parroquiaResult = await getParroquiaById(idParroquia);
+            if (parroquiaResult.success && parroquiaResult.data) {
+                const parroquia = parroquiaResult.data;
+                
+                // Establecer el estado
+                setSelectedEstado(parroquia.id_estado.toString());
+                
+                // Cargar municipios del estado
+                const municipiosResult = await getMunicipiosByEstado(parroquia.id_estado);
+                if (municipiosResult.success && municipiosResult.data) {
+                    setMunicipios(municipiosResult.data);
+                    
+                    // Establecer el municipio
+                    setSelectedMunicipio(parroquia.id_municipio.toString());
+                    
+                    // Cargar parroquias del municipio
+                    const parroquiasResult = await getParroquiasByMunicipio(parroquia.id_municipio);
+                    if (parroquiasResult.success && parroquiasResult.data) {
+                        setParroquias(parroquiasResult.data);
+                        
+                        // Finalmente establecer la parroquia
+                        setSelectedParroquia(idParroquia.toString());
+                    }
+                }
+            }
+        } catch (error) {
+            console.error('Error loading initial value:', error);
+        } finally {
+            setLoading(false);
+        }
     };
 
     const handleEstadoChange = async (estadoId: string) => {

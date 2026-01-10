@@ -482,6 +482,31 @@ export async function getParroquiasByMunicipio(idMunicipio: number) {
     }
 }
 
+export async function getParroquiaById(idParroquia: number) {
+    try {
+        const result = await query(`
+      SELECT 
+        p.id_parroquia,
+        p.nombre_parroquia,
+        p.id_municipio,
+        m.nombre_municipio,
+        m.id_estado,
+        e.nombre_estado
+      FROM Parroquias p
+      JOIN Municipios m ON p.id_municipio = m.id_municipio
+      JOIN Estados e ON m.id_estado = e.id_estado
+      WHERE p.id_parroquia = $1
+    `, [idParroquia]);
+        if (result.rows.length === 0) {
+            return { success: false, error: 'Parroquia no encontrada' };
+        }
+        return { success: true, data: result.rows[0] };
+    } catch (error) {
+        console.error('Error al obtener parroquia:', error);
+        return { success: false, error: 'Error al obtener parroquia' };
+    }
+}
+
 export async function getParroquias() {
     try {
         const result = await query(`

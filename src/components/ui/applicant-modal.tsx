@@ -115,6 +115,10 @@ export default function ApplicantModal({
     bienes: [],
   });
 
+  // Estados separados para cédula
+  const [cedulaPrefix, setCedulaPrefix] = useState<"V" | "E">("V");
+  const [cedulaNumber, setCedulaNumber] = useState<string>("");
+
   const [loading, setLoading] = useState(false);
   const [errors, setErrors] = useState<
     Partial<Record<keyof ApplicantFormData, string>>
@@ -133,6 +137,39 @@ export default function ApplicantModal({
 
   useEffect(() => {
     if (applicant && mode === "edit") {
+      // Separar cédula en prefijo y número
+      const cedula = applicant.cedula_solicitante || "";
+      let prefix: "V" | "E" = "V";
+      let number = "";
+      
+      if (cedula) {
+        // Extraer prefijo (V o E) y número
+        const match = cedula.match(/^([VEJ])-?(.+)$/i);
+        if (match) {
+          prefix = (match[1].toUpperCase() === "E" ? "E" : "V") as "V" | "E";
+          number = match[2];
+        } else {
+          // Si no tiene prefijo, asumir según nacionalidad
+          prefix = (applicant.nacionalidad === "E" ? "E" : "V") as "V" | "E";
+          number = cedula.replace(/^[VEJ]-?/i, "");
+        }
+      } else {
+        // Si no hay cédula, usar la nacionalidad del solicitante
+        prefix = (applicant.nacionalidad === "E" ? "E" : "V") as "V" | "E";
+      }
+
+      setCedulaPrefix(prefix);
+      setCedulaNumber(number);
+
+      // Formatear fecha de nacimiento para el input date (YYYY-MM-DD)
+      let fechaNacimiento = "";
+      if (applicant.fecha_nacimiento) {
+        const fecha = new Date(applicant.fecha_nacimiento);
+        if (!isNaN(fecha.getTime())) {
+          fechaNacimiento = fecha.toISOString().split('T')[0];
+        }
+      }
+
       setFormData({
         cedula_solicitante: applicant.cedula_solicitante || "",
         nombres: applicant.nombres || "",
@@ -144,7 +181,7 @@ export default function ApplicantModal({
         nacionalidad: applicant.nacionalidad || "V",
         estado_civil: applicant.estado_civil || undefined,
         en_concubinato: applicant.en_concubinato || false,
-        fecha_nacimiento: applicant.fecha_nacimiento || "",
+        fecha_nacimiento: fechaNacimiento,
         buscando_trabajo: applicant.buscando_trabajo || false,
         tipo_periodo_educacion: applicant.tipo_periodo_educacion || undefined,
         cantidad_tiempo_educacion:
@@ -159,6 +196,8 @@ export default function ApplicantModal({
         bienes: (applicant as any).bienes?.map((b: any) => b.id_bien) || [],
       });
     } else {
+      setCedulaPrefix("V");
+      setCedulaNumber("");
       setFormData({
         cedula_solicitante: "",
         nombres: "",
@@ -232,50 +271,54 @@ export default function ApplicantModal({
     }
   };
 
-  const validateForm = (): boolean => {
+  const validateForm = (data?: ApplicantFormData): boolean => {
+    const dataToValidate = data || formData;
     const newErrors: Partial<Record<keyof ApplicantFormData, string>> = {};
 
-    if (!formData.nombres.trim()) {
+    if (!dataToValidate.nombres.trim()) {
       newErrors.nombres = "El nombre es requerido";
     }
 
-    if (!formData.apellidos.trim()) {
+    if (!dataToValidate.apellidos.trim()) {
       newErrors.apellidos = "Los apellidos son requeridos";
     }
 
-    if (!formData.cedula_solicitante.trim()) {
-      newErrors.cedula_solicitante = "La cédula es requerida";
-    } else if (!/^[VEJ]-?\d{6,8}$/i.test(formData.cedula_solicitante)) {
-      newErrors.cedula_solicitante = "Formato inválido (Ej: V-12345678)";
+    // Validar cédula (prefijo + número)
+    if (mode === "create") {
+      if (!cedulaNumber.trim()) {
+        newErrors.cedula_solicitante = "El número de cédula es requerido";
+      } else if (!/^\d{6,8}$/.test(cedulaNumber.replace(/\D/g, ""))) {
+        newErrors.cedula_solicitante = "El número de cédula debe tener entre 6 y 8 dígitos";
+      }
     }
 
-    if (!formData.fecha_nacimiento) {
+    if (!dataToValidate.fecha_nacimiento) {
       newErrors.fecha_nacimiento = "La fecha de nacimiento es requerida";
     }
 
-    if (!formData.id_parroquia || formData.id_parroquia === 0) {
+    if (!dataToValidate.id_parroquia || dataToValidate.id_parroquia === 0) {
       newErrors.id_parroquia = "Debe seleccionar una parroquia";
     }
 
     if (
-      formData.correo_electronico &&
-      !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(formData.correo_electronico)
+      dataToValidate.correo_electronico &&
+      !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(dataToValidate.correo_electronico)
     ) {
       newErrors.correo_electronico = "Email inválido";
     }
 
     if (
-      formData.telefono_celular &&
-      !/^(\+?58\s?)?0?4\d{2}-?\d{7}$/.test(formData.telefono_celular)
+      dataToValidate.telefono_celular &&
+      !/^(\+?58\s?)?0?4\d{2}-?\d{7}$/.test(dataToValidate.telefono_celular)
     ) {
       newErrors.telefono_celular = "Formato inválido (Ej: 0412-1234567)";
     }
 
     // Validar constraint de familia/hogar
-    if (formData.familia?.cantidad_personas) {
-      const cantidadPersonas = formData.familia.cantidad_personas;
-      const cantidadTrabajadores = formData.familia.cantidad_trabajadores || 0;
-      const cantidadNinos = formData.familia.cantidad_ninos || 0;
+    if (dataToValidate.familia?.cantidad_personas) {
+      const cantidadPersonas = dataToValidate.familia.cantidad_personas;
+      const cantidadTrabajadores = dataToValidate.familia.cantidad_trabajadores || 0;
+      const cantidadNinos = dataToValidate.familia.cantidad_ninos || 0;
       
       if (cantidadTrabajadores + cantidadNinos > cantidadPersonas) {
         // Agregar error visual en el campo de cantidad de personas
@@ -293,13 +336,25 @@ export default function ApplicantModal({
     e.preventDefault();
     setSubmitError(null);
 
-    if (!validateForm()) {
+    // Preparar datos para enviar
+    const dataToSave: ApplicantFormData = { ...formData };
+
+    // Concatenar prefijo y número de cédula antes de validar
+    if (mode === "create") {
+      const cedulaCompleta = `${cedulaPrefix}-${cedulaNumber.replace(/\D/g, "")}`;
+      dataToSave.cedula_solicitante = cedulaCompleta;
+      // Sincronizar nacionalidad con prefijo de cédula
+      dataToSave.nacionalidad = cedulaPrefix;
+    }
+
+    // Validar con los datos actualizados
+    if (!validateForm(dataToSave)) {
       return;
     }
 
     setLoading(true);
     try {
-      await onSave(formData);
+      await onSave(dataToSave);
       onClose();
     } catch (error: any) {
       console.error("Error saving applicant:", error);
@@ -358,42 +413,49 @@ export default function ApplicantModal({
               </h3>
 
               <div className="grid grid-cols-2 gap-4">
-                {/* Cédula */}
+                {/* Prefijo de Cédula */}
                 <div className="space-y-2">
-                  <Label htmlFor="cedula" className="text-sky-950 font-semibold">
-                    Cédula de Identidad <span className="text-red-500">*</span>
+                  <Label htmlFor="cedula_prefix" className="text-sky-950 font-semibold">
+                    Tipo de Cédula <span className="text-red-500">*</span>
+                  </Label>
+                  <FilterSelect
+                    placeholder="Seleccione"
+                    value={cedulaPrefix}
+                    onChange={(value) => {
+                      const prefix = value as "V" | "E";
+                      setCedulaPrefix(prefix);
+                      handleChange("nacionalidad", prefix);
+                    }}
+                    options={[
+                      { value: "V", label: "Venezolano (V)" },
+                      { value: "E", label: "Extranjero (E)" },
+                    ]}
+                    disabled={mode === "edit"}
+                  />
+                </div>
+
+                {/* Número de Cédula */}
+                <div className="space-y-2">
+                  <Label htmlFor="cedula_number" className="text-sky-950 font-semibold">
+                    Número de Cédula <span className="text-red-500">*</span>
                   </Label>
                   <Input
-                    id="cedula"
-                    value={formData.cedula_solicitante}
-                    onChange={(e) =>
-                      handleChange("cedula_solicitante", e.target.value)
-                    }
-                    placeholder="Ej: V-12345678"
+                    id="cedula_number"
+                    value={cedulaNumber}
+                    onChange={(e) => {
+                      const value = e.target.value.replace(/\D/g, "");
+                      setCedulaNumber(value);
+                    }}
+                    placeholder="Ej: 12345678"
                     className={errors.cedula_solicitante ? "border-red-500" : ""}
                     disabled={mode === "edit"}
+                    maxLength={8}
                   />
                   {errors.cedula_solicitante && (
                     <p className="text-red-500 text-sm">
                       {errors.cedula_solicitante}
                     </p>
                   )}
-                </div>
-
-                {/* Nacionalidad */}
-                <div className="space-y-2">
-                  <Label htmlFor="nacionalidad" className="text-sky-950 font-semibold">
-                    Nacionalidad <span className="text-red-500">*</span>
-                  </Label>
-                  <FilterSelect
-                    placeholder="Seleccione"
-                    value={formData.nacionalidad || ""}
-                    onChange={(value) => handleChange("nacionalidad", value as "V" | "E")}
-                    options={[
-                      { value: "V", label: "Venezolano (V)" },
-                      { value: "E", label: "Extranjero (E)" },
-                    ]}
-                  />
                 </div>
 
                 {/* Nombres */}
@@ -488,7 +550,13 @@ export default function ApplicantModal({
                   <FilterSelect
                     placeholder="Seleccione"
                     value={formData.estado_civil || ""}
-                    onChange={(value) => handleChange("estado_civil", value)}
+                    onChange={(value) => {
+                      handleChange("estado_civil", value);
+                      // Si se selecciona "Casado", desactivar concubinato
+                      if (value === "Casado") {
+                        handleChange("en_concubinato", false);
+                      }
+                    }}
                     options={[
                       { value: "Soltero", label: "Soltero(a)" },
                       { value: "Casado", label: "Casado(a)" },
@@ -507,12 +575,18 @@ export default function ApplicantModal({
                       onChange={(e) =>
                         handleChange("en_concubinato", e.target.checked)
                       }
+                      disabled={formData.estado_civil === "Casado"}
                       className="w-4 h-4"
                     />
-                    <span className="text-sky-950 font-semibold">
+                    <span className={`text-sky-950 font-semibold ${formData.estado_civil === "Casado" ? "opacity-50" : ""}`}>
                       ¿En concubinato?
                     </span>
                   </label>
+                  {formData.estado_civil === "Casado" && (
+                    <p className="text-sm text-gray-500 ml-2">
+                      (No aplica si está casado)
+                    </p>
+                  )}
                 </div>
               </div>
             </div>
