@@ -22,6 +22,7 @@ import {
   getNucleos,
   getAlumnosDisponibles,
   getProfesoresDisponibles,
+  getEstatus,
   type CreateCasoData,
   type BeneficiarioData,
   type SoporteLegalData,
@@ -75,6 +76,9 @@ export default function CaseCreateModal({
   const [semestres, setSemestres] = useState<
     Array<{ value: string; label: string }>
   >([]);
+  const [estatusList, setEstatusList] = useState<
+    Array<{ value: string; label: string }>
+  >([]);
 
   // Form data
   const [cedulaSolicitante, setCedulaSolicitante] = useState("");
@@ -91,12 +95,20 @@ export default function CaseCreateModal({
     new Date().toISOString().split("T")[0]
   );
 
-  // Asignación opcional
+  // Semestre y Estatus (obligatorios)
+  const [term, setTerm] = useState("");
+  const [idEstatus, setIdEstatus] = useState("");
+
+  // Asignación opcional - Múltiples alumnos
   const [asignarAlumno, setAsignarAlumno] = useState(false);
-  const [cedulaAlumno, setCedulaAlumno] = useState("");
+  const [alumnosSeleccionados, setAlumnosSeleccionados] = useState<Array<{
+    cedula: string;
+    term: string;
+    nombre: string;
+  }>>([]);
+  const [cedulaAlumnoTemporal, setCedulaAlumnoTemporal] = useState("");
   const [asignarProfesor, setAsignarProfesor] = useState(false);
   const [cedulaProfesor, setCedulaProfesor] = useState("");
-  const [term, setTerm] = useState("");
 
   // Beneficiarios
   const [beneficiarios, setBeneficiarios] = useState<BeneficiarioForm[]>([
@@ -142,11 +154,13 @@ export default function CaseCreateModal({
         tramitesRes,
         nucleosRes,
         semestresRes,
+        estatusRes,
       ] = await Promise.all([
         getSolicitantes(),
         getTramites(),
         getNucleos(),
         getSemestres(),
+        getEstatus(),
       ]);
 
       if (solicitantesRes.success && solicitantesRes.data) {
@@ -189,6 +203,24 @@ export default function CaseCreateModal({
             (a: any, b: any) => b.term.localeCompare(a.term)
           )[0];
           setTerm(latest.term);
+        }
+      }
+
+      if (estatusRes.success && estatusRes.data) {
+        setEstatusList(
+          estatusRes.data.map((e: any) => ({
+            value: e.id_estatus.toString(),
+            label: e.nombre_estatus,
+          }))
+        );
+        // Establecer "En proceso" por defecto si existe
+        const enProceso = estatusRes.data.find(
+          (e: any) => e.nombre_estatus === "En proceso"
+        );
+        if (enProceso) {
+          setIdEstatus(enProceso.id_estatus.toString());
+        } else if (estatusRes.data.length > 0) {
+          setIdEstatus(estatusRes.data[0].id_estatus.toString());
         }
       }
     } catch (error) {
@@ -235,7 +267,8 @@ export default function CaseCreateModal({
     setSintesis("");
     setFechaInicio(new Date().toISOString().split("T")[0]);
     setAsignarAlumno(false);
-    setCedulaAlumno("");
+    setAlumnosSeleccionados([]);
+    setCedulaAlumnoTemporal("");
     setAsignarProfesor(false);
     setCedulaProfesor("");
     setBeneficiarios([
@@ -253,6 +286,7 @@ export default function CaseCreateModal({
     setSoportes([]);
     setErrors({});
     setSubmitError(null);
+    // Resetear term e idEstatus se hará después de cargar los catálogos
   };
 
   const validateForm = (): boolean => {
@@ -274,6 +308,14 @@ export default function CaseCreateModal({
       newErrors.idNucleo = "Debe seleccionar un núcleo";
     }
 
+    if (!term) {
+      newErrors.term = "Debe seleccionar un semestre";
+    }
+
+    if (!idEstatus) {
+      newErrors.idEstatus = "Debe seleccionar un estatus";
+    }
+
     // Validar beneficiarios
     beneficiarios.forEach((ben, index) => {
       if (!ben.cedula_beneficiario.trim()) {
@@ -291,14 +333,11 @@ export default function CaseCreateModal({
     });
 
     // Validar asignación si está activa
-    if (asignarAlumno && !cedulaAlumno) {
-      newErrors.cedulaAlumno = "Debe seleccionar un alumno";
+    if (asignarAlumno && alumnosSeleccionados.length === 0) {
+      newErrors.cedulaAlumno = "Debe seleccionar al menos un alumno";
     }
     if (asignarProfesor && !cedulaProfesor) {
       newErrors.cedulaProfesor = "Debe seleccionar un profesor";
-    }
-    if ((asignarAlumno || asignarProfesor) && !term) {
-      newErrors.term = "Debe seleccionar un semestre";
     }
 
     setErrors(newErrors);
@@ -362,6 +401,36 @@ export default function CaseCreateModal({
     setSoportes(updated);
   };
 
+  const handleAddAlumno = () => {
+    if (!cedulaAlumnoTemporal || !term) return;
+    
+    const alumno = alumnos.find((a) => a.value === cedulaAlumnoTemporal && a.term === term);
+    if (!alumno) return;
+    
+    // Verificar si ya está en la lista
+    const alreadyExists = alumnosSeleccionados.some(a => a.cedula === cedulaAlumnoTemporal && a.term === term);
+    if (alreadyExists) {
+      setErrors({ ...errors, cedulaAlumno: "Este alumno ya está seleccionado" });
+      return;
+    }
+    
+    setAlumnosSeleccionados([
+      ...alumnosSeleccionados,
+      {
+        cedula: cedulaAlumnoTemporal,
+        term: term,
+        nombre: alumno.label,
+      },
+    ]);
+    
+    setCedulaAlumnoTemporal("");
+    setErrors({ ...errors, cedulaAlumno: undefined });
+  };
+
+  const handleRemoveAlumno = (index: number) => {
+    setAlumnosSeleccionados(alumnosSeleccionados.filter((_, i) => i !== index));
+  };
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setSubmitError(null);
@@ -385,20 +454,6 @@ export default function CaseCreateModal({
         parentesco: ben.parentesco || undefined,
       }));
 
-      // Obtener el term del alumno/profesor seleccionado para asegurar que coincida
-      let termToUse = term;
-      if (asignarAlumno && cedulaAlumno) {
-        const alumnoSeleccionado = alumnos.find((a) => a.value === cedulaAlumno);
-        if (alumnoSeleccionado) {
-          termToUse = alumnoSeleccionado.term;
-        }
-      } else if (asignarProfesor && cedulaProfesor) {
-        const profesorSeleccionado = profesores.find((p) => p.value === cedulaProfesor);
-        if (profesorSeleccionado) {
-          termToUse = profesorSeleccionado.term;
-        }
-      }
-
       // Preparar datos de soportes legales
       const soportesData: SoporteLegalData[] = soportes
         .filter((s) => s.descripcion.trim() && s.documento_url.trim())
@@ -408,7 +463,7 @@ export default function CaseCreateModal({
           observacion: s.observacion || undefined,
         }));
 
-      // Preparar datos del caso
+        // Preparar datos del caso
       const casoData: CreateCasoData = {
         cedula_solicitante: cedulaSolicitante,
         id_nucleo: parseInt(idNucleo),
@@ -419,13 +474,15 @@ export default function CaseCreateModal({
         num_ambito_legal: legalHierarchy!.num_ambito_legal,
         sintesis_caso: sintesis || undefined,
         fecha_caso_inicio: fechaInicio,
+        term: term,
+        id_estatus: parseInt(idEstatus),
         beneficiarios: beneficiariosData,
         asignacion:
-          asignarAlumno || asignarProfesor
+          (asignarAlumno && alumnosSeleccionados.length > 0) || asignarProfesor
             ? {
-              cedula_alumno: asignarAlumno ? cedulaAlumno : undefined,
+              cedula_alumno: asignarAlumno && alumnosSeleccionados.length > 0 ? alumnosSeleccionados[0].cedula : undefined,
+              cedulas_alumnos: asignarAlumno && alumnosSeleccionados.length > 0 ? alumnosSeleccionados.map(a => a.cedula) : undefined,
               cedula_profesor: asignarProfesor ? cedulaProfesor : undefined,
-              term: termToUse,
             }
             : undefined,
         soportes: soportesData.length > 0 ? soportesData : undefined,
@@ -546,6 +603,51 @@ export default function CaseCreateModal({
               value={fechaInicio}
               onChange={(e) => setFechaInicio(e.target.value)}
             />
+          </div>
+
+          {/* Semestre y Estatus */}
+          <div className="grid grid-cols-2 gap-4">
+            <div className="space-y-2">
+              <Label htmlFor="term" className="text-sky-950 font-semibold text-lg">
+                Semestre <span className="text-red-500">*</span>
+              </Label>
+              <FilterSelect
+                placeholder="Seleccionar semestre"
+                value={term}
+                onChange={(newTerm) => {
+                  setTerm(newTerm);
+                  // Limpiar selección de alumno/profesor cuando cambia el term
+                  if (asignarAlumno) {
+                    setCedulaAlumno("");
+                  }
+                  if (asignarProfesor) {
+                    setCedulaProfesor("");
+                  }
+                }}
+                options={semestres}
+              />
+              {errors.term && (
+                <p className="text-red-500 text-sm">{errors.term}</p>
+              )}
+              <p className="text-xs text-sky-950/60">
+                Los alumnos y profesores disponibles se filtrarán por este semestre
+              </p>
+            </div>
+
+            <div className="space-y-2">
+              <Label htmlFor="estatus" className="text-sky-950 font-semibold text-lg">
+                Estatus <span className="text-red-500">*</span>
+              </Label>
+              <FilterSelect
+                placeholder="Seleccionar estatus"
+                value={idEstatus}
+                onChange={setIdEstatus}
+                options={estatusList}
+              />
+              {errors.idEstatus && (
+                <p className="text-red-500 text-sm">{errors.idEstatus}</p>
+              )}
+            </div>
           </div>
 
           {/* Beneficiarios */}
@@ -761,17 +863,54 @@ export default function CaseCreateModal({
 
               {asignarAlumno && (
                 <div className="ml-6 space-y-2">
-                  <FilterSelect
-                    placeholder="Seleccionar alumno"
-                    value={cedulaAlumno}
-                    onChange={setCedulaAlumno}
-                    options={alumnos.map((a) => ({
-                      value: a.value,
-                      label: a.label,
-                    }))}
-                  />
+                  <div className="flex gap-2">
+                    <FilterSelect
+                      placeholder="Seleccionar alumno"
+                      value={cedulaAlumnoTemporal}
+                      onChange={setCedulaAlumnoTemporal}
+                      options={alumnos
+                        .filter(a => a.term === term)
+                        .filter(a => !alumnosSeleccionados.some(sel => sel.cedula === a.value))
+                        .map((a) => ({
+                        value: a.value,
+                        label: a.label,
+                      }))}
+                    />
+                    <button
+                      type="button"
+                      onClick={handleAddAlumno}
+                      disabled={!cedulaAlumnoTemporal || !term}
+                      className="px-4 py-2 bg-green-600 hover:bg-green-700 disabled:bg-gray-300 disabled:cursor-not-allowed text-white rounded-lg font-semibold transition-colors flex items-center gap-2"
+                    >
+                      <span className="icon-[mdi--plus] text-xl"></span>
+                      Agregar
+                    </button>
+                  </div>
                   {errors.cedulaAlumno && (
                     <p className="text-red-500 text-sm">{errors.cedulaAlumno}</p>
+                  )}
+                  
+                  {/* Lista de alumnos seleccionados */}
+                  {alumnosSeleccionados.length > 0 && (
+                    <div className="space-y-2 mt-2">
+                      <Label className="text-sm font-semibold text-green-700">Alumnos Seleccionados</Label>
+                      {alumnosSeleccionados.map((alumno, index) => (
+                        <div key={index} className="flex justify-between items-center bg-green-50/50 p-2 rounded-lg border border-green-100">
+                          <div className="flex flex-col">
+                            <span className="text-sm font-medium text-green-900">{alumno.nombre}</span>
+                            <span className="text-xs text-green-700/70">C.I: {alumno.cedula} | Term: {alumno.term}</span>
+                          </div>
+                          <button
+                            type="button"
+                            onClick={() => handleRemoveAlumno(index)}
+                            className="p-1 hover:bg-red-50 text-red-500 rounded-full transition-colors"
+                            title="Eliminar de la lista"
+                          >
+                            <span className="icon-[mdi--close] text-lg"></span>
+                          </button>
+                        </div>
+                      ))}
+                    </div>
                   )}
                 </div>
               )}
@@ -810,31 +949,9 @@ export default function CaseCreateModal({
 
               {(asignarAlumno || asignarProfesor) && (
                 <div className="ml-6 space-y-2">
-                  <Label className="text-sm font-semibold">
-                    Semestre <span className="text-red-500">*</span>
-                  </Label>
-                  <FilterSelect
-                    placeholder="Seleccionar semestre"
-                    value={term}
-                    onChange={(newTerm) => {
-                      setTerm(newTerm);
-                      // Limpiar selección de alumno/profesor cuando cambia el term
-                      // porque los alumnos/profesores son específicos por term
-                      if (asignarAlumno) {
-                        setCedulaAlumno("");
-                      }
-                      if (asignarProfesor) {
-                        setCedulaProfesor("");
-                      }
-                    }}
-                    options={semestres}
-                  />
                   <p className="text-xs text-sky-950/60">
-                    Los alumnos y profesores se filtrarán por el semestre seleccionado
+                    Los alumnos y profesores disponibles corresponden al semestre seleccionado arriba
                   </p>
-                  {errors.term && (
-                    <p className="text-red-500 text-sm">{errors.term}</p>
-                  )}
                 </div>
               )}
             </div>

@@ -156,6 +156,26 @@ export default function CaseEditModal({
   const [cedulaProfesor, setCedulaProfesor] = useState("");
   const [termProfesor, setTermProfesor] = useState("");
 
+  // Valores originales para comparación
+  const [originalValues, setOriginalValues] = useState<{
+    cedulaSolicitante: string;
+    legalHierarchy: { id_materia: number; num_categoria: number; num_subcategoria: number; num_ambito_legal: number } | null;
+    idTramite: string;
+    idNucleo: string;
+    sintesis: string;
+    fechaInicio: string;
+    fechaFinal: string | null;
+    status: string;
+    beneficiarios: BeneficiarioForm[];
+  } | null>(null);
+
+  // Alumnos pendientes de agregar (sin guardar)
+  const [pendingStudents, setPendingStudents] = useState<Array<{
+    cedula_alumno: string;
+    term: string;
+    nombre_completo: string;
+  }>>([]);
+
   // Combinar semestres y historial para generar opciones visuales
   useEffect(() => {
     if (rawSemestres.length > 0) {
@@ -323,8 +343,10 @@ export default function CaseEditModal({
     if (!caseData) return;
 
     setLoadingData(true);
+    setHasChanges(false); // Resetear cambios al cargar
     try {
       const nroCaso = parseInt(caseData.id);
+      // Cargar datos en paralelo para optimizar tiempo de respuesta
       const [
         casoRes,
         beneficiariosRes,
@@ -341,23 +363,41 @@ export default function CaseEditModal({
 
       if (casoRes.success && casoRes.data) {
         const caso = casoRes.data;
+        const fechaInicioValue = caso.fecha_caso_inicio ? new Date(caso.fecha_caso_inicio).toISOString().split('T')[0] : "";
+        const fechaFinalValue = caso.fecha_caso_final ? new Date(caso.fecha_caso_final).toISOString().split('T')[0] : null;
+        
         setCedulaSolicitante(caso.cedula_solicitante || "");
         setIdTramite(caso.id_tramite?.toString() || "");
         setIdNucleo(caso.id_nucleo?.toString() || "");
         setSintesis(caso.sintesis_caso || "");
-        setFechaInicio(caso.fecha_caso_inicio || "");
-        setFechaFinal(caso.fecha_caso_final || null);
+        setFechaInicio(fechaInicioValue);
+        setFechaFinal(fechaFinalValue);
         setStatus(mapEstatusToFrontend(casoRes.data.estatus_actual || "EN_PROCESO"));
 
         // Jerarquía legal
+        let hierarchy = null;
         if (caso.id_materia && caso.num_categoria && caso.num_subcategoria && caso.num_ambito_legal) {
-          setLegalHierarchy({
+          hierarchy = {
             id_materia: caso.id_materia,
             num_categoria: caso.num_categoria,
             num_subcategoria: caso.num_subcategoria,
             num_ambito_legal: caso.num_ambito_legal,
-          });
+          };
+          setLegalHierarchy(hierarchy);
         }
+
+        // Guardar valores originales para comparación
+        setOriginalValues({
+          cedulaSolicitante: caso.cedula_solicitante || "",
+          legalHierarchy: hierarchy,
+          idTramite: caso.id_tramite?.toString() || "",
+          idNucleo: caso.id_nucleo?.toString() || "",
+          sintesis: caso.sintesis_caso || "",
+          fechaInicio: fechaInicioValue,
+          fechaFinal: fechaFinalValue,
+          status: mapEstatusToFrontend(casoRes.data.estatus_actual || "EN_PROCESO"),
+          beneficiarios: [],
+        });
 
         // Asignaciones
         let termToLoad: string | undefined;
@@ -389,18 +429,22 @@ export default function CaseEditModal({
       }
 
       if (beneficiariosRes.success && beneficiariosRes.data) {
-        setBeneficiarios(
-          beneficiariosRes.data.map((b: any) => ({
-            cedula_beneficiario: b.cedula_beneficiario || "",
-            cedula_es_propia: b.cedula_es_propia || false,
-            nombres: b.nombres || "",
-            apellidos: b.apellidos || "",
-            sexo: (b.sexo as "M" | "F") || "",
-            fecha_nacimiento: b.fecha_nacimiento || "",
-            tipo_beneficiario: (b.tipo_beneficiario as "Directo" | "Indirecto") || "",
-            parentesco: b.parentesco || "",
-          }))
-        );
+        const beneficiariosData = beneficiariosRes.data.map((b: any) => ({
+          cedula_beneficiario: b.cedula_beneficiario || "",
+          cedula_es_propia: b.cedula_es_propia || false,
+          nombres: b.nombres || "",
+          apellidos: b.apellidos || "",
+          sexo: (b.sexo as "M" | "F") || "",
+          fecha_nacimiento: b.fecha_nacimiento ? new Date(b.fecha_nacimiento).toISOString().split('T')[0] : "",
+          tipo_beneficiario: (b.tipo_beneficiario as "Directo" | "Indirecto") || "",
+          parentesco: b.parentesco || "",
+        }));
+        setBeneficiarios(beneficiariosData);
+        
+        // Actualizar valores originales
+        if (originalValues) {
+          setOriginalValues({ ...originalValues, beneficiarios: beneficiariosData });
+        }
       }
 
       if (soportesRes.success && soportesRes.data) {
@@ -411,10 +455,9 @@ export default function CaseEditModal({
         setCaseHistory(semestresCasoRes.data);
       }
 
-      // Historial de Semestres (Result[4] si agregamos uno más a Promise.all)
-      // Nota: Promise.all devuelve array en orden. Agregué getSemestresCaso al final.
-      // Ajustemos el destructuring arriba o accedamos por índice.
-      // Mejor ajustar destructuring en loadCaseData
+      // Resetear cambios después de cargar
+      setHasChanges(false);
+      setPendingStudents([]);
     } catch (error) {
       console.error("Error loading case data:", error);
       setSubmitError("Error al cargar los datos del caso");
@@ -454,6 +497,55 @@ export default function CaseEditModal({
     }
   };
 
+  // Función para verificar si hay cambios
+  const checkForChanges = () => {
+    if (!originalValues) return false;
+    
+    // Comparar valores básicos
+    if (cedulaSolicitante !== originalValues.cedulaSolicitante) return true;
+    if (idTramite !== originalValues.idTramite) return true;
+    if (idNucleo !== originalValues.idNucleo) return true;
+    if (sintesis !== originalValues.sintesis) return true;
+    if (fechaInicio !== originalValues.fechaInicio) return true;
+    if (fechaFinal !== originalValues.fechaFinal) return true;
+    if (status !== originalValues.status) return true;
+    
+    // Comparar jerarquía legal
+    if (legalHierarchy && originalValues.legalHierarchy) {
+      if (legalHierarchy.id_materia !== originalValues.legalHierarchy.id_materia ||
+          legalHierarchy.num_categoria !== originalValues.legalHierarchy.num_categoria ||
+          legalHierarchy.num_subcategoria !== originalValues.legalHierarchy.num_subcategoria ||
+          legalHierarchy.num_ambito_legal !== originalValues.legalHierarchy.num_ambito_legal) {
+        return true;
+      }
+    } else if (legalHierarchy !== originalValues.legalHierarchy) {
+      return true;
+    }
+    
+    // Comparar beneficiarios
+    if (beneficiarios.length !== originalValues.beneficiarios.length) return true;
+    for (let i = 0; i < beneficiarios.length; i++) {
+      const ben = beneficiarios[i];
+      const origBen = originalValues.beneficiarios[i];
+      if (!origBen || JSON.stringify(ben) !== JSON.stringify(origBen)) {
+        return true;
+      }
+    }
+    
+    // Verificar si hay alumnos pendientes o soportes nuevos
+    if (pendingStudents.length > 0) return true;
+    if (soportes.length > 0) return true;
+    
+    return false;
+  };
+
+  // Efecto para verificar cambios
+  useEffect(() => {
+    if (originalValues) {
+      setHasChanges(checkForChanges());
+    }
+  }, [cedulaSolicitante, legalHierarchy, idTramite, idNucleo, sintesis, fechaInicio, fechaFinal, status, beneficiarios, pendingStudents, soportes, originalValues]);
+
   const handleBeneficiarioChange = (
     index: number,
     field: keyof BeneficiarioForm,
@@ -462,7 +554,6 @@ export default function CaseEditModal({
     const updated = [...beneficiarios];
     updated[index] = { ...updated[index], [field]: value };
     setBeneficiarios(updated);
-    setHasChanges(true);
   };
 
   const handleAddBeneficiario = () => {
@@ -479,12 +570,10 @@ export default function CaseEditModal({
         parentesco: "",
       },
     ]);
-    setHasChanges(true);
   };
 
   const handleRemoveBeneficiario = (index: number) => {
     setBeneficiarios(beneficiarios.filter((_, i) => i !== index));
-    setHasChanges(true);
   };
 
   const handleSoporteChange = (
@@ -495,7 +584,6 @@ export default function CaseEditModal({
     const updated = [...soportes];
     updated[index] = { ...updated[index], [field]: value };
     setSoportes(updated);
-    setHasChanges(true);
   };
 
   const handleAddSoporte = () => {
@@ -507,12 +595,46 @@ export default function CaseEditModal({
         observacion: "",
       },
     ]);
-    setHasChanges(true);
   };
 
   const handleRemoveSoporte = (index: number) => {
     setSoportes(soportes.filter((_, i) => i !== index));
-    setHasChanges(true);
+  };
+
+  // Agregar alumno pendiente (sin guardar aún)
+  const handleAddPendingStudent = () => {
+    if (!cedulaAlumno || !termAlumno) return;
+    
+    const alumno = alumnos.find((a) => a.value === cedulaAlumno);
+    if (!alumno) return;
+    
+    // Verificar si ya está en la lista
+    const alreadyExists = currentStudents.some(s => s.cedula_alumno === cedulaAlumno && s.term === termAlumno) ||
+                         pendingStudents.some(s => s.cedula_alumno === cedulaAlumno && s.term === termAlumno);
+    
+    if (alreadyExists) {
+      setSubmitError("Este alumno ya está asignado o está pendiente de agregar");
+      return;
+    }
+    
+    setPendingStudents([
+      ...pendingStudents,
+      {
+        cedula_alumno: cedulaAlumno,
+        term: termAlumno,
+        nombre_completo: alumno.label,
+      },
+    ]);
+    
+    // Limpiar selección
+    setCedulaAlumno("");
+    setTermAlumno("");
+    setSubmitError(null);
+  };
+
+  // Remover alumno pendiente
+  const handleRemovePendingStudent = (index: number) => {
+    setPendingStudents(pendingStudents.filter((_, i) => i !== index));
   };
 
   const handleRemoveStudent = async (idAsignacion: number) => {
@@ -589,16 +711,20 @@ export default function CaseEditModal({
         }
       }
 
-      // 3. Asignar alumno/profesor si cambió
-      // Si hay un semestre seleccionado, DEBEMOS usar ese para la asignación.
-      // Si no, usamos el del alumno (caso legacy o sin contexto de semestre).
-      // CRITICAL FIX: Si selectedTerm está set, ignorar termAlumno porque el usuario quiere asignar EN ESE semestre.
+      // 3. Asignar alumnos pendientes
+      for (const student of pendingStudents) {
+        const termToAssign = selectedTerm || student.term;
+        const res = await asignarAlumno(nroCaso, student.cedula_alumno, termToAssign);
+        if (!res.success) throw new Error(res.error);
+        if (res.message) console.warn(res.message);
+      }
+      
+      // 3b. Asignar alumno/profesor si cambió (legacy, para compatibilidad)
       const termToAssign = selectedTerm || termAlumno;
-
-      if (cedulaAlumno && termToAssign) {
+      if (cedulaAlumno && termToAssign && !pendingStudents.some(s => s.cedula_alumno === cedulaAlumno)) {
         const res = await asignarAlumno(nroCaso, cedulaAlumno, termToAssign);
         if (!res.success) throw new Error(res.error);
-        if (res.message) console.warn(res.message); // Log warning if already assigned
+        if (res.message) console.warn(res.message);
       }
       if (cedulaProfesor && selectedTerm) {
         const res = await asignarProfesor(nroCaso, cedulaProfesor, selectedTerm);
@@ -638,6 +764,9 @@ export default function CaseEditModal({
         assignedProfesorTerm: termProfesor || undefined,
       });
 
+      // Limpiar estado
+      setPendingStudents([]);
+      setHasChanges(false);
       onClose();
     } catch (error: any) {
       console.error("Error saving case:", error);
@@ -700,7 +829,6 @@ export default function CaseEditModal({
                 value={cedulaSolicitante}
                 onChange={(value) => {
                   setCedulaSolicitante(value);
-                  setHasChanges(true);
                 }}
                 options={solicitantes}
               />
@@ -715,7 +843,6 @@ export default function CaseEditModal({
                 value={legalHierarchy || undefined}
                 onChange={(value) => {
                   setLegalHierarchy(value || null);
-                  setHasChanges(true);
                 }}
               />
             </div>
@@ -726,30 +853,28 @@ export default function CaseEditModal({
                 <Label htmlFor="tramite" className="text-sky-950 font-semibold text-lg">
                   Trámite
                 </Label>
-                <FilterSelect
-                  placeholder="Seleccionar trámite"
-                  value={idTramite}
-                  onChange={(value) => {
-                    setIdTramite(value);
-                    setHasChanges(true);
-                  }}
-                  options={tramites}
-                />
+                  <FilterSelect
+                    placeholder="Seleccionar trámite"
+                    value={idTramite}
+                    onChange={(value) => {
+                      setIdTramite(value);
+                    }}
+                    options={tramites}
+                  />
               </div>
 
               <div className="space-y-2">
                 <Label htmlFor="nucleo" className="text-sky-950 font-semibold text-lg">
                   Núcleo
                 </Label>
-                <FilterSelect
-                  placeholder="Seleccionar núcleo"
-                  value={idNucleo}
-                  onChange={(value) => {
-                    setIdNucleo(value);
-                    setHasChanges(true);
-                  }}
-                  options={nucleos}
-                />
+                  <FilterSelect
+                    placeholder="Seleccionar núcleo"
+                    value={idNucleo}
+                    onChange={(value) => {
+                      setIdNucleo(value);
+                    }}
+                    options={nucleos}
+                  />
               </div>
             </div>
 
@@ -763,7 +888,6 @@ export default function CaseEditModal({
                 value={sintesis}
                 onChange={(e) => {
                   setSintesis(e.target.value);
-                  setHasChanges(true);
                 }}
                 placeholder="Descripción breve del caso..."
                 className="min-h-[100px]"
@@ -781,7 +905,6 @@ export default function CaseEditModal({
                   value={fechaInicio}
                   onChange={(e) => {
                     setFechaInicio(e.target.value);
-                    setHasChanges(true);
                   }}
                 />
               </div>
@@ -796,7 +919,6 @@ export default function CaseEditModal({
                   value={fechaFinal || ""}
                   onChange={(e) => {
                     setFechaFinal(e.target.value || null);
-                    setHasChanges(true);
                   }}
                 />
               </div>
@@ -834,7 +956,6 @@ export default function CaseEditModal({
                 value={status}
                 onChange={(value) => {
                   setStatus(value as typeof status);
-                  setHasChanges(true);
                 }}
                 options={
                   estatusList.length > 0
@@ -886,22 +1007,55 @@ export default function CaseEditModal({
                   )}
 
                   <Label className="text-sm font-semibold text-green-700">Asignar Nuevo Alumno</Label>
-                  <FilterSelect
-                    placeholder="Seleccionar alumno para agregar"
-                    value={cedulaAlumno}
-                    onChange={(value) => {
-                      const alumno = alumnos.find((a) => a.value === value);
-                      if (alumno) {
-                        setCedulaAlumno(value);
-                        setTermAlumno(alumno.term);
-                        setHasChanges(true);
-                      }
-                    }}
-                    options={alumnos.map((a) => ({
-                      value: a.value,
-                      label: a.label,
-                    }))}
-                  />
+                  <div className="flex gap-2">
+                    <FilterSelect
+                      placeholder="Seleccionar alumno para agregar"
+                      value={cedulaAlumno}
+                      onChange={(value) => {
+                        const alumno = alumnos.find((a) => a.value === value);
+                        if (alumno) {
+                          setCedulaAlumno(value);
+                          setTermAlumno(alumno.term);
+                        }
+                      }}
+                      options={alumnos.map((a) => ({
+                        value: a.value,
+                        label: a.label,
+                      }))}
+                    />
+                    <button
+                      type="button"
+                      onClick={handleAddPendingStudent}
+                      disabled={!cedulaAlumno || !termAlumno}
+                      className="px-4 py-2 bg-green-600 hover:bg-green-700 disabled:bg-gray-300 disabled:cursor-not-allowed text-white rounded-lg font-semibold transition-colors flex items-center gap-2"
+                    >
+                      <span className="icon-[mdi--plus] text-xl"></span>
+                      Agregar
+                    </button>
+                  </div>
+                  
+                  {/* Alumnos pendientes de agregar */}
+                  {pendingStudents.length > 0 && (
+                    <div className="space-y-2 mt-2">
+                      <Label className="text-sm font-semibold text-orange-700">Alumnos Pendientes de Agregar</Label>
+                      {pendingStudents.map((student, index) => (
+                        <div key={index} className="flex justify-between items-center bg-orange-50/50 p-2 rounded-lg border border-orange-100">
+                          <div className="flex flex-col">
+                            <span className="text-sm font-medium text-orange-900">{student.nombre_completo}</span>
+                            <span className="text-xs text-orange-700/70">C.I: {student.cedula_alumno} | Term: {student.term}</span>
+                          </div>
+                          <button
+                            type="button"
+                            onClick={() => handleRemovePendingStudent(index)}
+                            className="p-1 hover:bg-red-50 text-red-500 rounded-full transition-colors"
+                            title="Eliminar de la lista"
+                          >
+                            <span className="icon-[mdi--close] text-lg"></span>
+                          </button>
+                        </div>
+                      ))}
+                    </div>
+                  )}
                 </div>
 
                 <div className="space-y-2">
@@ -914,7 +1068,6 @@ export default function CaseEditModal({
                       if (profesor) {
                         setCedulaProfesor(value);
                         setTermProfesor(profesor.term);
-                        setHasChanges(true);
                       }
                     }}
                     options={profesores.map((p) => ({
@@ -1128,7 +1281,7 @@ export default function CaseEditModal({
                 >
                   <div className="flex justify-between items-center">
                     <h4 className="font-semibold text-sky-950">
-                      Nuevo Soporte Legal {index + 1}
+                      Nuevo Soporte Legal {soportesExistentes.length + index + 1}
                     </h4>
                     <button
                       type="button"

@@ -41,11 +41,13 @@ export interface CreateCasoData {
     num_ambito_legal: number;
     sintesis_caso?: string;
     fecha_caso_inicio?: string;
+    term: string; // Semestre obligatorio
+    id_estatus: number; // Estatus obligatorio
     beneficiarios: BeneficiarioData[];
     asignacion?: {
         cedula_alumno?: string;
+        cedulas_alumnos?: string[]; // Para múltiples alumnos
         cedula_profesor?: string;
-        term: string;
     };
     soportes?: SoporteLegalData[];
 }
@@ -295,54 +297,41 @@ export async function createCaso(data: CreateCasoData) {
             ]);
         }
 
-        // 3. Asignar estatus inicial (En proceso)
-        const estatusResult = await query(`
-      SELECT id_estatus FROM Estatus WHERE nombre_estatus = 'En proceso' LIMIT 1
-    `);
+        // 3. Asignar estatus inicial y vincular con semestre
+        const session = await getSession();
+        await query(`
+            INSERT INTO Se_Le_Adjudican (id_caso, id_estatus, cedula_usuario, motivo)
+            VALUES ($1, $2, $3, $4)
+        `, [nroCaso, data.id_estatus, session?.cedula || null, 'Caso creado']);
 
-        if (estatusResult.rows.length > 0) {
-            const session = await getSession();
-            await query(`
-        INSERT INTO Se_Le_Adjudican (id_caso, id_estatus, cedula_usuario, motivo)
-        VALUES ($1, $2, $3, $4)
-      `, [nroCaso, estatusResult.rows[0].id_estatus, session?.cedula || null, 'Caso creado']);
+        // Vincular caso con semestre y estatus
+        await query(`
+            INSERT INTO Casos_Semestres (nro_caso, term, id_estatus, cedula_usuario)
+            VALUES ($1, $2, $3, $4)
+            ON CONFLICT (nro_caso, term) DO UPDATE SET 
+                id_estatus = EXCLUDED.id_estatus,
+                cedula_usuario = EXCLUDED.cedula_usuario,
+                fecha_registro = CURRENT_TIMESTAMP
+        `, [nroCaso, data.term, data.id_estatus, session?.cedula || null]);
 
-            // NUEVO: Vincular automáticamente con el semestre actual (o el indicado en asignación)
-            if (data.asignacion?.term) {
-                await query(`
-                    INSERT INTO Casos_Semestres (nro_caso, term, id_estatus, cedula_usuario)
-                    VALUES ($1, $2, $3, $4)
-                    ON CONFLICT DO NOTHING
-                `, [nroCaso, data.asignacion.term, estatusResult.rows[0].id_estatus, session?.cedula || null]);
-            } else {
-                // Intentar buscar semestre activo
-                const termResult = await query(
-                    'SELECT term FROM Semestres WHERE CURRENT_DATE BETWEEN fecha_inicio AND fecha_final ORDER BY fecha_inicio DESC LIMIT 1'
-                );
-                if (termResult.rows.length > 0) {
-                    await query(`
-                        INSERT INTO Casos_Semestres (nro_caso, term, id_estatus, cedula_usuario)
-                        VALUES ($1, $2, $3, $4)
-                        ON CONFLICT DO NOTHING
-                    `, [nroCaso, termResult.rows[0].term, estatusResult.rows[0].id_estatus, session?.cedula || null]);
-                }
-            }
-        }
-
-        // 4. Asignar alumno/profesor si se proporcionó
+        // 4. Asignar alumno/profesor si se proporcionó (usando el term del caso)
         if (data.asignacion) {
-            if (data.asignacion.cedula_alumno) {
+            // Asignar múltiples alumnos si se proporcionaron
+            const alumnosParaAsignar = data.asignacion.cedulas_alumnos || 
+                                      (data.asignacion.cedula_alumno ? [data.asignacion.cedula_alumno] : []);
+            
+            for (const cedulaAlumno of alumnosParaAsignar) {
                 await query(`
           INSERT INTO Se_Asignan (id_caso, cedula_alumno, term, estatus)
           VALUES ($1, $2, $3, 'Activo')
-        `, [nroCaso, data.asignacion.cedula_alumno, data.asignacion.term]);
+        `, [nroCaso, cedulaAlumno, data.term]);
             }
 
             if (data.asignacion.cedula_profesor) {
                 await query(`
           INSERT INTO Supervisan (id_caso, cedula_profesor, term, estatus)
           VALUES ($1, $2, $3, 'Activo')
-        `, [nroCaso, data.asignacion.cedula_profesor, data.asignacion.term]);
+        `, [nroCaso, data.asignacion.cedula_profesor, data.term]);
 
                 // Notificar al profesor
                 try {
@@ -356,16 +345,16 @@ export async function createCaso(data: CreateCasoData) {
                 }
             }
 
-            // Notificar al alumno si fue asignado
-            if (data.asignacion.cedula_alumno) {
+            // Notificar a todos los alumnos asignados
+            if (alumnosParaAsignar.length > 0) {
                 try {
                     await createNotificacion({
                         descripcion: `Se le ha asignado el caso #${nroCaso}.`,
                         fecha_notificacion: new Date(),
-                        usuarios: [data.asignacion.cedula_alumno]
+                        usuarios: alumnosParaAsignar
                     });
                 } catch (notifError) {
-                    console.error('Error enviando notificación de creación (alumno):', notifError);
+                    console.error('Error enviando notificación de creación (alumnos):', notifError);
                 }
             }
         }
