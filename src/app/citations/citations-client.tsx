@@ -17,7 +17,9 @@ import { Label } from "@/components/shadcn/label";
 import { Textarea } from "@/components/shadcn/textarea";
 import { cn } from "@/lib/utils";
 import { getCitas, createCita, updateCita, deleteCita, getUpcomingCitas, getCitaById, getUsuariosAsignadosACita } from "@/actions/citas";
-import { getCasos, getAlumnosDisponibles, getProfesoresDisponibles } from "@/actions/casos";
+import { getCasos, getAlumnosDisponibles, getProfesoresDisponibles, getCasosBySemestre, getAlumnosAsignadosCaso, getSemestresCaso } from "@/actions/casos";
+import { getSemestres } from "@/actions/administracion";
+import FilterSelect from "@/components/ui/filter-select";
 import DeleteConfirmationModal from "@/components/ui/delete-confirmation-modal";
 
 // --- Types & Interfaces ---
@@ -290,6 +292,7 @@ interface AppointmentModalProps {
 
 function AppointmentModal({ open, onClose, onSave, editingAppointment, onUpdate }: AppointmentModalProps) {
     const [caseId, setCaseId] = useState("");
+    const [term, setTerm] = useState("");
     const [date, setDate] = useState("");
     const [time, setTime] = useState("");
     const [observacion, setObservacion] = useState("");
@@ -297,6 +300,7 @@ function AppointmentModal({ open, onClose, onSave, editingAppointment, onUpdate 
     const [usuariosAsignados, setUsuariosAsignados] = useState<string[]>([]);
     const [availableCases, setAvailableCases] = useState<{ value: string; label: string }[]>([]);
     const [availableUsers, setAvailableUsers] = useState<{ value: string; label: string }[]>([]);
+    const [semestres, setSemestres] = useState<{ value: string; label: string }[]>([]);
     const [loading, setLoading] = useState(false);
     const [error, setError] = useState<string | null>(null);
 
@@ -319,9 +323,10 @@ function AppointmentModal({ open, onClose, onSave, editingAppointment, onUpdate 
                 setError(null);
                 try {
                     if (editingAppointment.id_cita && editingAppointment.nro_caso) {
-                        const [citaRes, usuariosRes] = await Promise.all([
+                        const [citaRes, usuariosRes, semestresRes] = await Promise.all([
                             getCitaById(editingAppointment.id_cita, editingAppointment.nro_caso),
-                            getUsuariosAsignadosACita(editingAppointment.id_cita, editingAppointment.nro_caso)
+                            getUsuariosAsignadosACita(editingAppointment.id_cita, editingAppointment.nro_caso),
+                            getSemestresCaso(editingAppointment.nro_caso)
                         ]);
 
                         if (citaRes.success && citaRes.data) {
@@ -334,6 +339,12 @@ function AppointmentModal({ open, onClose, onSave, editingAppointment, onUpdate 
                             if (cita.fecha_proxima_cita) {
                                 const fechaProx = new Date(cita.fecha_proxima_cita);
                                 setFechaProximaCita(fechaProx.toISOString().slice(0, 16));
+                            }
+
+                            // Obtener el semestre más reciente del caso
+                            if (semestresRes.success && semestresRes.data && semestresRes.data.length > 0) {
+                                const semestreMasReciente = semestresRes.data[0].term;
+                                setTerm(semestreMasReciente);
                             }
 
                             if (usuariosRes.success && usuariosRes.data) {
@@ -351,81 +362,119 @@ function AppointmentModal({ open, onClose, onSave, editingAppointment, onUpdate 
         } else if (open && !editingAppointment) {
             // Reset form for new appointment
             setCaseId("");
+            setTerm("");
             setDate("");
             setTime("");
             setObservacion("");
             setFechaProximaCita("");
             setUsuariosAsignados([]);
+            setAvailableUsers([]);
         }
     }, [open, editingAppointment]);
 
-    // Cargar casos y usuarios disponibles
+    // Cargar semestres al abrir el modal
     useEffect(() => {
         if (open) {
-            const loadData = async () => {
+            const loadSemestres = async () => {
+                try {
+                    const semestresRes = await getSemestres();
+                    if (semestresRes.success && semestresRes.data) {
+                        const semestresOptions = semestresRes.data.map((s: any) => ({
+                            value: s.term,
+                            label: s.term
+                        }));
+                        setSemestres(semestresOptions);
+                        
+                        // Establecer el semestre más reciente por defecto
+                        if (semestresRes.data.length > 0) {
+                            const latest = semestresRes.data.sort(
+                                (a: any, b: any) => b.term.localeCompare(a.term)
+                            )[0];
+                            setTerm(latest.term);
+                        }
+                    }
+                } catch (err: any) {
+                    console.error('Error al cargar semestres:', err);
+                }
+            };
+            loadSemestres();
+        }
+    }, [open]);
+
+    // Cargar casos cuando cambia el semestre
+    useEffect(() => {
+        if (open && term) {
+            const loadCases = async () => {
                 setLoading(true);
                 setError(null);
                 try {
-                    const [casosRes, alumnosRes, profesoresRes] = await Promise.all([
-                        getCasos(),
-                        getAlumnosDisponibles(),
-                        getProfesoresDisponibles()
-                    ]);
-
+                    const casosRes = await getCasosBySemestre(term);
+                    
                     if (casosRes.success && casosRes.data) {
                         const casosOptions = casosRes.data.map((caso: any) => ({
                             value: caso.nro_caso.toString(),
                             label: `Caso #${caso.nro_caso} - ${caso.solicitante_nombre || 'Sin solicitante'}`
                         }));
                         setAvailableCases(casosOptions);
+                    } else {
+                        setAvailableCases([]);
                     }
-
-                    if (alumnosRes.success && profesoresRes.success) {
-                        // Usar un Map para evitar duplicados por cédula
-                        const usuariosMap = new Map<string, { value: string; label: string }>();
-
-                        // Agregar alumnos primero, verificando que data exista
-                        alumnosRes.data?.forEach((u: any) => {
-                            if (!usuariosMap.has(u.cedula_usuario)) {
-                                usuariosMap.set(u.cedula_usuario, {
-                                    value: u.cedula_usuario,
-                                    label: `${u.nombre_completo} (Estudiante)`
-                                });
-                            }
-                        });
-
-                        // Agregar profesores (si no están ya como estudiantes, o actualizar el label)
-                        profesoresRes.data?.forEach((u: any) => {
-                            if (usuariosMap.has(u.cedula_usuario)) {
-                                // Si ya existe, actualizar el label para indicar ambos roles
-                                const existing = usuariosMap.get(u.cedula_usuario)!;
-                                if (!existing.label.includes('Profesor')) {
-                                    existing.label = `${u.nombre_completo} (Estudiante/Profesor)`;
-                                }
-                            } else {
-                                usuariosMap.set(u.cedula_usuario, {
-                                    value: u.cedula_usuario,
-                                    label: `${u.nombre_completo} (Profesor)`
-                                });
-                            }
-                        });
-
-                        setAvailableUsers(Array.from(usuariosMap.values()));
+                    
+                    // Limpiar caso seleccionado si no está en la nueva lista
+                    if (caseId) {
+                        const casoExiste = casosRes.data?.some((c: any) => c.nro_caso.toString() === caseId);
+                        if (!casoExiste) {
+                            setCaseId("");
+                            setAvailableUsers([]);
+                        }
                     }
                 } catch (err: any) {
-                    setError(err.message || 'Error al cargar datos');
+                    setError(err.message || 'Error al cargar casos');
+                    setAvailableCases([]);
                 } finally {
                     setLoading(false);
                 }
             };
-            loadData();
+            loadCases();
+        } else if (open && !term) {
+            setAvailableCases([]);
         }
-    }, [open]);
+    }, [open, term]);
+
+    // Cargar alumnos asignados al caso cuando se selecciona un caso y hay semestre
+    useEffect(() => {
+        if (open && caseId && term) {
+            const loadAlumnosAsignados = async () => {
+                setLoading(true);
+                try {
+                    const alumnosRes = await getAlumnosAsignadosCaso(parseInt(caseId), term);
+                    
+                    if (alumnosRes.success && alumnosRes.data) {
+                        const alumnosOptions = alumnosRes.data.map((a: any) => ({
+                            value: a.cedula_alumno,
+                            label: `${a.nombre_completo} (Estudiante)`
+                        }));
+                        setAvailableUsers(alumnosOptions);
+                    } else {
+                        setAvailableUsers([]);
+                    }
+                } catch (err: any) {
+                    console.error('Error al cargar alumnos asignados:', err);
+                    setAvailableUsers([]);
+                } finally {
+                    setLoading(false);
+                }
+            };
+            loadAlumnosAsignados();
+        } else if (open && (!caseId || !term)) {
+            setAvailableUsers([]);
+        }
+    }, [open, caseId, term]);
 
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
-        if (!caseId || !date || !time) {
-            setError('Por favor complete todos los campos obligatorios');
+        if (!term || !caseId || !date || !time) {
+            setError('Por favor complete todos los campos obligatorios (semestre, caso, fecha y hora)');
             return;
         }
 
@@ -540,15 +589,36 @@ function AppointmentModal({ open, onClose, onSave, editingAppointment, onUpdate 
 
                 <form onSubmit={handleSubmit} className="flex flex-col gap-4 p-6 bg-neutral-50/50">
                     <div className="space-y-2">
-                        <Label className="text-xs font-bold uppercase tracking-wider text-gray-500 ml-1">Caso Asociado</Label>
+                        <Label className="text-xs font-bold uppercase tracking-wider text-gray-500 ml-1">
+                            Semestre <span className="text-red-500">*</span>
+                        </Label>
+                        <FilterSelect
+                            placeholder="Seleccionar semestre..."
+                            value={term}
+                            onChange={setTerm}
+                            options={semestres}
+                            disabled={!!editingAppointment}
+                        />
+                        {!term && (
+                            <p className="text-xs text-red-500 mt-1">Debe seleccionar un semestre para buscar casos</p>
+                        )}
+                    </div>
+
+                    <div className="space-y-2">
+                        <Label className="text-xs font-bold uppercase tracking-wider text-gray-500 ml-1">
+                            Caso Asociado <span className="text-red-500">*</span>
+                        </Label>
                         <CustomSelect
                             value={caseId}
                             onChange={setCaseId}
                             options={availableCases}
-                            placeholder="Seleccionar caso..."
+                            placeholder={term ? "Seleccionar caso..." : "Primero seleccione un semestre"}
                             className="w-full"
-                            disabled={!!editingAppointment}
+                            disabled={!!editingAppointment || !term}
                         />
+                        {term && availableCases.length === 0 && !loading && (
+                            <p className="text-xs text-gray-500 mt-1">No hay casos disponibles para este semestre</p>
+                        )}
                     </div>
 
                     <div className="grid grid-cols-2 gap-4">
@@ -599,29 +669,42 @@ function AppointmentModal({ open, onClose, onSave, editingAppointment, onUpdate 
                     </div>
 
                     <div className="space-y-2">
-                        <Label className="text-xs font-bold uppercase tracking-wider text-gray-500 ml-1">Usuarios Asignados (Opcional)</Label>
-                        <div className="space-y-2 max-h-40 overflow-y-auto border border-gray-200 rounded-md p-2 bg-white">
-                            {availableUsers.map((user) => (
-                                <label key={user.value} className="flex items-center gap-2 cursor-pointer hover:bg-gray-50 p-2 rounded">
-                                    <input
-                                        type="checkbox"
-                                        checked={usuariosAsignados.includes(user.value)}
-                                        onChange={(e) => {
-                                            if (e.target.checked) {
-                                                setUsuariosAsignados([...usuariosAsignados, user.value]);
-                                            } else {
-                                                setUsuariosAsignados(usuariosAsignados.filter(u => u !== user.value));
-                                            }
-                                        }}
-                                        className="rounded"
-                                    />
-                                    <span className="text-sm text-sky-950">{user.label}</span>
-                                </label>
-                            ))}
-                            {availableUsers.length === 0 && (
-                                <p className="text-sm text-gray-500 text-center py-2">Cargando usuarios...</p>
-                            )}
-                        </div>
+                        <Label className="text-xs font-bold uppercase tracking-wider text-gray-500 ml-1">
+                            Alumnos para Atender la Cita (Opcional)
+                        </Label>
+                        {caseId && term ? (
+                            <div className="space-y-2 max-h-40 overflow-y-auto border border-gray-200 rounded-md p-2 bg-white">
+                                {availableUsers.length > 0 ? (
+                                    availableUsers.map((user) => (
+                                        <label key={user.value} className="flex items-center gap-2 cursor-pointer hover:bg-gray-50 p-2 rounded">
+                                            <input
+                                                type="checkbox"
+                                                checked={usuariosAsignados.includes(user.value)}
+                                                onChange={(e) => {
+                                                    if (e.target.checked) {
+                                                        setUsuariosAsignados([...usuariosAsignados, user.value]);
+                                                    } else {
+                                                        setUsuariosAsignados(usuariosAsignados.filter(u => u !== user.value));
+                                                    }
+                                                }}
+                                                className="rounded"
+                                            />
+                                            <span className="text-sm text-sky-950">{user.label}</span>
+                                        </label>
+                                    ))
+                                ) : (
+                                    <p className="text-sm text-gray-500 text-center py-2">
+                                        {loading ? "Cargando alumnos..." : "No hay alumnos asignados a este caso en el semestre seleccionado"}
+                                    </p>
+                                )}
+                            </div>
+                        ) : (
+                            <div className="border border-gray-200 rounded-md p-4 bg-gray-50">
+                                <p className="text-sm text-gray-500 text-center">
+                                    Seleccione un semestre y un caso para ver los alumnos asignados
+                                </p>
+                            </div>
+                        )}
                     </div>
 
                     {error && (

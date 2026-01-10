@@ -937,6 +937,87 @@ export async function getSemestresCaso(nroCaso: number) {
     }
 }
 
+/**
+ * Obtener casos filtrados por semestre
+ */
+export async function getCasosBySemestre(term?: string) {
+    try {
+        if (!term) {
+            return { success: false, error: 'El semestre es requerido' };
+        }
+        
+        const result = await query(`
+            SELECT 
+                c.*,
+                s.nombres || ' ' || s.apellidos as solicitante_nombre,
+                n.nombre as nombre_nucleo,
+                t.nombre as nombre_tramite,
+                m.nombre_materia,
+                cat.nombre_categoria,
+                sub.nombre_subcategoria,
+                amb.nombre_ambito_legal,
+                (
+                    SELECT e.nombre_estatus 
+                    FROM Casos_Semestres cs
+                    JOIN Estatus e ON cs.id_estatus = e.id_estatus
+                    JOIN Semestres sem ON cs.term = sem.term
+                    WHERE cs.nro_caso = c.nro_caso AND cs.term = $1
+                    ORDER BY sem.fecha_inicio DESC
+                    LIMIT 1
+                ) as estatus_actual
+            FROM Casos c
+            JOIN Solicitantes s ON c.cedula_solicitante = s.cedula_solicitante
+            JOIN Nucleos n ON c.id_nucleo = n.id_nucleo
+            JOIN Tramites t ON c.id_tramite = t.id_tramite
+            JOIN Materias m ON c.id_materia = m.id_materia
+            JOIN Categorias cat ON c.num_categoria = cat.num_categoria AND c.id_materia = cat.id_materia
+            JOIN Sub_Categorias sub ON c.num_subcategoria = sub.num_subcategoria 
+                AND c.num_categoria = sub.num_categoria AND c.id_materia = sub.id_materia
+            JOIN Ambitos_Legales amb ON c.num_ambito_legal = amb.num_ambito_legal 
+                AND c.num_subcategoria = amb.num_subcategoria 
+                AND c.num_categoria = amb.num_categoria 
+                AND c.id_materia = amb.id_materia
+            WHERE EXISTS (
+                SELECT 1 FROM Casos_Semestres cs
+                WHERE cs.nro_caso = c.nro_caso AND cs.term = $1
+            )
+            ORDER BY c.nro_caso DESC
+        `, [term]);
+        
+        return { success: true, data: result.rows };
+    } catch (error: any) {
+        console.error('Error al obtener casos por semestre:', error);
+        return { success: false, error: error.message || 'Error al obtener casos' };
+    }
+}
+
+/**
+ * Obtener alumnos asignados a un caso en un semestre específico
+ */
+export async function getAlumnosAsignadosCaso(nroCaso: number, term: string) {
+    try {
+        const result = await query(`
+            SELECT 
+                sa.cedula_alumno,
+                sa.term,
+                u.nombres || ' ' || u.apellidos as nombre_completo,
+                u.correo_electronico,
+                u.cedula_usuario
+            FROM Se_Asignan sa
+            JOIN Usuarios_Sistema u ON sa.cedula_alumno = u.cedula_usuario
+            WHERE sa.id_caso = $1 
+                AND sa.term = $2 
+                AND sa.estatus = 'Activo'
+            ORDER BY u.nombres, u.apellidos
+        `, [nroCaso, term]);
+        
+        return { success: true, data: result.rows };
+    } catch (error: any) {
+        console.error('Error al obtener alumnos asignados al caso:', error);
+        return { success: false, error: error.message };
+    }
+}
+
 // ============================================================================
 // CATÁLOGOS PARA JERARQUÍA LEGAL
 // ============================================================================
