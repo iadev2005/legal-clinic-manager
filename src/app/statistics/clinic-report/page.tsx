@@ -84,25 +84,25 @@ export default function CustomReportPage() {
     const civilFamiliaProt = getFilteredAndGroupedData(breakdown,
         i => i.nombre_materia?.toLowerCase() === 'civil' &&
             i.nombre_categoria?.toLowerCase().includes('familia') &&
-            i.nombre_subcategoria?.toLowerCase().includes('protección'),
+            i.nombre_subcategoria?.toLowerCase().includes('protecc'),
         'nombre_ambito_legal'
     );
 
     // 3. Civil - Personas, Bienes, Contratos
     // Assuming "Personas", "Bienes", "Contratos" are Categories or implied context
     const civilPersonas = getFilteredAndGroupedData(breakdown,
-        i => i.nombre_materia?.toLowerCase() === 'civil' && (i.nombre_subcategoria?.toLowerCase().includes('personas') || i.nombre_subcategoria?.toLowerCase().includes('personas')),
+        i => i.nombre_materia?.toLowerCase() === 'civil' && i.nombre_subcategoria?.toLowerCase().includes('personas'),
         'nombre_ambito_legal'
     );
     const civilPersonasBar = civilPersonas.map((p: any) => ({ category: p.name, value: p.value }));
 
     const civilBienes = getFilteredAndGroupedData(breakdown,
-        i => i.nombre_materia?.toLowerCase() === 'civil' && (i.nombre_subcategoria?.toLowerCase().includes('bienes') || i.nombre_subcategoria?.toLowerCase().includes('bienes')),
+        i => i.nombre_materia?.toLowerCase() === 'civil' && i.nombre_subcategoria?.toLowerCase().includes('bienes'),
         'nombre_ambito_legal'
     );
 
     const civilContrato = getFilteredAndGroupedData(breakdown,
-        i => i.nombre_materia?.toLowerCase() === 'civil' && (i.nombre_subcategoria?.toLowerCase().includes('contratos') || i.nombre_subcategoria?.toLowerCase().includes('contratos')),
+        i => i.nombre_materia?.toLowerCase() === 'civil' && i.nombre_subcategoria?.toLowerCase().includes('contratos'),
         'nombre_ambito_legal'
     );
 
@@ -122,7 +122,7 @@ export default function CustomReportPage() {
 
     // 'Otros' logic
     const otros = getFilteredAndGroupedData(breakdown,
-        i => i.nombre_materia?.toLowerCase() === 'otro' || i.nombre_materia?.toLowerCase().includes('lopnna'),
+        i => i.nombre_materia?.toLowerCase() === 'otro' || i.nombre_materia?.toLowerCase().includes('lopnna') || i.nombre_materia?.toLowerCase().includes('administracion'),
         'nombre_ambito_legal'
     );
     const otrosBar = otros.map((p: any) => ({ category: p.name, value: p.value }));
