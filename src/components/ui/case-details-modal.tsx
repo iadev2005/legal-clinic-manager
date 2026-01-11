@@ -318,18 +318,24 @@ export default function CaseDetailsModal({
                   <div className="grid grid-cols-2 gap-4">
                     <div>
                       <label className="text-sky-950/70 text-sm font-semibold">
-                        Alumno Asignado
+                        Alumnos Asignados
                       </label>
-                      <p className="text-sky-950 text-lg font-bold">
-                        {caseDetails.students && caseDetails.students.length > 0
-                          ? `${caseDetails.students[0].nombres} ${caseDetails.students[0].apellidos}`
-                          : "Sin asignar"}
-                      </p>
-                      {caseDetails.students && caseDetails.students.length > 0 && (
-                        <p className="text-sm text-sky-950/60">
-                          {caseDetails.students[0].correo_electronico}
-                        </p>
-                      )}
+                      <div className="space-y-2">
+                        {caseDetails.students && caseDetails.students.length > 0 ? (
+                          caseDetails.students.map((student: any, idx: number) => (
+                            <div key={idx}>
+                              <p className="text-sky-950 text-lg font-bold">
+                                {student.nombres} {student.apellidos}
+                              </p>
+                              <p className="text-sm text-sky-950/60">
+                                {student.correo_electronico}
+                              </p>
+                            </div>
+                          ))
+                        ) : (
+                          <p className="text-sky-950 text-lg font-bold">Sin asignar</p>
+                        )}
+                      </div>
                     </div>
                     <div>
                       <label className="text-sky-950/70 text-sm font-semibold">

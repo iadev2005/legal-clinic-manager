@@ -70,46 +70,60 @@ export default function CustomReportPage() {
 
     // 1. Civil - Sucesiones
     const civilSucesiones = getFilteredAndGroupedData(breakdown,
-        i => i.nombre_materia?.toLowerCase() === 'civil' && i.nombre_categoria?.toLowerCase().includes('sucesiones')
+        i => i.nombre_materia?.toLowerCase() === 'civil' && i.nombre_categoria?.toLowerCase().includes('sucesiones'),
+        'nombre_ambito_legal'
     );
 
     // 2. Civil - Familia
     const civilFamiliaOrd = getFilteredAndGroupedData(breakdown,
-        i => i.nombre_materia?.toLowerCase() === 'civil' && i.nombre_ambito_legal?.toLowerCase().includes('ordinario')
+        i => i.nombre_materia?.toLowerCase() === 'civil' &&
+            i.nombre_categoria?.toLowerCase().includes('familia') &&
+            i.nombre_subcategoria?.toLowerCase().includes('ordinario'),
+        'nombre_ambito_legal'
     );
     const civilFamiliaProt = getFilteredAndGroupedData(breakdown,
-        i => i.nombre_materia?.toLowerCase() === 'civil' && i.nombre_ambito_legal?.toLowerCase().includes('protección')
+        i => i.nombre_materia?.toLowerCase() === 'civil' &&
+            i.nombre_categoria?.toLowerCase().includes('familia') &&
+            i.nombre_subcategoria?.toLowerCase().includes('protección'),
+        'nombre_ambito_legal'
     );
 
     // 3. Civil - Personas, Bienes, Contratos
     // Assuming "Personas", "Bienes", "Contratos" are Categories or implied context
     const civilPersonas = getFilteredAndGroupedData(breakdown,
-        i => i.nombre_materia?.toLowerCase() === 'civil' && (i.nombre_categoria?.toLowerCase().includes('personas') || i.nombre_subcategoria?.toLowerCase().includes('personas'))
+        i => i.nombre_materia?.toLowerCase() === 'civil' && (i.nombre_categoria?.toLowerCase().includes('personas') || i.nombre_subcategoria?.toLowerCase().includes('personas')),
+        'nombre_ambito_legal'
     );
     const civilPersonasBar = civilPersonas.map((p: any) => ({ category: p.name, value: p.value }));
 
     const civilBienes = getFilteredAndGroupedData(breakdown,
-        i => i.nombre_materia?.toLowerCase() === 'civil' && (i.nombre_categoria?.toLowerCase().includes('bienes') || i.nombre_subcategoria?.toLowerCase().includes('bienes'))
+        i => i.nombre_materia?.toLowerCase() === 'civil' && (i.nombre_categoria?.toLowerCase().includes('bienes') || i.nombre_subcategoria?.toLowerCase().includes('bienes')),
+        'nombre_ambito_legal'
     );
 
     const civilContrato = getFilteredAndGroupedData(breakdown,
-        i => i.nombre_materia?.toLowerCase() === 'civil' && (i.nombre_categoria?.toLowerCase().includes('contratos') || i.nombre_subcategoria?.toLowerCase().includes('contratos'))
+        i => i.nombre_materia?.toLowerCase() === 'civil' && (i.nombre_categoria?.toLowerCase().includes('contratos') || i.nombre_subcategoria?.toLowerCase().includes('contratos')),
+        'nombre_ambito_legal'
     );
 
     // 4. Other Materias
     const penal = getFilteredAndGroupedData(breakdown,
-        i => i.nombre_materia?.toLowerCase().includes('penal') || i.nombre_materia?.toLowerCase().includes('violencia') // Penal often grouped with Violencia
+        i => i.nombre_materia?.toLowerCase().includes('penal') || i.nombre_materia?.toLowerCase().includes('violencia'), // Penal often grouped with Violencia
+        'nombre_ambito_legal'
     );
     const laboral = getFilteredAndGroupedData(breakdown,
-        i => i.nombre_materia?.toLowerCase().includes('laboral')
+        i => i.nombre_materia?.toLowerCase().includes('laboral'),
+        'nombre_ambito_legal'
     );
     const mercantil = getFilteredAndGroupedData(breakdown,
-        i => i.nombre_materia?.toLowerCase().includes('mercantil')
+        i => i.nombre_materia?.toLowerCase().includes('mercantil'),
+        'nombre_ambito_legal'
     );
 
     // 'Otros' logic
     const otros = getFilteredAndGroupedData(breakdown,
-        i => i.nombre_materia?.toLowerCase() === 'otro' || i.nombre_materia?.toLowerCase().includes('lopnna')
+        i => i.nombre_materia?.toLowerCase() === 'otro' || i.nombre_materia?.toLowerCase().includes('lopnna'),
+        'nombre_ambito_legal'
     );
     const otrosBar = otros.map((p: any) => ({ category: p.name, value: p.value }));
 
@@ -133,7 +147,7 @@ export default function CustomReportPage() {
 
                 <div className="w-full flex flex-col gap-8 mt-8 items-center">
                     {/* Page 1 */}
-                    <div id="custom-report-page-1" style={pageStyle} className="flex flex-col gap-8 shadow-md">
+                    <div id="clinic-report-page-1" style={pageStyle} className="flex flex-col gap-8 shadow-md">
                         <header className="text-center mb-6">
                             <h1 className="text-3xl font-bold text-sky-950">Reporte de Gestión - Página 1</h1>
                             <p className="text-gray-500">Materia Civil: Sucesiones y Familia</p>
@@ -173,7 +187,7 @@ export default function CustomReportPage() {
                     </div>
 
                     {/* Page 2 */}
-                    <div id="custom-report-page-2" style={pageStyle} className="flex flex-col gap-8 shadow-md">
+                    <div id="clinic-report-page-2" style={pageStyle} className="flex flex-col gap-8 shadow-md">
                         <header className="text-center mb-6">
                             <h1 className="text-3xl font-bold text-sky-950">Reporte de Gestión - Página 2</h1>
                             <p className="text-gray-500">Materia Civil: Personas, Bienes y Contratos</p>
@@ -200,7 +214,7 @@ export default function CustomReportPage() {
                     </div>
 
                     {/* Page 3 */}
-                    <div id="custom-report-page-3" style={pageStyle} className="flex flex-col gap-8 shadow-md">
+                    <div id="clinic-report-page-3" style={pageStyle} className="flex flex-col gap-8 shadow-md">
                         <header className="text-center mb-6">
                             <h1 className="text-3xl font-bold text-sky-950">Reporte de Gestión - Página 3</h1>
                             <p className="text-gray-500">Materias: Penal, Laboral y Mercantil</p>
@@ -216,7 +230,7 @@ export default function CustomReportPage() {
                     </div>
 
                     {/* Page 4 */}
-                    <div id="custom-report-page-4" style={pageStyle} className="flex flex-col gap-8 shadow-md">
+                    <div id="clinic-report-page-4" style={pageStyle} className="flex flex-col gap-8 shadow-md">
                         <header className="text-center mb-6">
                             <h1 className="text-3xl font-bold text-sky-950">Reporte de Gestión - Página 4</h1>
                             <p className="text-gray-500">Otros Casos y Resumen General</p>
@@ -235,7 +249,7 @@ export default function CustomReportPage() {
                     </div>
 
                     {/* Page 5 */}
-                    <div id="custom-report-page-5" style={pageStyle} className="flex flex-col gap-8 shadow-md">
+                    <div id="clinic-report-page-5" style={pageStyle} className="flex flex-col gap-8 shadow-md">
                         <header className="text-center mb-6">
                             <h1 className="text-3xl font-bold text-sky-950">Reporte de Gestión - Página 5</h1>
                             <p className="text-gray-500">Demografía: Género y Ubicación</p>
@@ -251,7 +265,7 @@ export default function CustomReportPage() {
                     </div>
 
                     {/* Page 6 */}
-                    <div id="custom-report-page-6" style={pageStyle} className="flex flex-col gap-8 shadow-md">
+                    <div id="clinic-report-page-6" style={pageStyle} className="flex flex-col gap-8 shadow-md">
                         <header className="text-center mb-6">
                             <h1 className="text-3xl font-bold text-sky-950">Reporte de Gestión - Página 6</h1>
                             <p className="text-gray-500">Distribución por Parroquia</p>

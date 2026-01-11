@@ -79,20 +79,25 @@ export default function LegalHierarchySelect({
 
     // Si hay un valor inicial, establecerlo y cargar datos dependientes
     useEffect(() => {
-        if (!value || materias.length === 0) {
-            // Si no hay valor o las materias no están cargadas, limpiar
-            if (!value) {
-                setSelectedMateria("");
-                setSelectedCategoria("");
-                setSelectedSubcategoria("");
-                setSelectedAmbito("");
-                setCategorias([]);
-                setSubcategorias([]);
-                setAmbitos([]);
-                lastProcessedValue.current = "";
-            }
+        // Solo proceder si las materias ya están cargadas
+        if (materias.length === 0) return;
+
+        if (!value) {
+            // Si explícitamente no hay valor, limpiar
+            setSelectedMateria("");
+            setSelectedCategoria("");
+            setSelectedSubcategoria("");
+            setSelectedAmbito("");
+            setCategorias([]);
+            setSubcategorias([]);
+            setAmbitos([]);
+            lastProcessedValue.current = "";
             return;
         }
+
+        // Si el valor está incompleto pero tenemos algo, no limpiar inmediatamente
+        // para evitar parpadeos mientras el padre (CaseEditModal) carga los datos.
+        if (value.id_materia == null) return;
 
         // Crear una clave única para este valor
         const valueKey = `${value.id_materia}-${value.num_categoria}-${value.num_subcategoria}-${value.num_ambito_legal}`;
@@ -103,52 +108,59 @@ export default function LegalHierarchySelect({
         }
 
         const loadInitialData = async () => {
-            // Establecer materia y cargar categorías
-            if (value.id_materia) {
-                setSelectedMateria(value.id_materia.toString());
-                setLoading(true);
-                const categoriasResult = await getCategoriasByMateria(value.id_materia);
-                if (categoriasResult.success && categoriasResult.data) {
-                    setCategorias(categoriasResult.data);
+            if (value.id_materia == null) return;
 
-                    // Establecer categoría y cargar subcategorías
-                    if (value.num_categoria) {
-                        setSelectedCategoria(value.num_categoria.toString());
-                        const subcategoriasResult = await getSubCategoriasByCategoria(
-                            value.num_categoria,
-                            value.id_materia
-                        );
-                        if (subcategoriasResult.success && subcategoriasResult.data) {
-                            setSubcategorias(subcategoriasResult.data);
+            // Marcar como procesado inmediatamente para evitar ejecuciones duplicadas
+            lastProcessedValue.current = valueKey;
+            setLoading(true);
 
-                            // Establecer subcategoría y cargar ámbitos
-                            if (value.num_subcategoria) {
-                                setSelectedSubcategoria(value.num_subcategoria.toString());
-                                const ambitosResult = await getAmbitosBySubCategoria(
-                                    value.num_subcategoria,
-                                    value.num_categoria,
-                                    value.id_materia
-                                );
-                                if (ambitosResult.success && ambitosResult.data) {
-                                    setAmbitos(ambitosResult.data);
+            try {
+                // Preparar promesas para carga paralela
+                const promises: Promise<any>[] = [getCategoriasByMateria(value.id_materia)];
 
-                                    // Establecer ámbito y notificar cambio completo
-                                    if (value.num_ambito_legal) {
-                                        setSelectedAmbito(value.num_ambito_legal.toString());
-                                        onChange({
-                                            id_materia: value.id_materia,
-                                            num_categoria: value.num_categoria,
-                                            num_subcategoria: value.num_subcategoria,
-                                            num_ambito_legal: value.num_ambito_legal,
-                                        });
-                                    }
-                                }
-                            }
-                        }
-                    }
+                if (value.num_categoria != null) {
+                    promises.push(getSubCategoriasByCategoria(value.num_categoria, value.id_materia));
                 }
+
+                if (value.num_subcategoria != null && value.num_categoria != null) {
+                    promises.push(getAmbitosBySubCategoria(value.num_subcategoria, value.num_categoria, value.id_materia));
+                }
+
+                // Ejecutar todas las cargas necesarias en paralelo
+                const results = await Promise.all(promises);
+
+                // Mapear resultados a estados
+                if (results[0].success && results[0].data) {
+                    setCategorias(results[0].data);
+                    setSelectedMateria(value.id_materia.toString());
+                }
+
+                if (value.num_categoria != null && results[1]?.success && results[1]?.data) {
+                    setSubcategorias(results[1].data);
+                    setSelectedCategoria(value.num_categoria.toString());
+                }
+
+                if (value.num_subcategoria != null && results[2]?.success && results[2]?.data) {
+                    setAmbitos(results[2].data);
+                    setSelectedSubcategoria(value.num_subcategoria.toString());
+                }
+
+                if (value.num_ambito_legal != null) {
+                    setSelectedAmbito(value.num_ambito_legal.toString());
+
+                    // Solo notificar si tenemos el valor completo y es diferente al que recibimos
+                    // (Aunque en la carga inicial usualmente es el mismo)
+                    onChange({
+                        id_materia: value.id_materia,
+                        num_categoria: value.num_categoria,
+                        num_subcategoria: value.num_subcategoria,
+                        num_ambito_legal: value.num_ambito_legal,
+                    });
+                }
+            } catch (error) {
+                console.error("Error in loadInitialData:", error);
+            } finally {
                 setLoading(false);
-                lastProcessedValue.current = valueKey;
             }
         };
 

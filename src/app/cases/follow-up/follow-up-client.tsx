@@ -440,9 +440,17 @@ export default function FollowUpClient() {
                                             </div>
                                         </div>
                                         <div>
-                                            <div className="text-sky-950/60 text-sm font-medium mb-1">Alumno Asignado:</div>
-                                            <div className="text-sky-950 font-bold">
-                                                {caseDetails?.students?.[0] ? `${caseDetails.students[0].nombres} ${caseDetails.students[0].apellidos}` : "Sin Asignar"}
+                                            <div className="text-sky-950/60 text-sm font-medium mb-1">Alumnos Asignados:</div>
+                                            <div className="space-y-1">
+                                                {caseDetails?.students && caseDetails.students.length > 0 ? (
+                                                    caseDetails.students.map((student: any, idx: number) => (
+                                                        <div key={idx} className="text-sky-950 font-bold">
+                                                            {student.nombres} {student.apellidos}
+                                                        </div>
+                                                    ))
+                                                ) : (
+                                                    <div className="text-sky-950 font-bold">Sin Asignar</div>
+                                                )}
                                             </div>
                                         </div>
                                         <div>

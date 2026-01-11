@@ -36,7 +36,7 @@ export function GeneralReportDialog() {
 
             const startStr = startDate.toISOString().split('T')[0]
             const endStr = endDate.toISOString().split('T')[0]
-            iframe.src = `/statistics/custom-report?startDate=${startStr}&endDate=${endStr}`
+            iframe.src = `/statistics/clinic-report?startDate=${startStr}&endDate=${endStr}`
 
             document.body.appendChild(iframe)
 
@@ -50,8 +50,8 @@ export function GeneralReportDialog() {
 
             // 3. Find 6 pages
             const pageIds = [
-                "custom-report-page-1", "custom-report-page-2", "custom-report-page-3",
-                "custom-report-page-4", "custom-report-page-5", "custom-report-page-6"
+                "clinic-report-page-1", "clinic-report-page-2", "clinic-report-page-3",
+                "clinic-report-page-4", "clinic-report-page-5", "clinic-report-page-6"
             ]
 
             let attempts = 0
@@ -138,7 +138,7 @@ export function GeneralReportDialog() {
                                     {startDate ? format(startDate, "PPP", { locale: es }) : "Seleccionar fecha"}
                                 </Button>
                             </PopoverTrigger>
-                            <PopoverContent className="w-auto p-0" align="start">
+                            <PopoverContent className="w-auto p-0 z-[110]" align="start">
                                 <Calendar
                                     mode="single"
                                     selected={startDate}
@@ -163,7 +163,7 @@ export function GeneralReportDialog() {
                                     {endDate ? format(endDate, "PPP", { locale: es }) : "Seleccionar fecha"}
                                 </Button>
                             </PopoverTrigger>
-                            <PopoverContent className="w-auto p-0" align="start">
+                            <PopoverContent className="w-auto p-0 z-[110]" align="start">
                                 <Calendar
                                     mode="single"
                                     selected={endDate}

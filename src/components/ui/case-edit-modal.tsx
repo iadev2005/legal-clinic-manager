@@ -352,7 +352,7 @@ export default function CaseEditModal({
         const caso = casoRes.data;
         const fechaInicioValue = caso.fecha_caso_inicio ? new Date(caso.fecha_caso_inicio).toISOString().split('T')[0] : "";
         const fechaFinalValue = caso.fecha_caso_final ? new Date(caso.fecha_caso_final).toISOString().split('T')[0] : null;
-        
+
         setCedulaSolicitante(caso.cedula_solicitante || "");
         setIdTramite(caso.id_tramite?.toString() || "");
         setIdNucleo(caso.id_nucleo?.toString() || "");
@@ -361,8 +361,8 @@ export default function CaseEditModal({
         setFechaFinal(fechaFinalValue);
         setStatus(mapEstatusToFrontend(casoRes.data.estatus_actual || "EN_PROCESO"));
 
-        // Jerarquía legal
-        if (caso.id_materia && caso.num_categoria && caso.num_subcategoria && caso.num_ambito_legal) {
+        // Jerarquía legal - Usar validación != null para permitir IDs que sean 0
+        if (caso.id_materia != null && caso.num_categoria != null && caso.num_subcategoria != null && caso.num_ambito_legal != null) {
           setLegalHierarchy({
             id_materia: caso.id_materia,
             num_categoria: caso.num_categoria,
@@ -521,19 +521,19 @@ export default function CaseEditModal({
   // Agregar alumno pendiente (sin guardar aún)
   const handleAddPendingStudent = () => {
     if (!cedulaAlumno || !termAlumno) return;
-    
+
     const alumno = alumnos.find((a) => a.value === cedulaAlumno);
     if (!alumno) return;
-    
+
     // Verificar si ya está en la lista
     const alreadyExists = currentStudents.some(s => s.cedula_alumno === cedulaAlumno && s.term === termAlumno) ||
-                         pendingStudents.some(s => s.cedula_alumno === cedulaAlumno && s.term === termAlumno);
-    
+      pendingStudents.some(s => s.cedula_alumno === cedulaAlumno && s.term === termAlumno);
+
     if (alreadyExists) {
       setSubmitError("Este alumno ya está asignado o está pendiente de agregar");
       return;
     }
-    
+
     setPendingStudents([
       ...pendingStudents,
       {
@@ -542,7 +542,7 @@ export default function CaseEditModal({
         nombre_completo: alumno.label,
       },
     ]);
-    
+
     // Limpiar selección
     setCedulaAlumno("");
     setTermAlumno("");
@@ -630,7 +630,7 @@ export default function CaseEditModal({
         if (!res.success) throw new Error(res.error);
         if (res.message) console.warn(res.message);
       }
-      
+
       // 3b. Asignar alumno/profesor si cambió (legacy, para compatibilidad)
       const termToAssign = selectedTerm || termAlumno;
       if (cedulaAlumno && termToAssign && !pendingStudents.some(s => s.cedula_alumno === cedulaAlumno)) {
@@ -771,28 +771,28 @@ export default function CaseEditModal({
                 <Label htmlFor="tramite" className="text-sky-950 font-semibold text-lg">
                   Trámite
                 </Label>
-                  <FilterSelect
-                    placeholder="Seleccionar trámite"
-                    value={idTramite}
-                    onChange={(value) => {
-                      setIdTramite(value);
-                    }}
-                    options={tramites}
-                  />
+                <FilterSelect
+                  placeholder="Seleccionar trámite"
+                  value={idTramite}
+                  onChange={(value) => {
+                    setIdTramite(value);
+                  }}
+                  options={tramites}
+                />
               </div>
 
               <div className="space-y-2">
                 <Label htmlFor="nucleo" className="text-sky-950 font-semibold text-lg">
                   Núcleo
                 </Label>
-                  <FilterSelect
-                    placeholder="Seleccionar núcleo"
-                    value={idNucleo}
-                    onChange={(value) => {
-                      setIdNucleo(value);
-                    }}
-                    options={nucleos}
-                  />
+                <FilterSelect
+                  placeholder="Seleccionar núcleo"
+                  value={idNucleo}
+                  onChange={(value) => {
+                    setIdNucleo(value);
+                  }}
+                  options={nucleos}
+                />
               </div>
             </div>
 
@@ -951,7 +951,7 @@ export default function CaseEditModal({
                       Agregar
                     </button>
                   </div>
-                  
+
                   {/* Alumnos pendientes de agregar */}
                   {pendingStudents.length > 0 && (
                     <div className="space-y-2 mt-2">

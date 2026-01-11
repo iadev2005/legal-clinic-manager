@@ -45,7 +45,7 @@ export default function ReportPage() {
     return (
         <div className="bg-white">
             {/* Page 1: Case Metrics */}
-            <div id="report-page-1" style={pageStyle} className="flex flex-col gap-10">
+            <div id="socioeconomic-report-page-1" style={pageStyle} className="flex flex-col gap-10">
                 <div className="grid grid-cols-1 md:grid-cols-2">
                     <div className="p-5 col-span-2">
                         <CaseGrowthChart
@@ -82,7 +82,7 @@ export default function ReportPage() {
             </div>
 
             {/* Page 2: Socio-Economic Part 1 */}
-            <div id="report-page-2" style={pageStyle} className="flex flex-col gap-10">
+            <div id="socioeconomic-report-page-2" style={pageStyle} className="flex flex-col gap-10">
                 <div className="grid grid-cols-1 md:grid-cols-2 ">
                     <Pie2Chart
                         data={data.socioEconomic.gender.map((g: any) => ({ name: g.name, value: g.value }))}
@@ -115,7 +115,7 @@ export default function ReportPage() {
             </div>
 
             {/* Page 3: Socio-Economic Part 2 */}
-            <div id="report-page-3" style={pageStyle} className="flex flex-col gap-10">
+            <div id="socioeconomic-report-page-3" style={pageStyle} className="flex flex-col gap-10">
                 <div className="grid grid-cols-1 md:grid-cols-2 ">
                     <Pie2Chart
                         data={data.socioEconomic.education.map((e: any) => ({ name: e.name, value: e.value }))}

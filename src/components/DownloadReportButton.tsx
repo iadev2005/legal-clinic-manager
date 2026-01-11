@@ -27,7 +27,7 @@ export function DownloadReportButton() {
 
             // Pass current search params to the report page
             const params = searchParams.toString()
-            iframe.src = `/statistics/report${params ? `?${params}` : ''}`
+            iframe.src = `/statistics/socioeconomic-report${params ? `?${params}` : ''}`
             document.body.appendChild(iframe)
 
             // 2. Wait for the iframe to load and data to fetch
@@ -45,7 +45,7 @@ export function DownloadReportButton() {
             let attempts = 0
             const maxAttempts = 20
             const pageIds = [
-                "report-page-1", "report-page-2", "report-page-3"
+                "socioeconomic-report-page-1", "socioeconomic-report-page-2", "socioeconomic-report-page-3"
             ];
             let pageElements: (HTMLElement | null)[] = [];
 
