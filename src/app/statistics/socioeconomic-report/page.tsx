@@ -18,7 +18,7 @@ export default function ReportPage() {
     const searchParams = useSearchParams();
 
     const filters = {
-        materia: searchParams.get('subject') || undefined,
+        materia: searchParams.get('materia') || searchParams.get('subject') || undefined,
         startDate: searchParams.get('startDate') || undefined,
         endDate: searchParams.get('endDate') || undefined,
         nucleus: searchParams.get('nucleus') || undefined,
@@ -34,16 +34,15 @@ export default function ReportPage() {
         margin: "0 auto",
     };
 
-    if (loading || !data) {
-        return (
-            <div className="bg-white flex items-center justify-center min-h-screen">
-                <div className="text-sky-950 text-2xl font-semibold">Cargando reporte...</div>
-            </div>
-        );
-    }
+    const isLoading = loading || !data;
 
     return (
         <div className="bg-white">
+            {isLoading && (
+                <div className="fixed inset-0 bg-white/80 flex items-center justify-center z-50">
+                    <div className="text-sky-950 text-2xl font-semibold">Cargando reporte...</div>
+                </div>
+            )}
             {/* Page 1: Case Metrics */}
             <div id="socioeconomic-report-page-1" style={pageStyle} className="flex flex-col gap-10">
                 <div className="grid grid-cols-1 md:grid-cols-2">

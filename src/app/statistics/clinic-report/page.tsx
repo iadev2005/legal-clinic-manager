@@ -62,9 +62,13 @@ export default function CustomReportPage() {
 
     if (loading) return <div>Cargando reporte personalizado...</div>;
     if (error) return <div>Error cargando datos: {error}</div>;
-    if (!data) return <div>No hay datos para mostrar.</div>;
+    if (!data && !loading) return <div>No hay datos para mostrar.</div>;
 
-    const breakdown = data.materiaDetails.detailedBreakdown;
+    const breakdown = data?.materiaDetails.detailedBreakdown || [];
+    const materiaByMateria = data?.materiaDetails.byMateria || [];
+
+    // ... (rest of data prep using data? or fallback)
+    // To keep it simple, we just ensure the return block handles null data
 
     // Data Preparation - Grouping by Subcategory for all Materia charts
 
@@ -139,6 +143,11 @@ export default function CustomReportPage() {
 
     return (
         <div className="w-full h-screen min-h-screen bg-neutral-50 inline-flex justify-start items-center overflow-hidden">
+            {loading && (
+                <div className="fixed inset-0 bg-white/80 flex items-center justify-center z-50">
+                    <div className="text-sky-950 text-2xl font-semibold">Cargando reporte...</div>
+                </div>
+            )}
             <div className="w-full h-full p-6 overflow-y-auto">
                 <div className="self-stretch flex flex-col justify-start items-start">
                     <h1 className="self-stretch justify-start text-sky-950 text-6xl font-semibold">Reporte General</h1>

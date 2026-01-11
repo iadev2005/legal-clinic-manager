@@ -43,7 +43,7 @@ export function DownloadReportButton() {
 
             // 3. Wait for loading to complete by checking for the presence of report pages (1 to 3)
             let attempts = 0
-            const maxAttempts = 20
+            const maxAttempts = 40 // Total 20 seconds polling + 5 seconds initial wait
             const pageIds = [
                 "socioeconomic-report-page-1", "socioeconomic-report-page-2", "socioeconomic-report-page-3"
             ];
@@ -53,8 +53,11 @@ export function DownloadReportButton() {
                 pageElements = pageIds.map(id => iframeDoc.getElementById(id));
 
                 if (pageElements.every(el => el)) {
-                    // Check content inside
-                    const hasContent = pageElements.every(el => el && el.children.length > 0);
+                    // Check if charts/content are rendered (children length > 0)
+                    const hasContent = pageElements.every(el => {
+                        // We check if there's any substantive content beyond just the container
+                        return el && el.innerHTML.length > 200; // Arbitrary length to ensure charts are rendered
+                    });
                     if (hasContent) break;
                 }
 
@@ -64,7 +67,7 @@ export function DownloadReportButton() {
 
             if (pageElements.some(el => !el)) {
                 document.body.removeChild(iframe)
-                throw new Error("No se encontraron todas las páginas del reporte.")
+                throw new Error("No se encontraron todas las páginas del reporte (Socio-Económico).")
             }
 
             // Options for high quality capture

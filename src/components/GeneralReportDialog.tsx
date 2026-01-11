@@ -55,14 +55,21 @@ export function GeneralReportDialog() {
             ]
 
             let attempts = 0
-            while (attempts < 20) {
+            const maxAttempts = 40
+            while (attempts < maxAttempts) {
                 const allFound = pageIds.every(id => {
                     const el = iframeDoc.getElementById(id)
-                    return el && el.children.length > 0
+                    return el && el.innerHTML.length > 200
                 })
                 if (allFound) break
                 await new Promise(r => setTimeout(r, 500))
                 attempts++
+            }
+
+            // Verify all pages are present before continuing
+            const capturedElements = pageIds.map(id => iframeDoc.getElementById(id));
+            if (capturedElements.some(el => !el)) {
+                throw new Error("Faltaron páginas por capturar en el reporte general.")
             }
 
             // 4. Capture images
