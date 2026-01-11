@@ -70,7 +70,7 @@ export default function CustomReportPage() {
 
     // 1. Civil - Sucesiones
     const civilSucesiones = getFilteredAndGroupedData(breakdown,
-        i => i.nombre_materia?.toLowerCase() === 'civil' && i.nombre_categoria?.toLowerCase().includes('sucesiones'),
+        i => i.nombre_materia?.toLowerCase() === 'civil' && i.nombre_subcategoria?.toLowerCase().includes('sucesiones'),
         'nombre_ambito_legal'
     );
 
@@ -91,18 +91,18 @@ export default function CustomReportPage() {
     // 3. Civil - Personas, Bienes, Contratos
     // Assuming "Personas", "Bienes", "Contratos" are Categories or implied context
     const civilPersonas = getFilteredAndGroupedData(breakdown,
-        i => i.nombre_materia?.toLowerCase() === 'civil' && (i.nombre_categoria?.toLowerCase().includes('personas') || i.nombre_subcategoria?.toLowerCase().includes('personas')),
+        i => i.nombre_materia?.toLowerCase() === 'civil' && (i.nombre_subcategoria?.toLowerCase().includes('personas') || i.nombre_subcategoria?.toLowerCase().includes('personas')),
         'nombre_ambito_legal'
     );
     const civilPersonasBar = civilPersonas.map((p: any) => ({ category: p.name, value: p.value }));
 
     const civilBienes = getFilteredAndGroupedData(breakdown,
-        i => i.nombre_materia?.toLowerCase() === 'civil' && (i.nombre_categoria?.toLowerCase().includes('bienes') || i.nombre_subcategoria?.toLowerCase().includes('bienes')),
+        i => i.nombre_materia?.toLowerCase() === 'civil' && (i.nombre_subcategoria?.toLowerCase().includes('bienes') || i.nombre_subcategoria?.toLowerCase().includes('bienes')),
         'nombre_ambito_legal'
     );
 
     const civilContrato = getFilteredAndGroupedData(breakdown,
-        i => i.nombre_materia?.toLowerCase() === 'civil' && (i.nombre_categoria?.toLowerCase().includes('contratos') || i.nombre_subcategoria?.toLowerCase().includes('contratos')),
+        i => i.nombre_materia?.toLowerCase() === 'civil' && (i.nombre_subcategoria?.toLowerCase().includes('contratos') || i.nombre_subcategoria?.toLowerCase().includes('contratos')),
         'nombre_ambito_legal'
     );
 
