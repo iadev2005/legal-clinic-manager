@@ -130,11 +130,11 @@ CREATE TABLE Solicitantes (
     nombres VARCHAR(100) NOT NULL,
     apellidos VARCHAR(100) NOT NULL,
     telefono_local VARCHAR(20),
-    telefono_celular VARCHAR(20),
-    correo_electronico VARCHAR(100),
-    sexo CHAR(1) CHECK (sexo IN ('M', 'F')),
-    nacionalidad CHAR(1) CHECK (nacionalidad IN ('V', 'E')),
-    estado_civil VARCHAR(20) CHECK (estado_civil IN ('Soltero', 'Casado', 'Divorciado', 'Viudo')),
+    telefono_celular VARCHAR(20) NOT NULL,
+    correo_electronico VARCHAR(100) NOT NULL,
+    sexo CHAR(1) NOT NULL CHECK (sexo IN ('M', 'F')),
+    nacionalidad CHAR(1) NOT NULL CHECK (nacionalidad IN ('V', 'E')),
+    estado_civil VARCHAR(20) NOT NULL CHECK (estado_civil IN ('Soltero', 'Casado', 'Divorciado', 'Viudo')),
     en_concubinato BOOLEAN DEFAULT FALSE,
     fecha_nacimiento DATE NOT NULL,
     -- edad INTEGER GENERATED ALWAYS AS (EXTRACT(YEAR FROM AGE(CURRENT_DATE, fecha_nacimiento))) STORED, -- Atributo Derivado Automático
@@ -159,17 +159,17 @@ CREATE TABLE Almacenan (
 -- Tabla 8 (Viviendas - Con los constraints estrictos del Anexo)
 CREATE TABLE Viviendas (
     cedula_solicitante VARCHAR(20) PRIMARY KEY REFERENCES Solicitantes(cedula_solicitante),
-    tipo_vivienda VARCHAR(50) CHECK (tipo_vivienda IN ('Casa', 'Apartamento', 'Rancho', 'Otro')),
-    cantidad_habitaciones INTEGER CHECK (cantidad_habitaciones >= 0),
-    cantidad_banos INTEGER CHECK (cantidad_banos >= 0),
+    tipo_vivienda VARCHAR(50) NOT NULL CHECK (tipo_vivienda IN ('Casa', 'Apartamento', 'Rancho', 'Otro')),
+    cantidad_habitaciones INTEGER NOT NULL CHECK (cantidad_habitaciones >= 0),
+    cantidad_banos INTEGER NOT NULL CHECK (cantidad_banos >= 0),
     
     -- Nuevos campos obligatorios
-    material_piso VARCHAR(50) CHECK (material_piso IN ('Tierra', 'Cemento', 'Cerámica', 'Granito / Parquet / Mármol', 'Otro')),
-    material_paredes VARCHAR(50) CHECK (material_paredes IN ('Cartón / Palma / Desechos', 'Bahareque', 'Bloque sin frizar', 'Bloque frizado', 'Otro')),
-    material_techo VARCHAR(50) CHECK (material_techo IN ('Madera / Cartón / Palma', 'Zinc / Acerolit', 'Platabanda / Tejas', 'Otro')),
-    agua_potable VARCHAR(50) CHECK (agua_potable IN ('Dentro de la vivienda', 'Fuera de la vivienda', 'No tiene servicio')),
-    eliminacion_aguas VARCHAR(50) CHECK (eliminacion_aguas IN ('Poceta a cloaca', 'Pozo séptico', 'Letrina', 'No tiene')),
-    aseo_urbano VARCHAR(50) CHECK (aseo_urbano IN ('Llega a la vivienda', 'No llega / Container', 'No tiene'))
+    material_piso VARCHAR(50) NOT NULL CHECK (material_piso IN ('Tierra', 'Cemento', 'Cerámica', 'Granito / Parquet / Mármol', 'Otro')),
+    material_paredes VARCHAR(50) NOT NULL CHECK (material_paredes IN ('Cartón / Palma / Desechos', 'Bahareque', 'Bloque sin frizar', 'Bloque frizado', 'Otro')),
+    material_techo VARCHAR(50) NOT NULL CHECK (material_techo IN ('Madera / Cartón / Palma', 'Zinc / Acerolit', 'Platabanda / Tejas', 'Otro')),
+    agua_potable VARCHAR(50) NOT NULL CHECK (agua_potable IN ('Dentro de la vivienda', 'Fuera de la vivienda', 'No tiene servicio')),
+    eliminacion_aguas VARCHAR(50) NOT NULL CHECK (eliminacion_aguas IN ('Poceta a cloaca', 'Pozo séptico', 'Letrina', 'No tiene')),
+    aseo_urbano VARCHAR(50) NOT NULL CHECK (aseo_urbano IN ('Llega a la vivienda', 'No llega / Container', 'No tiene'))
 );
 
 -- Tabla 9
@@ -179,7 +179,7 @@ CREATE TABLE Familias_Hogares (
     cantidad_trabajadores INTEGER DEFAULT 0,
     cantidad_ninos INTEGER DEFAULT 0,
     cantidad_ninos_estudiando INTEGER DEFAULT 0,
-    ingreso_mensual_aprox DECIMAL(10,2),
+    ingreso_mensual_aprox DECIMAL(10,2) NOT NULL,
     es_jefe_hogar BOOLEAN DEFAULT FALSE,
 
     id_nivel_educativo_jefe INTEGER REFERENCES Niveles_Educativos(id_nivel_educativo),
@@ -208,9 +208,9 @@ CREATE TABLE Usuarios_Sistema (
     ultimo_acceso TIMESTAMP,
     telefono_celular VARCHAR(20),
     telefono_local VARCHAR(20),
-    nombres VARCHAR(100),
-    apellidos VARCHAR(100),
-    rol VARCHAR(20) CHECK (rol IN ('Estudiante', 'Profesor', 'Coordinador', 'Administrador'))
+    nombres VARCHAR(100) NOT NULL,
+    apellidos VARCHAR(100) NOT NULL,
+    rol VARCHAR(20) NOT NULL CHECK (rol IN ('Estudiante', 'Profesor', 'Coordinador', 'Administrador'))
 );
 
 -- Subtipos (Tablas 17, 18, 19)
@@ -263,7 +263,7 @@ INSERT INTO Estatus (nombre_estatus) VALUES
 CREATE TABLE Casos (
     nro_caso SERIAL PRIMARY KEY,
     cnt_beneficiarios INTEGER DEFAULT 0, -- Se actualizará vía Trigger
-    sintesis_caso TEXT,
+    sintesis_caso TEXT NOT NULL,
     fecha_caso_inicio DATE DEFAULT CURRENT_DATE,
     fecha_caso_final DATE,
     
@@ -288,13 +288,13 @@ CREATE TABLE Beneficiarios (
     cedula_beneficiario VARCHAR(20),
     nro_caso INTEGER REFERENCES Casos(nro_caso) ON DELETE CASCADE,
     cedula_es_propia BOOLEAN DEFAULT FALSE,
-    nombres VARCHAR(100),
-    apellidos VARCHAR(100),
-    sexo CHAR(1),
-    fecha_nacimiento DATE,
+    nombres VARCHAR(100) NOT NULL,
+    apellidos VARCHAR(100) NOT NULL,
+    sexo CHAR(1) NOT NULL,
+    fecha_nacimiento DATE NOT NULL,
     -- edad INTEGER GENERATED ALWAYS AS (EXTRACT(YEAR FROM AGE(CURRENT_DATE, fecha_nacimiento))) STORED,
-    tipo_beneficiario VARCHAR(20) CHECK (tipo_beneficiario IN ('Directo', 'Indirecto')),
-    parentesco VARCHAR(50),
+    tipo_beneficiario VARCHAR(20) NOT NULL CHECK (tipo_beneficiario IN ('Directo', 'Indirecto')),
+    parentesco VARCHAR(50) NOT NULL CHECK (parentesco IN ('S', 'N')),
     PRIMARY KEY (cedula_beneficiario, nro_caso)
 );
 
@@ -318,9 +318,9 @@ FOR EACH ROW EXECUTE PROCEDURE actualizar_contador_beneficiarios();
 CREATE TABLE Soportes_Legales (
     id_soporte SERIAL,
     nro_caso INTEGER REFERENCES Casos(nro_caso),
-    descripcion TEXT,
+    descripcion TEXT NOT NULL,
     fecha_soporte DATE DEFAULT CURRENT_DATE,
-    documento_url VARCHAR(255), -- Link a Drive/S3
+    documento_url VARCHAR(255) NOT NULL, -- Link a Drive/S3
     observacion TEXT,
     PRIMARY KEY (id_soporte, nro_caso)
 );
@@ -340,10 +340,10 @@ CREATE TABLE Citas (
 CREATE TABLE Acciones (
     nro_accion SERIAL,
     nro_caso INTEGER REFERENCES Casos(nro_caso),
-    titulo_accion VARCHAR(100),
+    titulo_accion VARCHAR(100) NOT NULL,
     observacion TEXT,
-    fecha_realizacion DATE,
-    cedula_usuario_ejecutor VARCHAR(20) REFERENCES Usuarios_Sistema(cedula_usuario),
+    fecha_realizacion DATE NOT NULL,
+    cedula_usuario_ejecutor VARCHAR(20) NOT NULL REFERENCES Usuarios_Sistema(cedula_usuario),
     fecha_registro TIMESTAMP DEFAULT NOW(),
     PRIMARY KEY (nro_accion, nro_caso)
 );

@@ -155,7 +155,7 @@ export default function CaseCreateModal({
           const result = await getSolicitanteCompleto(cedulaSolicitante);
           if (result.success && result.data) {
             const solicitante = result.data;
-            
+
             // Formatear fecha de nacimiento para el input date (YYYY-MM-DD)
             let fechaNacimiento = "";
             if (solicitante.fecha_nacimiento) {
@@ -181,7 +181,7 @@ export default function CaseCreateModal({
                   parentesco: "",
                 });
               }
-              
+
               // Llenar el primer beneficiario con los datos del solicitante
               updated[0] = {
                 cedula_beneficiario: solicitante.cedula_solicitante || "",
@@ -193,7 +193,7 @@ export default function CaseCreateModal({
                 tipo_beneficiario: "Directo",
                 parentesco: "",
               };
-              
+
               return updated;
             });
           }
@@ -387,7 +387,11 @@ export default function CaseCreateModal({
       }
       if (ben.tipo_beneficiario === "Indirecto" && !ben.parentesco.trim()) {
         newErrors[`beneficiario_${index}_parentesco`] =
-          "El parentesco es requerido para beneficiarios indirectos";
+          "El parentesco es requerido"; // Mensaje genérico, aunque el de arriba era específico
+      }
+      // Nueva validación general ya que ahora es requerido siempre (S/N)
+      if (!ben.parentesco.trim()) {
+        newErrors[`beneficiario_${index}_parentesco`] = "Debe indicar si hay parentesco (S/N)";
       }
     });
 
@@ -466,17 +470,17 @@ export default function CaseCreateModal({
 
   const handleAddAlumno = () => {
     if (!cedulaAlumnoTemporal || !term) return;
-    
+
     const alumno = alumnos.find((a) => a.value === cedulaAlumnoTemporal && a.term === term);
     if (!alumno) return;
-    
+
     // Verificar si ya está en la lista
     const alreadyExists = alumnosSeleccionados.some(a => a.cedula === cedulaAlumnoTemporal && a.term === term);
     if (alreadyExists) {
       setErrors({ ...errors, cedulaAlumno: "Este alumno ya está seleccionado" });
       return;
     }
-    
+
     setAlumnosSeleccionados([
       ...alumnosSeleccionados,
       {
@@ -485,7 +489,7 @@ export default function CaseCreateModal({
         nombre: alumno.label,
       },
     ]);
-    
+
     setCedulaAlumnoTemporal("");
     setErrors({ ...errors, cedulaAlumno: undefined });
   };
@@ -526,7 +530,7 @@ export default function CaseCreateModal({
           observacion: s.observacion || undefined,
         }));
 
-        // Preparar datos del caso
+      // Preparar datos del caso
       const casoData: CreateCasoData = {
         cedula_solicitante: cedulaSolicitante,
         id_nucleo: parseInt(idNucleo),
@@ -737,11 +741,10 @@ export default function CaseCreateModal({
             {beneficiarios.map((ben, index) => (
               <div
                 key={index}
-                className={`p-4 rounded-xl border space-y-4 ${
-                  index === 0 && cedulaSolicitante
-                    ? "bg-blue-50 border-blue-200"
-                    : "bg-gray-50 border-gray-200"
-                }`}
+                className={`p-4 rounded-xl border space-y-4 ${index === 0 && cedulaSolicitante
+                  ? "bg-blue-50 border-blue-200"
+                  : "bg-gray-50 border-gray-200"
+                  }`}
               >
                 <div className="flex justify-between items-center">
                   <div className="flex items-center gap-2">
@@ -870,29 +873,31 @@ export default function CaseCreateModal({
                     />
                   </div>
 
-                  {ben.tipo_beneficiario === "Indirecto" && (
-                    <div className="space-y-2 col-span-2">
-                      <Label className="text-sm font-semibold">
-                        Parentesco <span className="text-red-500">*</span>
-                      </Label>
-                      <Input
-                        value={ben.parentesco}
-                        onChange={(e) =>
-                          handleBeneficiarioChange(
-                            index,
-                            "parentesco",
-                            e.target.value
-                          )
-                        }
-                        placeholder="Ej: Hijo, Esposo, etc."
-                      />
-                      {errors[`beneficiario_${index}_parentesco`] && (
-                        <p className="text-red-500 text-xs">
-                          {errors[`beneficiario_${index}_parentesco`]}
-                        </p>
-                      )}
-                    </div>
-                  )}
+                  <div className="space-y-2 col-span-2">
+                    <Label className="text-sm font-semibold">
+                      Parentesco <span className="text-red-500">*</span>
+                    </Label>
+                    <FilterSelect
+                      placeholder="Seleccionar parentesco"
+                      value={ben.parentesco}
+                      onChange={(value) =>
+                        handleBeneficiarioChange(
+                          index,
+                          "parentesco",
+                          value
+                        )
+                      }
+                      options={[
+                        { value: "S", label: "Sí (S)" },
+                        { value: "N", label: "No (N)" },
+                      ]}
+                    />
+                    {errors[`beneficiario_${index}_parentesco`] && (
+                      <p className="text-red-500 text-xs">
+                        {errors[`beneficiario_${index}_parentesco`]}
+                      </p>
+                    )}
+                  </div>
 
                   <div className="flex items-center gap-2 col-span-2">
                     <input
@@ -951,9 +956,9 @@ export default function CaseCreateModal({
                         .filter(a => a.term === term)
                         .filter(a => !alumnosSeleccionados.some(sel => sel.cedula === a.value))
                         .map((a) => ({
-                        value: a.value,
-                        label: a.label,
-                      }))}
+                          value: a.value,
+                          label: a.label,
+                        }))}
                     />
                     <button
                       type="button"
@@ -968,7 +973,7 @@ export default function CaseCreateModal({
                   {errors.cedulaAlumno && (
                     <p className="text-red-500 text-sm">{errors.cedulaAlumno}</p>
                   )}
-                  
+
                   {/* Lista de alumnos seleccionados */}
                   {alumnosSeleccionados.length > 0 && (
                     <div className="space-y-2 mt-2">
