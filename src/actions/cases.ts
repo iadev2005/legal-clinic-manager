@@ -84,14 +84,16 @@ export async function getCaseReportData(caseId: string) {
         SELECT sa.*, us.nombres, us.apellidos, us.correo_electronico
         FROM Se_Asignan sa
         JOIN Usuarios_Sistema us ON sa.cedula_alumno = us.cedula_usuario
-        WHERE sa.id_caso = $1 AND sa.estatus = 'Activo'
+        WHERE sa.id_caso = $1 
+        AND sa.term = (SELECT MAX(term) FROM Se_Asignan WHERE id_caso = $1)
     `, [caseId]);
 
         const supervisorsResult = await query(`
         SELECT su.*, us.nombres, us.apellidos, us.correo_electronico
         FROM Supervisan su
         JOIN Usuarios_Sistema us ON su.cedula_profesor = us.cedula_usuario
-        WHERE su.id_caso = $1 AND su.estatus = 'Activo'
+        WHERE su.id_caso = $1 
+        AND su.term = (SELECT MAX(term) FROM Supervisan WHERE id_caso = $1)
     `, [caseId]);
 
         return {

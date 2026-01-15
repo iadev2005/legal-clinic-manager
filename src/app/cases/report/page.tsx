@@ -17,7 +17,16 @@ export default function CaseReportPage() {
                 .finally(() => setLoading(false));
         }
     }, [caseId]);
+    const pageStyle = {
+        width: "280mm", // A4
+        minHeight: "350mm",
+        padding: "5mm",
+        backgroundColor: "white",
+        margin: "0 auto",
+        color: "#0c1e33", // sky-950
+    };
 
+    /*
     const pageStyle = {
         width: "210mm", // A4
         minHeight: "297mm",
@@ -25,7 +34,7 @@ export default function CaseReportPage() {
         backgroundColor: "white",
         margin: "0 auto",
         color: "#0c1e33", // sky-950
-    };
+    };*/
 
     if (loading) return <div className="p-10 text-center">Cargando datos del reporte...</div>;
     if (!data) return <div className="p-10 text-center text-red-500">No se encontró el caso o hubo un error.</div>;
@@ -230,8 +239,8 @@ export default function CaseReportPage() {
                                 <tr key={idx} className={idx % 2 === 0 ? 'bg-white' : 'bg-gray-50'} style={{ pageBreakInside: 'avoid' }}>
                                     <td className="p-3 font-bold text-sky-950 border-b border-gray-200">{idx + 1}</td>
                                     <td className="p-3 font-semibold text-sky-950 border-b border-gray-200">
-                                        {b.nombres && b.apellidos 
-                                            ? `${b.nombres} ${b.apellidos}` 
+                                        {b.nombres && b.apellidos
+                                            ? `${b.nombres} ${b.apellidos}`
                                             : (b.nombres || b.apellidos || 'N/A')}
                                     </td>
                                     <td className="p-3 text-center border-b border-gray-200">
@@ -248,17 +257,17 @@ export default function CaseReportPage() {
                                         {b.sexo === 'M' ? 'Masculino' : b.sexo === 'F' ? 'Femenino' : 'N/A'}
                                     </td>
                                     <td className="p-3 text-center border-b border-gray-200">
-                                        {b.fecha_nacimiento 
-                                            ? new Date(b.fecha_nacimiento).toLocaleDateString('es-ES', { 
-                                                year: 'numeric', 
-                                                month: '2-digit', 
-                                                day: '2-digit' 
+                                        {b.fecha_nacimiento
+                                            ? new Date(b.fecha_nacimiento).toLocaleDateString('es-ES', {
+                                                year: 'numeric',
+                                                month: '2-digit',
+                                                day: '2-digit'
                                             })
                                             : 'N/A'}
                                     </td>
                                     <td className="p-3 text-center border-b border-gray-200 font-semibold">
-                                        {b.edad !== null && b.edad !== undefined 
-                                            ? `${Math.floor(Number(b.edad))} años` 
+                                        {b.edad !== null && b.edad !== undefined
+                                            ? `${Math.floor(Number(b.edad))} años`
                                             : 'N/A'}
                                     </td>
                                     <td className="p-3 text-center border-b border-gray-200">

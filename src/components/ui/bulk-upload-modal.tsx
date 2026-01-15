@@ -20,7 +20,6 @@ interface ColumnMapping {
     telefonoLocal?: string;
     telefonoCelular?: string;
     nrc?: string;
-    tipo?: string;
 }
 
 export default function BulkUploadModal({
@@ -43,8 +42,7 @@ export default function BulkUploadModal({
         correo: "",
         telefonoLocal: "",
         telefonoCelular: "",
-        nrc: "",
-        tipo: ""
+        nrc: ""
     });
     const [loading, setLoading] = useState(false);
     const [processing, setProcessing] = useState(false);
@@ -122,8 +120,6 @@ export default function BulkUploadModal({
                     autoMapping.telefonoCelular = header;
                 } else if (headerLower.includes("nrc")) {
                     autoMapping.nrc = header;
-                } else if (headerLower.includes("tipo")) {
-                    autoMapping.tipo = header;
                 }
             });
 
@@ -202,8 +198,20 @@ export default function BulkUploadModal({
                     apellidos = rowData[columnMapping.apellidos] || "";
                 }
 
+                // Detectar extranjeros (E, AQ, P)
+                let finalCedula = rowData[columnMapping.cedula] || "";
+                if (finalCedula) {
+                    finalCedula = finalCedula.toString().trim();
+                    const upperCedula = finalCedula.toUpperCase();
+                    if (!upperCedula.includes('-')) {
+                        if (upperCedula.startsWith('AQ') || upperCedula.startsWith('P')) {
+                            finalCedula = `E-${finalCedula}`;
+                        }
+                    }
+                }
+
                 const user: BulkUploadUser = {
-                    cedula: rowData[columnMapping.cedula] || "",
+                    cedula: finalCedula,
                     nombres: nombres,
                     apellidos: apellidos,
                     correo: rowData[columnMapping.correo] || "",
@@ -221,11 +229,7 @@ export default function BulkUploadModal({
                     user.nrc = rowData[columnMapping.nrc];
                 }
 
-                if (columnMapping.tipo && rowData[columnMapping.tipo]) {
-                    user.tipo = rowData[columnMapping.tipo];
-                } else {
-                    user.tipo = tipoParticipacion;
-                }
+                user.tipo = tipoParticipacion;
 
                 // Solo agregar si tiene datos mínimos
                 if (user.cedula && user.nombres && user.apellidos && user.correo) {
@@ -275,8 +279,7 @@ export default function BulkUploadModal({
             correo: "",
             telefonoLocal: "",
             telefonoCelular: "",
-            nrc: "",
-            tipo: ""
+            nrc: ""
         });
         setResult(null);
         setTerm("");
@@ -549,24 +552,6 @@ export default function BulkUploadModal({
                                     <select
                                         value={columnMapping.nrc || ""}
                                         onChange={(e) => setColumnMapping({ ...columnMapping, nrc: e.target.value || undefined })}
-                                        className="w-full bg-white border border-gray-300 text-sky-950 text-sm rounded-lg focus:ring-sky-950 focus:border-sky-950 block p-2.5"
-                                    >
-                                        <option value="">No usar</option>
-                                        {excelHeaders.map((header) => (
-                                            <option key={header} value={header}>
-                                                {header}
-                                            </option>
-                                        ))}
-                                    </select>
-                                </div>
-
-                                <div>
-                                    <label className="block text-sm font-semibold text-sky-950 mb-2">
-                                        Tipo
-                                    </label>
-                                    <select
-                                        value={columnMapping.tipo || ""}
-                                        onChange={(e) => setColumnMapping({ ...columnMapping, tipo: e.target.value || undefined })}
                                         className="w-full bg-white border border-gray-300 text-sky-950 text-sm rounded-lg focus:ring-sky-950 focus:border-sky-950 block p-2.5"
                                     >
                                         <option value="">No usar</option>
