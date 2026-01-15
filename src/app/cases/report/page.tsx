@@ -17,16 +17,7 @@ export default function CaseReportPage() {
                 .finally(() => setLoading(false));
         }
     }, [caseId]);
-    const pageStyle = {
-        width: "280mm", // A4
-        minHeight: "350mm",
-        padding: "5mm",
-        backgroundColor: "white",
-        margin: "0 auto",
-        color: "#0c1e33", // sky-950
-    };
 
-    /*
     const pageStyle = {
         width: "210mm", // A4
         minHeight: "297mm",
@@ -34,7 +25,7 @@ export default function CaseReportPage() {
         backgroundColor: "white",
         margin: "0 auto",
         color: "#0c1e33", // sky-950
-    };*/
+    };
 
     if (loading) return <div className="p-10 text-center">Cargando datos del reporte...</div>;
     if (!data) return <div className="p-10 text-center text-red-500">No se encontró el caso o hubo un error.</div>;
