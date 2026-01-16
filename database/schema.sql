@@ -453,3 +453,80 @@ WHERE revisado = FALSE;
 -- Índice para búsquedas por fecha de notificación
 CREATE INDEX idx_notificaciones_fecha 
 ON Notificaciones (fecha_notificacion DESC);
+
+/* ==========================================================================
+   AGREGADO: AUDITORÍA DE ELIMINACIONES
+   ========================================================================== */
+
+-- Tabla 34 (Auditoría de Casos Eliminados)
+CREATE TABLE Auditoria_Casos_Eliminados (
+    id_auditoria SERIAL PRIMARY KEY,
+    nro_caso_original INTEGER,
+    cedula_responsable VARCHAR(20),
+    nombre_responsable VARCHAR(100),
+    rol_responsable VARCHAR(50),
+    fecha_eliminacion TIMESTAMP DEFAULT NOW(),
+    motivo TEXT
+);
+
+-- Tabla 35 (Auditoría de Usuarios del Sistema)
+CREATE TABLE Auditoria_Usuarios (
+    id_auditoria SERIAL PRIMARY KEY,
+    cedula_usuario_modificado VARCHAR(20) NOT NULL,
+    campo_modificado VARCHAR(50) NOT NULL,
+    valor_anterior TEXT,
+    valor_nuevo TEXT,
+    cedula_responsable VARCHAR(20),
+    nombre_responsable VARCHAR(100),
+    fecha_cambio TIMESTAMP DEFAULT NOW()
+);
+
+-- Tabla 36 (Auditoría de Solicitantes)
+CREATE TABLE Auditoria_Solicitantes (
+    id_auditoria SERIAL PRIMARY KEY,
+    cedula_solicitante_modificado VARCHAR(20) NOT NULL,
+    campo_modificado VARCHAR(50) NOT NULL,
+    valor_anterior TEXT,
+    valor_nuevo TEXT,
+    cedula_responsable VARCHAR(20),
+    nombre_responsable VARCHAR(100),
+    fecha_cambio TIMESTAMP DEFAULT NOW()
+);
+
+-- Tabla 37 (Auditoría de Casos y Entidades Relacionadas)
+CREATE TABLE Auditoria_Casos (
+    id_auditoria SERIAL PRIMARY KEY,
+    nro_caso INTEGER NOT NULL,
+    tipo_entidad VARCHAR(50) NOT NULL, -- 'Caso', 'Cita', 'Accion', 'Soporte', 'Beneficiario', 'Asignacion'
+    id_entidad VARCHAR(50), -- ID específico si aplica (id_cita, nro_accion, etc.)
+    campo_modificado VARCHAR(50) NOT NULL,
+    valor_anterior TEXT,
+    valor_nuevo TEXT,
+    cedula_responsable VARCHAR(20),
+    nombre_responsable VARCHAR(100),
+    fecha_cambio TIMESTAMP DEFAULT NOW()
+);
+
+-- Índices para Auditoria_Usuarios
+CREATE INDEX idx_auditoria_usuarios_cedula 
+ON Auditoria_Usuarios (cedula_usuario_modificado);
+
+CREATE INDEX idx_auditoria_usuarios_fecha 
+ON Auditoria_Usuarios (fecha_cambio DESC);
+
+-- Índices para Auditoria_Solicitantes
+CREATE INDEX idx_auditoria_solicitantes_cedula 
+ON Auditoria_Solicitantes (cedula_solicitante_modificado);
+
+CREATE INDEX idx_auditoria_solicitantes_fecha 
+ON Auditoria_Solicitantes (fecha_cambio DESC);
+
+-- Índices para Auditoria_Casos
+CREATE INDEX idx_auditoria_casos_nro_caso 
+ON Auditoria_Casos (nro_caso);
+
+CREATE INDEX idx_auditoria_casos_tipo 
+ON Auditoria_Casos (tipo_entidad);
+
+CREATE INDEX idx_auditoria_casos_fecha 
+ON Auditoria_Casos (fecha_cambio DESC);

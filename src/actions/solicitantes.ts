@@ -86,17 +86,17 @@ export async function createSolicitante(data: Partial<Solicitante> & {
     if (!permiso.allowed) {
         return { success: false, error: permiso.error || 'No tienes permisos para crear solicitantes' };
     }
-    
+
     const client = await pool.connect();
     try {
         await client.query('BEGIN');
-        
+
         // Validar constraint de familia antes de insertar
         if (data.familia) {
             const cantidadPersonas = data.familia.cantidad_personas || 1;
             const cantidadTrabajadores = data.familia.cantidad_trabajadores || 0;
             const cantidadNinos = data.familia.cantidad_ninos || 0;
-            
+
             if (cantidadTrabajadores + cantidadNinos > cantidadPersonas) {
                 throw new Error(
                     `La suma de trabajadores (${cantidadTrabajadores}) y niños (${cantidadNinos}) ` +
@@ -104,7 +104,7 @@ export async function createSolicitante(data: Partial<Solicitante> & {
                 );
             }
         }
-        
+
         // 1. Crear el solicitante
         const result = await client.query(
             `INSERT INTO Solicitantes (
@@ -210,7 +210,7 @@ export async function createSolicitante(data: Partial<Solicitante> & {
                 'DELETE FROM Almacenan WHERE cedula_solicitante = $1',
                 [cedula]
             );
-            
+
             // Insertar los nuevos bienes
             for (const idBien of data.bienes) {
                 await client.query(
@@ -246,17 +246,24 @@ export async function updateSolicitante(cedula: string, data: Partial<Solicitant
     if (!permiso.allowed) {
         return { success: false, error: permiso.error || 'No tienes permisos para editar solicitantes' };
     }
-    
+
     const client = await pool.connect();
     try {
         await client.query('BEGIN');
-        
+
+        // Obtener datos actuales para auditoría
+        const oldDataResult = await client.query('SELECT * FROM Solicitantes WHERE cedula_solicitante = $1', [cedula]);
+        if (oldDataResult.rows.length === 0) {
+            throw new Error('Solicitante no encontrado');
+        }
+        const oldData = oldDataResult.rows[0];
+
         // Validar constraint de familia antes de actualizar
         if (data.familia !== undefined) {
             const cantidadPersonas = data.familia.cantidad_personas || 1;
             const cantidadTrabajadores = data.familia.cantidad_trabajadores || 0;
             const cantidadNinos = data.familia.cantidad_ninos || 0;
-            
+
             if (cantidadTrabajadores + cantidadNinos > cantidadPersonas) {
                 throw new Error(
                     `La suma de trabajadores (${cantidadTrabajadores}) y niños (${cantidadNinos}) ` +
@@ -264,7 +271,7 @@ export async function updateSolicitante(cedula: string, data: Partial<Solicitant
                 );
             }
         }
-        
+
         // 1. Actualizar el solicitante
         const result = await client.query(
             `UPDATE Solicitantes SET
@@ -311,6 +318,37 @@ export async function updateSolicitante(cedula: string, data: Partial<Solicitant
 
         if (result.rows.length === 0) {
             throw new Error('Solicitante no encontrado');
+        }
+
+        // Registrar cambios en auditoría
+        const { getSession } = await import('@/lib/auth-utils');
+        const session = await getSession();
+
+        const fieldsToAudit = [
+            'nombres', 'apellidos', 'telefono_local', 'telefono_celular',
+            'correo_electronico', 'sexo', 'nacionalidad', 'estado_civil',
+            'en_concubinato', 'fecha_nacimiento', 'buscando_trabajo',
+            'tipo_periodo_educacion', 'cantidad_tiempo_educacion',
+            'id_parroquia', 'id_actividad_solicitante', 'id_trabajo', 'id_nivel_educativo'
+        ];
+
+        for (const field of fieldsToAudit) {
+            const newValue = data[field as keyof Solicitante];
+            if (newValue !== undefined && oldData[field] !== newValue) {
+                await client.query(
+                    `INSERT INTO Auditoria_Solicitantes 
+                    (cedula_solicitante_modificado, campo_modificado, valor_anterior, valor_nuevo, cedula_responsable, nombre_responsable) 
+                    VALUES ($1, $2, $3, $4, $5, $6)`,
+                    [
+                        cedula,
+                        field,
+                        oldData[field]?.toString() || null,
+                        newValue?.toString() || null,
+                        session?.cedula || 'SISTEMA',
+                        session?.nombre || 'Sistema'
+                    ]
+                );
+            }
         }
 
         // 2. Actualizar vivienda si se proporcionó
@@ -384,7 +422,7 @@ export async function updateSolicitante(cedula: string, data: Partial<Solicitant
                 'DELETE FROM Almacenan WHERE cedula_solicitante = $1',
                 [cedula]
             );
-            
+
             // Insertar los nuevos bienes
             if (data.bienes.length > 0) {
                 for (const idBien of data.bienes) {
@@ -419,7 +457,33 @@ export async function deleteSolicitante(cedula: string) {
         if (!permiso.allowed) {
             return { success: false, error: permiso.error || 'Los alumnos no pueden eliminar solicitantes' };
         }
-        
+
+        // Obtener datos del solicitante antes de eliminar
+        const solicitanteRes = await query('SELECT * FROM Solicitantes WHERE cedula_solicitante = $1', [cedula]);
+        if (solicitanteRes.rows.length === 0) {
+            return { success: false, error: 'Solicitante no encontrado' };
+        }
+        const solicitanteData = solicitanteRes.rows[0];
+
+        // Obtener sesión para auditoría
+        const { getSession } = await import('@/lib/auth-utils');
+        const session = await getSession();
+
+        // Registrar en auditoría antes de eliminar
+        await query(
+            `INSERT INTO Auditoria_Solicitantes 
+            (cedula_solicitante_modificado, campo_modificado, valor_anterior, valor_nuevo, cedula_responsable, nombre_responsable) 
+            VALUES ($1, $2, $3, $4, $5, $6)`,
+            [
+                cedula,
+                'ELIMINACION_SOLICITANTE',
+                `${solicitanteData.nombres} ${solicitanteData.apellidos}`,
+                'ELIMINADO',
+                session?.cedula || 'SISTEMA',
+                session?.nombre || 'Sistema'
+            ]
+        );
+
         await query(
             'DELETE FROM Solicitantes WHERE cedula_solicitante = $1',
             [cedula]
@@ -716,19 +780,19 @@ export async function updateBienesSolicitante(cedulaSolicitante: string, bienesI
             'DELETE FROM Almacenan WHERE cedula_solicitante = $1',
             [cedulaSolicitante]
         );
-        
+
         // Insertar los nuevos bienes
         if (bienesIds.length > 0) {
-            const values = bienesIds.map((_, index) => 
+            const values = bienesIds.map((_, index) =>
                 `($1, $${index + 2})`
             ).join(', ');
-            
+
             await query(
                 `INSERT INTO Almacenan (cedula_solicitante, id_bien) VALUES ${values}`,
                 [cedulaSolicitante, ...bienesIds]
             );
         }
-        
+
         return { success: true };
     } catch (error: any) {
         console.error('Error al actualizar bienes:', error);

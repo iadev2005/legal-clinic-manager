@@ -75,7 +75,7 @@ export async function getUsuarioById(id: string) {
         if (!permiso.allowed) {
             return { success: false, error: permiso.error || 'No tienes permisos para ver este usuario' };
         }
-        
+
         const result = await query(`
             SELECT 
                 cedula_usuario as id,
@@ -222,7 +222,7 @@ export async function updateUsuario(id: string, data: Partial<Usuario> & { passw
         if (!permiso.allowed) {
             return { success: false, error: permiso.error || 'No tienes permisos para editar este usuario' };
         }
-        
+
         // Si es alumno, no puede cambiar su rol o estado
         const session = await getSession();
         if (session?.rol === 'Estudiante' && id === session.cedula) {
@@ -234,7 +234,14 @@ export async function updateUsuario(id: string, data: Partial<Usuario> & { passw
                 delete data.status;
             }
         }
-        
+
+        // Obtener datos actuales para auditoría
+        const oldDataResult = await query('SELECT * FROM Usuarios_Sistema WHERE cedula_usuario = $1', [id]);
+        if (oldDataResult.rows.length === 0) {
+            return { success: false, error: 'Usuario no encontrado' };
+        }
+        const oldData = oldDataResult.rows[0];
+
         const updates: string[] = [];
         const values: any[] = [];
         let paramCount = 1;
@@ -285,6 +292,43 @@ export async function updateUsuario(id: string, data: Partial<Usuario> & { passw
             RETURNING *
         `, values);
 
+        // Registrar cambios en auditoría
+        const fieldsToAudit = [
+            { key: 'nombres', dbKey: 'nombres' },
+            { key: 'apellidos', dbKey: 'apellidos' },
+            { key: 'correo', dbKey: 'correo_electronico' },
+            { key: 'telefonoCelular', dbKey: 'telefono_celular' },
+            { key: 'telefonoLocal', dbKey: 'telefono_local' },
+            { key: 'role', dbKey: 'rol' },
+            { key: 'status', dbKey: 'activo', transform: (val: any) => val === 'Activo' ? true : false }
+        ];
+
+        for (const field of fieldsToAudit) {
+            const dataKey = field.key as keyof typeof data;
+            let newValue = data[dataKey];
+
+            // Transformar si es necesario
+            if (field.transform && newValue !== undefined) {
+                newValue = field.transform(newValue);
+            }
+
+            if (newValue !== undefined && oldData[field.dbKey] !== newValue) {
+                await query(
+                    `INSERT INTO Auditoria_Usuarios 
+                    (cedula_usuario_modificado, campo_modificado, valor_anterior, valor_nuevo, cedula_responsable, nombre_responsable) 
+                    VALUES ($1, $2, $3, $4, $5, $6)`,
+                    [
+                        id,
+                        field.dbKey,
+                        oldData[field.dbKey]?.toString() || null,
+                        newValue?.toString() || null,
+                        session?.cedula || 'SISTEMA',
+                        session?.nombre || 'Sistema'
+                    ]
+                );
+            }
+        }
+
         revalidatePath('/administration');
         return { success: true, data: result.rows[0] };
     } catch (error: any) {
@@ -300,7 +344,7 @@ export async function deleteUsuario(id: string) {
         if (!permiso.allowed) {
             return { success: false, error: permiso.error || 'Los alumnos no pueden eliminar usuarios' };
         }
-        
+
         const session = await getSession();
         if (!session) {
             return { success: false, error: 'No autorizado' };
@@ -327,6 +371,25 @@ export async function deleteUsuario(id: string) {
                 return { success: false, error: 'No tienes permisos para eliminar a Administradores.' };
             }
         }
+
+        // Obtener datos completos del usuario antes de eliminar
+        const userDataRes = await query('SELECT * FROM Usuarios_Sistema WHERE cedula_usuario = $1', [id]);
+        const userData = userDataRes.rows[0];
+
+        // Registrar en auditoría antes de eliminar
+        await query(
+            `INSERT INTO Auditoria_Usuarios 
+            (cedula_usuario_modificado, campo_modificado, valor_anterior, valor_nuevo, cedula_responsable, nombre_responsable) 
+            VALUES ($1, $2, $3, $4, $5, $6)`,
+            [
+                id,
+                'ELIMINACION_USUARIO',
+                `${userData.nombres} ${userData.apellidos} (${userData.rol})`,
+                'ELIMINADO',
+                session?.cedula || 'SISTEMA',
+                session?.nombre || 'Sistema'
+            ]
+        );
 
         await query('DELETE FROM Usuarios_Sistema WHERE cedula_usuario = $1', [id]);
         revalidatePath('/administration');

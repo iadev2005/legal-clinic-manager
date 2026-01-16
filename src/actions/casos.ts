@@ -418,6 +418,10 @@ export async function updateCaso(nroCaso: number, data: UpdateCasoData) {
 
         await query('BEGIN');
 
+        // Obtener datos actuales para auditoría
+        const oldDataResult = await query('SELECT * FROM Casos WHERE nro_caso = $1', [nroCaso]);
+        const oldData = oldDataResult.rows[0];
+
         // Construir la consulta UPDATE dinámicamente
         const updates: string[] = [];
         const values: any[] = [];
@@ -485,6 +489,33 @@ export async function updateCaso(nroCaso: number, data: UpdateCasoData) {
 
         const result = await query(sql, values);
 
+        // Registrar cambios en auditoría
+        const session = await getSession();
+        const fieldsToAudit = [
+            'cedula_solicitante', 'id_nucleo', 'id_tramite', 'id_materia',
+            'num_categoria', 'num_subcategoria', 'num_ambito_legal',
+            'sintesis_caso', 'fecha_caso_inicio', 'fecha_caso_final'
+        ];
+
+        for (const field of fieldsToAudit) {
+            if (data[field as keyof UpdateCasoData] !== undefined && oldData[field] !== data[field as keyof UpdateCasoData]) {
+                await query(
+                    `INSERT INTO Auditoria_Casos 
+                    (nro_caso, tipo_entidad, campo_modificado, valor_anterior, valor_nuevo, cedula_responsable, nombre_responsable) 
+                    VALUES ($1, $2, $3, $4, $5, $6, $7)`,
+                    [
+                        nroCaso,
+                        'Caso',
+                        field,
+                        oldData[field]?.toString() || null,
+                        data[field as keyof UpdateCasoData]?.toString() || null,
+                        session?.cedula || 'SISTEMA',
+                        session?.nombre || 'Sistema'
+                    ]
+                );
+            }
+        }
+
         await query('COMMIT');
         revalidatePath('/cases');
         return { success: true, data: result.rows[0] };
@@ -509,7 +540,21 @@ export async function deleteCaso(nroCaso: number) {
         await query('BEGIN');
 
         try {
-            // 1. Borrar tablas dependientes
+            // 1. Registrar Auditoría
+            await query(
+                `INSERT INTO Auditoria_Casos_Eliminados 
+                (nro_caso_original, cedula_responsable, nombre_responsable, rol_responsable, motivo) 
+                VALUES ($1, $2, $3, $4, $5)`,
+                [
+                    nroCaso,
+                    session?.cedula || 'SISTEMA',
+                    session?.nombre || 'Desconocido',
+                    rawRole,
+                    'Eliminación manual por usuario'
+                ]
+            );
+
+            // 2. Borrar tablas dependientes
             await query('DELETE FROM Notificaciones_Usuarios WHERE id_notificacion IN (SELECT id_notificacion FROM Notificaciones WHERE descripcion LIKE $1)', [`%caso #${nroCaso}%`]); // Aproximación para notificaciones
             // Nota: Notificaciones es complejo de vincular directamente si no tiene FK, pero borramos las dependencias claras primero
 
