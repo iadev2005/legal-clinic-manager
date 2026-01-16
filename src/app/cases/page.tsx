@@ -10,18 +10,22 @@ export default async function Cases() {
   // Los roles en BD son: 'Administrador', 'Coordinador', 'Profesor', 'Estudiante'
   let userRole: "ADMIN" | "PROFESSOR" | "STUDENT" = "STUDENT";
 
-  if (session?.rol === "Administrador" || session?.rol === "Coordinador" || session?.rol === "ADMIN" || session?.rol === "COORDINATOR") {
+  const rawRole = session?.rol?.trim() || "";
+  console.log("Server Session Role:", session?.rol);
+  console.log("Calculated Raw Role:", rawRole);
+
+  if (["Administrador", "Coordinador", "ADMIN", "COORDINATOR", "Admin", "admin"].includes(rawRole)) {
     userRole = "ADMIN";
-  } else if (session?.rol === "Profesor" || session?.rol === "PROFESSOR") {
+  } else if (["Profesor", "PROFESSOR"].includes(rawRole)) {
     userRole = "PROFESSOR";
   } else {
-    userRole = "STUDENT";
+    userRole = "STUDENT"; // Default fallback
   }
 
   return (
     <div className="w-full h-screen min-h-screen bg-neutral-50 inline-flex justify-start items-center overflow-hidden">
       <Sidebar user={session as any} />
-      <CasesClient userRole={userRole} userCedula={session?.cedula as string | undefined} />
+      <CasesClient userRole={userRole} userCedula={session?.cedula as string | undefined} debugRole={rawRole} />
     </div>
   );
 }

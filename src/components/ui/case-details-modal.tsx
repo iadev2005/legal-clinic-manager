@@ -7,6 +7,17 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/shadcn/dialog";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+  AlertDialogTrigger,
+} from "@/components/shadcn/alert-dialog";
 import StatusBadge from "./status-badge";
 import PrintButton from "@/app/cases/report/PrintButton";
 import { getCaseReportData } from "@/actions/cases";
@@ -30,6 +41,8 @@ interface CaseDetailsModalProps {
   } | null;
   preloadedDetails?: any;
   preloadedStatusHistory?: any[];
+  userRole?: "ADMIN" | "PROFESSOR" | "STUDENT";
+  debugRole?: string;
 }
 
 export default function CaseDetailsModal({
@@ -37,7 +50,9 @@ export default function CaseDetailsModal({
   onClose,
   caseData,
   preloadedDetails,
-  preloadedStatusHistory
+  preloadedStatusHistory,
+  userRole,
+  debugRole
 }: CaseDetailsModalProps) {
   const [loading, setLoading] = useState(false);
   const [caseDetails, setCaseDetails] = useState<any>(null);
@@ -656,9 +671,56 @@ export default function CaseDetailsModal({
         <div className="flex justify-between items-center pt-4 border-t">
           <div className="flex items-center gap-2 text-sm text-sky-950/60">
             <span className="icon-[mdi--information-outline] text-lg"></span>
-            <span>El reporte incluye toda la información del caso, incluyendo la lista completa de beneficiarios</span>
+            <span>Info: Rol Mapeado: {userRole || 'N/A'} | Rol BD: {debugRole || 'N/A'}</span>
           </div>
           <div className="flex gap-3">
+            {/* DEBUG: Button is rendered if userRole is ADMIN or if raw role is right */}
+            {(userRole === "ADMIN" || debugRole === "Administrador") && (
+              <AlertDialog>
+                <AlertDialogTrigger asChild>
+                  <button
+                    type="button"
+                    className="px-6 py-3 bg-red-600 hover:bg-red-700 text-white rounded-2xl text-lg font-bold shadow-lg transition-transform hover:scale-105 flex items-center gap-2 border-2 border-red-800"
+                    style={{ display: 'flex', visibility: 'visible', opacity: 1, zIndex: 99 }}
+                  >
+                    <span className="icon-[mdi--trash-can-outline] text-xl"></span>
+                    ELIMINAR CASO (ADMIN)
+                  </button>
+                </AlertDialogTrigger>
+                <AlertDialogContent>
+                  <AlertDialogHeader>
+                    <AlertDialogTitle className="text-red-600 font-bold text-xl flex items-center gap-2">
+                      <span className="icon-[mdi--alert-circle] text-2xl"></span>
+                      Confirmar Eliminación
+                    </AlertDialogTitle>
+                    <AlertDialogDescription className="text-gray-700 text-base">
+                      ¿Estás completamente seguro de que deseas eliminar este caso?<br /><br />
+                      <span className="font-semibold text-red-800">Esta acción es irreversible.</span> Se eliminarán permanentemente el caso, sus beneficiarios, historial, asignaciones, soportes y citas asociadas.
+                    </AlertDialogDescription>
+                  </AlertDialogHeader>
+                  <AlertDialogFooter>
+                    <AlertDialogCancel className="rounded-xl">Cancelar</AlertDialogCancel>
+                    <AlertDialogAction
+                      onClick={() => {
+                        import("@/actions/casos").then(({ deleteCaso }) => {
+                          deleteCaso(parseInt(caseData.id)).then((res) => {
+                            if (res.success) {
+                              onClose();
+                              window.location.reload();
+                            } else {
+                              alert(res.error);
+                            }
+                          });
+                        });
+                      }}
+                      className="bg-red-600 hover:bg-red-700 text-white rounded-xl font-bold"
+                    >
+                      Sí, Eliminar Definitivamente
+                    </AlertDialogAction>
+                  </AlertDialogFooter>
+                </AlertDialogContent>
+              </AlertDialog>
+            )}
             <PrintButton
               caseId={caseData.id}
               caseNumber={caseData.caseNumber}

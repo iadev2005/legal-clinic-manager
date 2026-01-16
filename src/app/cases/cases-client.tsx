@@ -66,7 +66,7 @@ const mapEstatusToFrontend = (estatus: string | null): "EN_PROCESO" | "ARCHIVADO
   return "EN_PROCESO";
 };
 
-export default function CasesClient({ userRole, userCedula }: CasesClientProps) {
+export default function CasesClient({ userRole, userCedula, debugRole }: CasesClientProps) {
   const router = useRouter();
   const searchParams = useSearchParams();
   const applicantIdFilter = searchParams.get("applicantId");
@@ -157,7 +157,7 @@ export default function CasesClient({ userRole, userCedula }: CasesClientProps) 
             subject: caso.nombre_materia || "N/A",
             procedure: caso.nombre_tramite || "N/A",
             tribunal: caso.nombre_subcategoria || "Sin asignar", // Usar subcategoría como tribunal temporalmente
-            period: "N/A", // TODO: Obtener del semestre asignado
+            period: caso.periodo_actual || "N/A",
             assignedStudent: caso.alumno_asignado || "Sin asignar",
             status: mapEstatusToFrontend(caso.estatus_actual),
             createdAt: fechaStr,
@@ -432,7 +432,7 @@ export default function CasesClient({ userRole, userCedula }: CasesClientProps) 
       render: (caso) => {
         // Para estudiantes, solo mostrar botón de editar si participan en el caso
         const puedeEditar = userRole !== "STUDENT" || caso.usuario_participa === true;
-        
+
         return (
           <div className="flex justify-center items-center gap-2">
             <button
@@ -829,6 +829,8 @@ export default function CasesClient({ userRole, userCedula }: CasesClientProps) 
           setSelectedCase(null);
         }}
         caseData={selectedCase}
+        userRole={userRole}
+        debugRole={debugRole}
       />
 
       <CaseEditModal
@@ -841,6 +843,8 @@ export default function CasesClient({ userRole, userCedula }: CasesClientProps) 
         caseData={selectedCase}
         estatusList={estatusList}
         userCedula={userCedula}
+        userRole={userRole}
+        debugRole={debugRole}
       />
     </div>
   );

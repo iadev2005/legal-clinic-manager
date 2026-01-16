@@ -9,6 +9,17 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/shadcn/dialog";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+  AlertDialogTrigger,
+} from "@/components/shadcn/alert-dialog";
 import { Label } from "@/components/shadcn/label";
 import { Input } from "@/components/shadcn/input";
 import { Textarea } from "@/components/shadcn/textarea";
@@ -57,6 +68,8 @@ interface CaseEditModalProps {
   } | null;
   estatusList?: Array<{ id_estatus: number; nombre_estatus: string }>;
   userCedula?: string;
+  userRole?: "ADMIN" | "PROFESSOR" | "STUDENT";
+  debugRole?: string;
 }
 
 export interface CaseEditData {
@@ -121,6 +134,8 @@ export default function CaseEditModal({
   caseData,
   estatusList = [],
   userCedula,
+  userRole,
+  debugRole,
 }: CaseEditModalProps) {
   const [loading, setLoading] = useState(false);
   const [loadingData, setLoadingData] = useState(false);
@@ -1106,18 +1121,20 @@ export default function CaseEditModal({
                       />
                     </div>
 
-                    {ben.tipo_beneficiario === "Indirecto" && (
-                      <div className="space-y-2 col-span-2">
-                        <Label className="text-sm font-semibold">Parentesco</Label>
-                        <Input
-                          value={ben.parentesco}
-                          onChange={(e) =>
-                            handleBeneficiarioChange(index, "parentesco", e.target.value)
-                          }
-                          placeholder="Ej: Hijo, Esposo, etc."
-                        />
-                      </div>
-                    )}
+                    <div className="space-y-2 col-span-2">
+                      <Label className="text-sm font-semibold">Parentesco</Label>
+                      <FilterSelect
+                        placeholder="Seleccionar parentesco"
+                        value={ben.parentesco}
+                        onChange={(value) =>
+                          handleBeneficiarioChange(index, "parentesco", value)
+                        }
+                        options={[
+                          { value: "S", label: "Sí (S)" },
+                          { value: "N", label: "No (N)" },
+                        ]}
+                      />
+                    </div>
 
                     <div className="flex items-center gap-2 col-span-2">
                       <input
@@ -1277,22 +1294,72 @@ export default function CaseEditModal({
               </div>
             )}
 
-            <DialogFooter className="gap-2 pt-4">
-              <button
-                type="button"
-                onClick={onClose}
-                className="px-6 py-3 bg-neutral-200 hover:bg-neutral-300 rounded-2xl text-sky-950 text-lg font-semibold transition-all duration-300 hover:scale-105"
-                disabled={loading}
-              >
-                Cancelar
-              </button>
-              <PrimaryButton
-                type="submit"
-                icon="icon-[mdi--content-save]"
-                disabled={loading}
-              >
-                {loading ? "Guardando..." : "Guardar Cambios"}
-              </PrimaryButton>
+            <DialogFooter className="flex justify-between items-center gap-2 pt-4 w-full">
+              <div className="flex-1">
+                {(userCedula && (userRole === "ADMIN" || debugRole === "Administrador")) && (
+                  <AlertDialog>
+                    <AlertDialogTrigger asChild>
+                      <button
+                        type="button"
+                        className="px-4 py-3 bg-red-100 hover:bg-red-200 text-red-700 rounded-lg text-sm font-bold flex items-center gap-2 transition-transform hover:scale-105"
+                      >
+                        <span className="icon-[mdi--trash-can-outline] text-lg"></span>
+                        ELIMINAR CASO
+                      </button>
+                    </AlertDialogTrigger>
+                    <AlertDialogContent>
+                      <AlertDialogHeader>
+                        <AlertDialogTitle className="text-red-600 font-bold text-xl flex items-center gap-2">
+                          <span className="icon-[mdi--alert-circle] text-2xl"></span>
+                          Confirmar Eliminación
+                        </AlertDialogTitle>
+                        <AlertDialogDescription className="text-gray-700 text-base">
+                          ¿Estás completamente seguro de que deseas eliminar este caso?<br /><br />
+                          <span className="font-semibold text-red-800">Esta acción es irreversible.</span> Se eliminarán permanentemente el caso y todos sus datos asociados.
+                        </AlertDialogDescription>
+                      </AlertDialogHeader>
+                      <AlertDialogFooter>
+                        <AlertDialogCancel className="rounded-xl">Cancelar</AlertDialogCancel>
+                        <AlertDialogAction
+                          onClick={() => {
+                            import("@/actions/casos").then(({ deleteCaso }) => {
+                              // @ts-ignore
+                              deleteCaso(parseInt(caseData.id)).then((res) => {
+                                if (res.success) {
+                                  onClose();
+                                  window.location.reload();
+                                } else {
+                                  alert(res.error);
+                                }
+                              });
+                            });
+                          }}
+                          className="bg-red-600 hover:bg-red-700 text-white rounded-xl font-bold"
+                        >
+                          Sí, Eliminar Definitivamente
+                        </AlertDialogAction>
+                      </AlertDialogFooter>
+                    </AlertDialogContent>
+                  </AlertDialog>
+                )}
+              </div>
+              <div className="flex gap-2">
+                <button
+                  type="button"
+                  onClick={onClose}
+                  className="px-6 py-3 bg-neutral-200 hover:bg-neutral-300 rounded-2xl text-sky-950 text-lg font-semibold transition-all duration-300 hover:scale-105"
+                  disabled={loading}
+                >
+                  Cancelar
+                </button>
+                <PrimaryButton
+                  type="submit"
+                  icon="icon-[mdi--content-save]"
+                  disabled={loading}
+                >
+                  {loading ? "Guardando..." : "Guardar Cambios"}
+                </PrimaryButton>
+              </div>
             </DialogFooter>
           </form>
         )}

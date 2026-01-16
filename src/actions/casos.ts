@@ -71,7 +71,7 @@ export async function getCasos() {
     try {
         const session = await getSession();
         const cedulaUsuario = session?.cedula || null;
-        
+
         // Si no hay sesión, usar consulta sin verificación de participación
         if (!cedulaUsuario) {
             const result = await query(`
@@ -93,6 +93,14 @@ export async function getCasos() {
               ORDER BY sem.fecha_inicio DESC
               LIMIT 1
             ) as estatus_actual,
+            (
+              SELECT cs.term
+              FROM Casos_Semestres cs
+              JOIN Semestres sem ON cs.term = sem.term
+              WHERE cs.nro_caso = c.nro_caso
+              ORDER BY sem.fecha_inicio DESC
+              LIMIT 1
+            ) as periodo_actual,
             (
               SELECT STRING_AGG(u.nombres || ' ' || u.apellidos, ', ')
               FROM Se_Asignan sa
@@ -123,7 +131,7 @@ export async function getCasos() {
         `);
             return { success: true, data: result.rows };
         }
-        
+
         // Si hay sesión, usar consulta con verificación de participación
         const result = await query(`
       SELECT 
@@ -144,6 +152,14 @@ export async function getCasos() {
           ORDER BY sem.fecha_inicio DESC
           LIMIT 1
         ) as estatus_actual,
+        (
+          SELECT cs.term
+          FROM Casos_Semestres cs
+          JOIN Semestres sem ON cs.term = sem.term
+          WHERE cs.nro_caso = c.nro_caso
+          ORDER BY sem.fecha_inicio DESC
+          LIMIT 1
+        ) as periodo_actual,
         (
           SELECT STRING_AGG(u.nombres || ' ' || u.apellidos, ', ')
           FROM Se_Asignan sa
@@ -250,7 +266,7 @@ export async function createCaso(data: CreateCasoData) {
         if (!permiso.allowed) {
             return { success: false, error: permiso.error || 'No tienes permisos para crear casos' };
         }
-        
+
         // Iniciar transacción
         await query('BEGIN');
 
@@ -317,9 +333,9 @@ export async function createCaso(data: CreateCasoData) {
         // 4. Asignar alumno/profesor si se proporcionó (usando el term del caso)
         if (data.asignacion) {
             // Asignar múltiples alumnos si se proporcionaron
-            const alumnosParaAsignar = data.asignacion.cedulas_alumnos || 
-                                      (data.asignacion.cedula_alumno ? [data.asignacion.cedula_alumno] : []);
-            
+            const alumnosParaAsignar = data.asignacion.cedulas_alumnos ||
+                (data.asignacion.cedula_alumno ? [data.asignacion.cedula_alumno] : []);
+
             for (const cedulaAlumno of alumnosParaAsignar) {
                 await query(`
           INSERT INTO Se_Asignan (id_caso, cedula_alumno, term, estatus)
@@ -399,7 +415,7 @@ export async function updateCaso(nroCaso: number, data: UpdateCasoData) {
         if (!permiso.allowed) {
             return { success: false, error: permiso.error || 'No tienes permisos para editar este caso' };
         }
-        
+
         await query('BEGIN');
 
         // Construir la consulta UPDATE dinámicamente
@@ -481,18 +497,46 @@ export async function updateCaso(nroCaso: number, data: UpdateCasoData) {
 
 export async function deleteCaso(nroCaso: number) {
     try {
-        // Verificar permisos - solo docentes pueden eliminar
+        // Verificar permisos - Solo Administradores y Coordinadores pueden eliminar casos
         const session = await getSession();
-        if (session?.rol === 'Estudiante') {
-            return { success: false, error: 'Los alumnos no pueden eliminar casos' };
+        const rawRole = session?.rol?.trim() || "";
+
+        if (!["Administrador", "Coordinador", "ADMIN", "COORDINATOR", "Admin"].includes(rawRole)) {
+            return { success: false, error: 'Solo los Administradores y Coordinadores pueden eliminar casos' };
         }
-        
-        await query('DELETE FROM Casos WHERE nro_caso = $1', [nroCaso]);
+
+        // Ejecutar eliminación en cascada como transacción
+        await query('BEGIN');
+
+        try {
+            // 1. Borrar tablas dependientes
+            await query('DELETE FROM Notificaciones_Usuarios WHERE id_notificacion IN (SELECT id_notificacion FROM Notificaciones WHERE descripcion LIKE $1)', [`%caso #${nroCaso}%`]); // Aproximación para notificaciones
+            // Nota: Notificaciones es complejo de vincular directamente si no tiene FK, pero borramos las dependencias claras primero
+
+            await query('DELETE FROM casos_semestres WHERE nro_caso = $1', [nroCaso]);
+            await query('DELETE FROM Se_Le_Adjudican WHERE id_caso = $1', [nroCaso]);
+            await query('DELETE FROM Supervisan WHERE id_caso = $1', [nroCaso]);
+            await query('DELETE FROM Se_Asignan WHERE id_caso = $1', [nroCaso]);
+            await query('DELETE FROM Atienden WHERE nro_caso = $1', [nroCaso]);
+            await query('DELETE FROM Acciones WHERE nro_caso = $1', [nroCaso]);
+            await query('DELETE FROM Citas WHERE nro_caso = $1', [nroCaso]);
+            await query('DELETE FROM Soportes_Legales WHERE nro_caso = $1', [nroCaso]);
+            await query('DELETE FROM Beneficiarios WHERE nro_caso = $1', [nroCaso]);
+
+            // 2. Borrar tabla maestra
+            await query('DELETE FROM Casos WHERE nro_caso = $1', [nroCaso]);
+
+            await query('COMMIT');
+        } catch (err) {
+            await query('ROLLBACK');
+            throw err;
+        }
+
         revalidatePath('/cases');
         return { success: true };
     } catch (error: any) {
         console.error('Error al eliminar caso:', error);
-        return { success: false, error: error.message || 'Error al eliminar caso' };
+        return { success: false, error: error.message || 'Error al eliminar el caso' };
     }
 }
 
@@ -527,7 +571,7 @@ export async function cambiarEstatus(nroCaso: number, idEstatus: number, motivo:
         if (!permiso.allowed) {
             return { success: false, error: permiso.error || 'No tienes permisos para cambiar el estatus de este caso' };
         }
-        
+
         await query(`
       INSERT INTO Se_Le_Adjudican (id_caso, id_estatus, cedula_usuario, motivo)
       VALUES ($1, $2, $3, $4)
@@ -655,7 +699,7 @@ export async function asignarAlumno(nroCaso: number, cedulaAlumno: string, term:
         if (!permiso.allowed) {
             return { success: false, error: permiso.error || 'Los alumnos solo pueden ver asignaciones, no editarlas' };
         }
-        
+
         await query('BEGIN');
 
         // Verificar si ya está asignado en ESTE semestre
@@ -703,7 +747,7 @@ export async function asignarProfesor(nroCaso: number, cedulaProfesor: string, t
         if (!permiso.allowed) {
             return { success: false, error: permiso.error || 'Los alumnos solo pueden ver asignaciones, no editarlas' };
         }
-        
+
         await query('BEGIN');
 
         // Verificar que el profesor existe y está registrado en ese semestre
@@ -714,9 +758,9 @@ export async function asignarProfesor(nroCaso: number, cedulaProfesor: string, t
 
         if (profesorCheck.rows.length === 0) {
             await query('ROLLBACK');
-            return { 
-                success: false, 
-                error: `El profesor no está registrado en el semestre ${term}. Debe estar registrado como profesor en ese semestre antes de poder asignarlo como supervisor.` 
+            return {
+                success: false,
+                error: `El profesor no está registrado en el semestre ${term}. Debe estar registrado como profesor en ese semestre antes de poder asignarlo como supervisor.`
             };
         }
 
@@ -772,7 +816,7 @@ export async function desactivarAsignacion(idAsignacion: number, tipo: 'alumno' 
         if (session?.rol === 'Estudiante') {
             return { success: false, error: 'Los alumnos solo pueden ver asignaciones, no editarlas' };
         }
-        
+
         const tabla = tipo === 'alumno' ? 'Se_Asignan' : 'Supervisan';
         const idColumn = tipo === 'alumno' ? 'id_asignacion' : 'id_supervision';
 
@@ -816,7 +860,7 @@ export async function addBeneficiario(nroCaso: number, data: BeneficiarioData) {
         if (!permiso.allowed) {
             return { success: false, error: permiso.error || 'No tienes permisos para agregar beneficiarios a este caso' };
         }
-        
+
         await query(`
       INSERT INTO Beneficiarios (
         cedula_beneficiario, nro_caso, cedula_es_propia,
@@ -850,7 +894,7 @@ export async function removeBeneficiario(cedulaBeneficiario: string, nroCaso: nu
         if (!permiso.allowed) {
             return { success: false, error: permiso.error || 'No tienes permisos para eliminar beneficiarios de este caso' };
         }
-        
+
         await query(`
       DELETE FROM Beneficiarios
       WHERE cedula_beneficiario = $1 AND nro_caso = $2
@@ -875,7 +919,7 @@ export async function vincularCasoSemestre(nroCaso: number, term: string, idEsta
         if (!permiso.allowed) {
             return { success: false, error: permiso.error || 'No tienes permisos para vincular este caso a un semestre' };
         }
-        
+
         const session = await getSession();
 
         await query(`
@@ -945,7 +989,7 @@ export async function getCasosBySemestre(term?: string) {
         if (!term) {
             return { success: false, error: 'El semestre es requerido' };
         }
-        
+
         const result = await query(`
             SELECT 
                 c.*,
@@ -983,7 +1027,7 @@ export async function getCasosBySemestre(term?: string) {
             )
             ORDER BY c.nro_caso DESC
         `, [term]);
-        
+
         return { success: true, data: result.rows };
     } catch (error: any) {
         console.error('Error al obtener casos por semestre:', error);
@@ -1010,7 +1054,7 @@ export async function getAlumnosAsignadosCaso(nroCaso: number, term: string) {
                 AND sa.estatus = 'Activo'
             ORDER BY u.nombres, u.apellidos
         `, [nroCaso, term]);
-        
+
         return { success: true, data: result.rows };
     } catch (error: any) {
         console.error('Error al obtener alumnos asignados al caso:', error);
@@ -1135,7 +1179,7 @@ export async function getCasosBySolicitante(cedulaSolicitante: string) {
     try {
         const session = await getSession();
         const cedulaUsuario = session?.cedula || null;
-        
+
         // Si no hay sesión, usar consulta sin verificación de participación
         if (!cedulaUsuario) {
             const result = await query(`
@@ -1162,7 +1206,7 @@ export async function getCasosBySolicitante(cedulaSolicitante: string) {
         `, [cedulaSolicitante]);
             return { success: true, data: result.rows };
         }
-        
+
         // Si hay sesión, usar consulta con verificación de participación
         const result = await query(`
       SELECT 
@@ -1284,7 +1328,7 @@ export async function createAccion(data: CreateAccionData) {
         if (!permiso.allowed) {
             return { success: false, error: permiso.error || 'No tienes permisos para crear acciones en este caso' };
         }
-        
+
         const session = await getSession();
         const cedulaEjecutor = data.cedula_usuario_ejecutor || session?.cedula || null;
         const fechaRealizacion = data.fecha_realizacion || new Date().toISOString().split('T')[0];
@@ -1327,7 +1371,7 @@ export async function updateAccion(
         if (!permiso.allowed) {
             return { success: false, error: permiso.error || 'No tienes permisos para editar esta acción' };
         }
-        
+
         // Construir la consulta UPDATE dinámicamente
         const updates: string[] = [];
         const values: any[] = [];
@@ -1384,7 +1428,7 @@ export async function deleteAccion(nroAccion: number, nroCaso: number) {
         if (!permiso.allowed) {
             return { success: false, error: permiso.error || 'Solo los docentes pueden eliminar acciones' };
         }
-        
+
         const result = await query(`
             DELETE FROM Acciones
             WHERE nro_accion = $1 AND nro_caso = $2
