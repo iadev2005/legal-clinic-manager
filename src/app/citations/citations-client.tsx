@@ -1403,7 +1403,7 @@ export default function CitationsClient() {
                         {/* Upcoming Sidebar */}
                         <div className="col-span-3 h-full flex flex-col border-l border-neutral-100 pl-6 min-h-0">
                             <h3 className="text-sky-950 font-bold text-xl mb-4 flex items-center gap-2">
-                                <span className="icon-[mdi--playlist-clock] text-[#3E7DBB]"></span>
+                                <span className="icon-[mdi--calendar-clock] text-[#3E7DBB]"></span>
                                 Agenda Próxima
                             </h3>
                             <div className="flex-1 overflow-y-auto pr-2 space-y-3 custom-scrollbar">
