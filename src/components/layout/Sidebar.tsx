@@ -90,29 +90,35 @@ export default function Sidebar({ user }: SidebarProps) {
                     })}
                 </div>
             </div>
-            <div className="self-stretch inline-flex flex-col justify-center items-start gap-2">
-                <div className="self-stretch px-3 py-2.5 rounded-2xl inline-flex justify-start items-center gap-3 transition-all duration-300 hover:scale-105 hover:shadow-[0px_0px_20px_rgba(255,255,255,0.2)] cursor-default group" style={{ background: "linear-gradient(99deg, #3E7DBB 0.65%, #73ACE6 117.83%)", }}>
-                    <div className="p-2 bg-blue-300 rounded-xl flex justify-start items-center gap-2.5 transition-transform duration-300 group-hover:rotate-12 group-hover:bg-blue-200">
-                        <span className="icon-[mdi--peace] text-4xl text-[#3E7DBB] transition-transform duration-300 group-hover:scale-110"></span>
+            <div className="self-stretch inline-flex flex-col justify-center items-start gap-6">
+                <div className="self-stretch px-4 py-3 rounded-2xl inline-flex justify-start items-center gap-3 bg-gradient-to-br from-blue-50 to-blue-100 border border-blue-200 shadow-sm cursor-default">
+                    <div className="p-2 bg-white rounded-xl flex justify-center items-center shadow-sm">
+                        <span className="icon-[mdi--peace] text-3xl text-[#3E7DBB]"></span>
                     </div>
-                    <div className="flex-1 inline-flex flex-col justify-start items-start">
-                        <h1 className="self-stretch justify-start text-sky-950 text-base font-semibold leading-tight">Contribuyendo al ODS 16:</h1>
-                        <h1 className="self-stretch justify-start text-sky-950 text-xs font-semibold leading-tight">Paz, Justicia e Instituciones</h1>
+                    <div className="flex-1 inline-flex flex-col justify-start items-start gap-0.5">
+                        <h1 className="self-stretch text-[#3E7DBB] text-xs font-bold tracking-wide uppercase">ODS 16</h1>
+                        <h1 className="self-stretch text-sky-950 text-sm font-bold leading-tight">Paz, Justicia e Instituciones</h1>
                     </div>
                 </div>
                 <div className="self-stretch inline-flex justify-start items-center gap-3">
                     <div className="px-3 aspect-square bg-gradient-to-br from-cyan-600 to-blue-400 rounded-[45px] inline-flex flex-col justify-center items-center gap-2.5" style={{ background: "linear-gradient(99deg, #3E7DBB 0.65%, #73ACE6 117.83%)", }}>
                         <h1 className="justify-start text-sky-950 text-xl font-semibold">{initials}</h1>
                     </div>
-                    <div className="inline-flex flex-col justify-start items-start">
-                        <h1 className="self-stretch justify-start text-white text-lg font-semibold leading-tight [text-shadow:_0px_4px_6px_rgb(0_0_0_/_0.25)]">{displayName}</h1>
+                    <div className="inline-flex flex-col justify-start items-start gap-0.5">
+                        <div className="flex items-center gap-0">
+                            <h1 className="self-stretch justify-start text-white text-lg font-semibold leading-tight [text-shadow:_0px_4px_6px_rgb(0_0_0_/_0.25)]">{displayName}</h1>
+                            <Link href="/profile" className="text-blue-200 hover:text-white transition-transform duration-200 hover:scale-110 active:scale-95 cursor-pointer ml-1" title="Editar Perfil">
+                                <span className="icon-[mdi--pencil-outline] text-3xl filter drop-shadow-[0_2px_2px_rgba(0,0,0,0.3)]"></span>
+                            </Link>
+                        </div>
                         <button
                             onClick={async () => {
                                 await logout();
                             }}
-                            className="flex justify-start items-center gap-2 text-red-500 text-sm font-semibold leading-tight [text-shadow:_0px_4px_6px_rgb(0_0_0_/_0.25)] cursor-pointer transition-all duration-100 hover:text-red-400 hover:drop-shadow-[0_0_8px_rgba(248,113,113,1)]"
+                            className="group flex justify-center items-center gap-2 mt-2 px-5 py-1.5 bg-gradient-to-r from-red-500 to-red-600 text-white text-sm font-bold rounded-xl shadow-md transition-transform duration-200 transform hover:scale-105 active:scale-95 cursor-pointer"
                         >
-                            Cerrar Sesión
+                            <span className="icon-[mdi--logout] text-xl"></span>
+                            <span>Cerrar Sesión</span>
                         </button>
                     </div>
                 </div>

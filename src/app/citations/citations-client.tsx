@@ -384,7 +384,7 @@ function AppointmentModal({ open, onClose, onSave, editingAppointment, onUpdate 
                             label: s.term
                         }));
                         setSemestres(semestresOptions);
-                        
+
                         // Establecer el semestre más reciente por defecto
                         if (semestresRes.data.length > 0) {
                             const latest = semestresRes.data.sort(
@@ -409,7 +409,7 @@ function AppointmentModal({ open, onClose, onSave, editingAppointment, onUpdate 
                 setError(null);
                 try {
                     const casosRes = await getCasosBySemestre(term);
-                    
+
                     if (casosRes.success && casosRes.data) {
                         const casosOptions = casosRes.data.map((caso: any) => ({
                             value: caso.nro_caso.toString(),
@@ -419,7 +419,7 @@ function AppointmentModal({ open, onClose, onSave, editingAppointment, onUpdate 
                     } else {
                         setAvailableCases([]);
                     }
-                    
+
                     // Limpiar caso seleccionado si no está en la nueva lista
                     if (caseId) {
                         const casoExiste = casosRes.data?.some((c: any) => c.nro_caso.toString() === caseId);
@@ -448,7 +448,7 @@ function AppointmentModal({ open, onClose, onSave, editingAppointment, onUpdate 
                 setLoading(true);
                 try {
                     const alumnosRes = await getAlumnosAsignadosCaso(parseInt(caseId), term);
-                    
+
                     if (alumnosRes.success && alumnosRes.data) {
                         const alumnosOptions = alumnosRes.data.map((a: any) => ({
                             value: a.cedula_alumno,
@@ -1219,7 +1219,7 @@ export default function CitationsClient() {
             <div className="flex-none flex flex-col gap-4">
                 <div className="flex justify-between items-end">
                     <div className="flex flex-col">
-                        <h1 className="text-sky-950 text-5xl font-bold tracking-tight">
+                        <h1 className="text-sky-950 text-4xl font-bold tracking-tight">
                             Gestión de Citas
                         </h1>
                         <p className="text-[#325B84] text-lg font-medium mt-1">

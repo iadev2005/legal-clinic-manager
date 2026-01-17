@@ -17,7 +17,7 @@ export default function UploadTestPage() {
 
     return (
         <div className="p-10 space-y-8 max-w-2xl mx-auto">
-            <h1 className="text-3xl font-bold text-[#003366]">Registro de Soporte Legal</h1>
+            <h1 className="text-sky-950 text-4xl font-bold tracking-tight">Registro de Soporte Legal</h1>
 
             <div className="bg-white p-6 rounded-2xl shadow-lg border border-gray-100">
                 <form action={formAction} className="space-y-6">

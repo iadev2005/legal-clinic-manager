@@ -483,10 +483,10 @@ export default function CasesClient({ userRole, userCedula, debugRole }: CasesCl
       {/* Header */}
       <div className="self-stretch inline-flex justify-between items-start">
         <div className="flex flex-col justify-start items-start">
-          <h1 className="text-sky-950 text-6xl font-semibold">
+          <h1 className="text-sky-950 text-4xl font-bold tracking-tight">
             Gestión de Casos
           </h1>
-          <p className="text-[#325B84] text-2xl font-semibold">
+          <p className="text-[#325B84] text-lg font-medium">
             Registra, asigna y filtra todos los expedientes legales de la
             clínica.
           </p>

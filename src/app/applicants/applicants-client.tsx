@@ -346,10 +346,10 @@ export default function ApplicantsClient() {
         {/* Header */}
         <div className="self-stretch inline-flex justify-between items-start">
           <div className="flex flex-col justify-start items-start">
-            <h1 className="text-sky-950 text-6xl font-semibold">
+            <h1 className="text-sky-950 text-4xl font-bold tracking-tight">
               Gestión de Solicitantes
             </h1>
-            <p className="text-[#325B84] text-2xl font-semibold">
+            <p className="text-[#325B84] text-lg font-medium">
               Crea, consulta y administra el registro de todos los clientes.
             </p>
           </div>

@@ -150,8 +150,8 @@ export default function CustomReportPage() {
             )}
             <div className="w-full h-full p-6 overflow-y-auto">
                 <div className="self-stretch flex flex-col justify-start items-start">
-                    <h1 className="self-stretch justify-start text-sky-950 text-6xl font-semibold">Reporte General</h1>
-                    <h1 className="self-stretch justify-start text-[#325B84] text-2xl font-semibold">Vista previa del reporte personalizado.</h1>
+                    <h1 className="self-stretch justify-start text-sky-950 text-4xl font-bold tracking-tight">Reporte General</h1>
+                    <p className="self-stretch justify-start text-[#325B84] text-lg font-medium">Vista previa del reporte personalizado.</p>
                 </div>
 
                 <div className="w-full flex flex-col gap-8 mt-8 items-center">

@@ -363,7 +363,7 @@ export default function FollowUpClient() {
             {/* Header */}
             <div className="flex-none px-8 pt-8 pb-6 bg-white border-b border-neutral-200 flex justify-between items-center">
                 <div>
-                    <h1 className="text-sky-950 text-5xl font-bold tracking-tight">
+                    <h1 className="text-sky-950 text-4xl font-bold tracking-tight">
                         Gestión de Casos
                     </h1>
                     <p className="text-[#325B84] text-lg font-medium mt-2">

@@ -663,7 +663,7 @@ export default function DashboardClient({ user }: DashboardClientProps) {
             {/* Header & Toggle Container */}
             <div className="flex-none flex justify-between items-end">
                 <div className="flex flex-col">
-                    <h1 className="text-sky-950 text-5xl font-bold tracking-tight">
+                    <h1 className="text-sky-950 text-4xl font-bold tracking-tight">
                         Dashboard
                     </h1>
                     <p className="text-[#325B84] text-lg font-medium mt-1">
