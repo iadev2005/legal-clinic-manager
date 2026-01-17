@@ -649,7 +649,7 @@ export default function CaseCreateModal({
           {/* Síntesis y Fecha */}
           <div className="space-y-2">
             <Label htmlFor="sintesis" className="text-sky-950 font-semibold text-lg">
-              Síntesis del Caso
+              Síntesis del Caso <span className="text-red-500">*</span>
             </Label>
             <Textarea
               id="sintesis"
@@ -816,7 +816,9 @@ export default function CaseCreateModal({
                   </div>
 
                   <div className="space-y-2">
-                    <Label className="text-sm font-semibold">Nombres</Label>
+                    <Label className="text-sm font-semibold">
+                      Nombres <span className="text-red-500">*</span>
+                    </Label>
                     <Input
                       value={ben.nombres}
                       onChange={(e) =>
@@ -827,7 +829,9 @@ export default function CaseCreateModal({
                   </div>
 
                   <div className="space-y-2">
-                    <Label className="text-sm font-semibold">Apellidos</Label>
+                    <Label className="text-sm font-semibold">
+                      Apellidos <span className="text-red-500">*</span>
+                    </Label>
                     <Input
                       value={ben.apellidos}
                       onChange={(e) =>
@@ -842,7 +846,9 @@ export default function CaseCreateModal({
                   </div>
 
                   <div className="space-y-2">
-                    <Label className="text-sm font-semibold">Sexo</Label>
+                    <Label className="text-sm font-semibold">
+                      Sexo <span className="text-red-500">*</span>
+                    </Label>
                     <FilterSelect
                       placeholder="Seleccionar"
                       value={ben.sexo}
@@ -858,7 +864,7 @@ export default function CaseCreateModal({
 
                   <div className="space-y-2">
                     <Label className="text-sm font-semibold">
-                      Fecha de Nacimiento
+                      Fecha de Nacimiento <span className="text-red-500">*</span>
                     </Label>
                     <Input
                       type="date"
