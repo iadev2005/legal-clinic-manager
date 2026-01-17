@@ -510,7 +510,7 @@ export default function ApplicantModal({
 
                     {/* Sexo */}
                     <div className="space-y-2">
-                      <Label className="text-sky-950 font-semibold">Sexo</Label>
+                      <Label className="text-sky-950 font-semibold">Sexo <span className="text-red-500">*</span></Label>
                       <div className="flex gap-4 pt-2">
                         <label className="flex items-center gap-2 cursor-pointer">
                           <input
@@ -561,7 +561,7 @@ export default function ApplicantModal({
                     {/* Estado Civil */}
                     <div className="space-y-2">
                       <Label htmlFor="estado_civil" className="text-sky-950 font-semibold">
-                        Estado Civil
+                        Estado Civil <span className="text-red-500">*</span>
                       </Label>
                       <FilterSelect
                         placeholder="Seleccione"
@@ -617,7 +617,7 @@ export default function ApplicantModal({
                     {/* Teléfono Celular */}
                     <div className="space-y-2">
                       <Label htmlFor="telefono_celular" className="text-sky-950 font-semibold">
-                        Teléfono Celular
+                        Teléfono Celular <span className="text-red-500">*</span>
                       </Label>
                       <Input
                         id="telefono_celular"
@@ -653,7 +653,7 @@ export default function ApplicantModal({
                     {/* Email */}
                     <div className="space-y-2 col-span-2">
                       <Label htmlFor="email" className="text-sky-950 font-semibold">
-                        Correo Electrónico
+                        Correo Electrónico <span className="text-red-500">*</span>
                       </Label>
                       <Input
                         id="email"
@@ -1115,7 +1115,7 @@ export default function ApplicantModal({
                     {/* Ingreso Mensual Aproximado */}
                     <div className="space-y-2">
                       <Label htmlFor="ingreso_mensual" className="text-sky-950 font-semibold">
-                        Ingreso Mensual Aproximado (Bs.)
+                        Ingreso Mensual Aproximado (Bs.) <span className="text-red-500">*</span>
                       </Label>
                       <Input
                         id="ingreso_mensual"

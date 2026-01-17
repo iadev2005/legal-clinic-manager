@@ -394,7 +394,7 @@ export default function AdministrationModal({
                                     {/* Columna 1 */}
                                     <div className="space-y-4">
                                         <div className="space-y-2">
-                                            <Label htmlFor="role">Rol en el Sistema</Label>
+                                            <Label htmlFor="role">Rol en el Sistema <span className="text-red-500">*</span></Label>
                                             <div className={isExistingUser ? "pointer-events-none opacity-50" : ""}>
                                                 <CustomSelect
                                                     value={formData.role ?? "Estudiante"}
@@ -409,7 +409,7 @@ export default function AdministrationModal({
                                         </div>
 
                                         <div className="space-y-2">
-                                            <Label>Cédula de Identidad</Label>
+                                            <Label>Cédula de Identidad <span className="text-red-500">*</span></Label>
                                             <div className="flex gap-2">
                                                 <div className="w-24">
                                                     <CustomSelect
@@ -431,7 +431,7 @@ export default function AdministrationModal({
                                         </div>
 
                                         <div className="space-y-2">
-                                            <Label htmlFor="nombres">Nombres</Label>
+                                            <Label htmlFor="nombres">Nombres <span className="text-red-500">*</span></Label>
                                             <Input
                                                 id="nombres"
                                                 value={formData.nombres ?? ""}
@@ -444,7 +444,7 @@ export default function AdministrationModal({
                                         </div>
 
                                         <div className="space-y-2">
-                                            <Label htmlFor="apellidos">Apellidos</Label>
+                                            <Label htmlFor="apellidos">Apellidos <span className="text-red-500">*</span></Label>
                                             <Input
                                                 id="apellidos"
                                                 value={formData.apellidos ?? ""}
@@ -460,7 +460,7 @@ export default function AdministrationModal({
                                     {/* Columna 2 */}
                                     <div className="space-y-4">
                                         <div className="space-y-2">
-                                            <Label htmlFor="correo">Correo Institucional</Label>
+                                            <Label htmlFor="correo">Correo Institucional <span className="text-red-500">*</span></Label>
                                             <Input
                                                 id="correo"
                                                 type="email"
@@ -474,7 +474,7 @@ export default function AdministrationModal({
                                         </div>
 
                                         <div className="space-y-2">
-                                            <Label htmlFor="sexo">Sexo</Label>
+                                            <Label htmlFor="sexo">Sexo <span className="text-red-500">*</span></Label>
                                             <div className={isExistingUser ? "pointer-events-none opacity-50" : ""}>
                                                 <CustomSelect
                                                     value={formData.sexo ?? "M"}
@@ -500,7 +500,7 @@ export default function AdministrationModal({
                                                 />
                                             </div>
                                             <div className="space-y-2">
-                                                <Label htmlFor="tlf_celular">Tlf. Celular</Label>
+                                                <Label htmlFor="tlf_celular">Tlf. Celular <span className="text-red-500">*</span></Label>
                                                 <Input
                                                     id="tlf_celular"
                                                     value={formData.telefonoCelular ?? ""}
@@ -515,7 +515,7 @@ export default function AdministrationModal({
 
                                         <div className="space-y-2">
                                             <Label htmlFor="password">
-                                                {mode === "create" ? "Contraseña" : "Nueva Contraseña"}
+                                                {mode === "create" ? "Contraseña" : "Nueva Contraseña"} {mode === "create" && !isExistingUser && <span className="text-red-500">*</span>}
                                             </Label>
                                             <div className="relative">
                                                 <Input
@@ -546,7 +546,7 @@ export default function AdministrationModal({
                                     <div className="pt-4 border-t space-y-4">
                                         <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                                             <div className="space-y-2">
-                                                <Label htmlFor="term">Semestre de Ingreso</Label>
+                                                <Label htmlFor="term">Semestre de Ingreso <span className="text-red-500">*</span></Label>
                                                 <CustomSelect
                                                     value={formData.term ?? ""}
                                                     onChange={(val) => handleChange("term", val)}
@@ -554,7 +554,7 @@ export default function AdministrationModal({
                                                 />
                                             </div>
                                             <div className="space-y-2">
-                                                <Label htmlFor="tipoParticipacion">Tipo de Participación</Label>
+                                                <Label htmlFor="tipoParticipacion">Tipo de Participación <span className="text-red-500">*</span></Label>
                                                 <CustomSelect
                                                     value={formData.tipoParticipacion ?? ""}
                                                     onChange={(val) => handleChange("tipoParticipacion", val)}
@@ -581,7 +581,7 @@ export default function AdministrationModal({
                             <div className="space-y-4">
                                 {type !== "semestres" && (
                                     <div className="space-y-2">
-                                        <Label htmlFor="nombre">Nombre</Label>
+                                        <Label htmlFor="nombre">Nombre <span className="text-red-500">*</span></Label>
                                         <Input
                                             id="nombre"
                                             value={formData.nombre || ""}
