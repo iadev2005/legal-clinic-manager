@@ -14,6 +14,8 @@ import {
 } from "@/actions/administracion";
 import { getParroquias, getEstados, getMunicipiosByEstado } from "@/actions/solicitantes";
 import Pagination from "@/components/ui/pagination";
+import SearchInput from "@/components/ui/search-input";
+import FilterSelect from "@/components/ui/filter-select";
 
 
 export default function Administration({ currentUser }: { currentUser: any }) {
@@ -211,6 +213,7 @@ export default function Administration({ currentUser }: { currentUser: any }) {
     };
 
     const [toggleModalOpen, setToggleModalOpen] = useState(false);
+    const [isFilterPanelOpen, setIsFilterPanelOpen] = useState(false);
 
     const handleCreate = () => {
         setCurrentItem(null);
@@ -895,218 +898,234 @@ export default function Administration({ currentUser }: { currentUser: any }) {
                         </button>
                     </div>
 
-                    <div className="flex w-full items-center gap-4 py-4 flex-wrap">
-                        {/* Campo de búsqueda - siempre visible */}
-                        <div className="flex-1 min-w-[200px]">
-                            <input
-                                type="text"
-                                placeholder={activeTab === "users" ? "Buscar por nombre, cédula..." : "Buscar..."}
-                                value={searchTerm}
-                                onChange={(e) => setSearchTerm(e.target.value)}
-                                className="bg-white border border-gray-300 text-sky-950 text-sm rounded-lg focus:ring-sky-950 focus:border-sky-950 block w-full p-2.5"
-                            />
+                    <div className="flex flex-col gap-4 py-4 w-full">
+                        <div className="flex flex-wrap items-center gap-4 w-full">
+                            {/* Campo de búsqueda - siempre visible */}
+                            <div className="flex-1 min-w-[200px]">
+                                <SearchInput
+                                    placeholder={activeTab === "users" ? "Buscar por nombre, cédula..." : "Buscar..."}
+                                    value={searchTerm}
+                                    onChange={setSearchTerm}
+                                    className="w-full"
+                                />
+                            </div>
+
+                            {/* Botón de Filtros */}
+                            <button
+                                onClick={() => setIsFilterPanelOpen(!isFilterPanelOpen)}
+                                className={`px-4 py-2.5 rounded-xl font-semibold transition-all duration-300 flex items-center gap-2 cursor-pointer border-2 ${isFilterPanelOpen
+                                    ? "bg-[#003366] text-white border-[#003366]"
+                                    : "bg-white text-[#003366] border-neutral-200 hover:border-[#003366]"
+                                    }`}
+                            >
+                                <span className="icon-[mdi--filter-variant] text-lg"></span>
+                                Filtros
+                                {(() => {
+                                    /* Calculate active filters count */
+                                    let activeCount = 0;
+                                    if (activeTab === "users") {
+                                        if (filtroRol) activeCount++;
+                                        if (filtroEstatus) activeCount++;
+                                        if (filtroSemestre) activeCount++;
+                                    } else if (activeTab === "subcatalogs") {
+                                        if (filtroMateria) activeCount++;
+                                        if (filtroCategoria) activeCount++;
+                                    } else if (activeTab === "legalfield") {
+                                        if (filtroCategoria) activeCount++;
+                                    } else if (activeTab === "centers") {
+                                        if (filtroEstado) activeCount++;
+                                        if (filtroMunicipio) activeCount++;
+                                    } else if (activeTab === "semestres") {
+                                        if (filtroEstadoSemestre) activeCount++;
+                                    }
+                                    return activeCount > 0 ? (
+                                        <span className="ml-1 px-2 py-0.5 bg-red-500 text-white text-xs font-bold rounded-full">
+                                            {activeCount}
+                                        </span>
+                                    ) : null;
+                                })()}
+                                <span className={`icon-[mdi--chevron-down] text-lg transition-transform duration-300 ${isFilterPanelOpen ? "rotate-180" : ""
+                                    }`}></span>
+                            </button>
+
+                            {/* Botón para limpiar filtros */}
+                            {(searchTerm || filtroRol || filtroEstatus || filtroMateria || filtroCategoria || filtroEstado || filtroMunicipio || filtroEstadoSemestre) && (
+                                <button
+                                    onClick={() => {
+                                        setSearchTerm("");
+                                        setFiltroRol("");
+                                        setFiltroEstatus("");
+                                        setFiltroMateria("");
+                                        setFiltroCategoria("");
+                                        setFiltroEstado("");
+                                        setFiltroMunicipio("");
+                                        setFiltroEstadoSemestre("");
+                                    }}
+                                    className="bg-gray-100 text-gray-600 hover:bg-gray-200 px-4 py-2.5 rounded-xl font-semibold transition-colors cursor-pointer whitespace-nowrap flex items-center gap-2"
+                                    title="Limpiar filtros"
+                                >
+                                    <span className="icon-[mdi--filter-off-outline] text-lg"></span>
+                                </button>
+                            )}
+
+                            {/* Actions Group */}
+                            <div className="flex gap-2 ml-auto">
+                                {selectedItems.length > 0 ? (
+                                    <button
+                                        onClick={activeTab === 'users' ? handleBulkToggle : handleBulkDelete}
+                                        className={`${activeTab === 'users' ? 'bg-sky-950 hover:bg-[#325B84]' : 'bg-red-600 hover:bg-red-700'} text-white px-4 py-2.5 rounded-xl font-semibold transition-colors cursor-pointer flex items-center gap-2`}
+                                    >
+                                        <span className={activeTab === 'users' ? "icon-[mdi--account-convert-outline] text-xl" : "icon-[mdi--trash-can-outline] text-xl"}></span>
+                                        {activeTab === 'users' ? `Cambiar Estatus (${selectedItems.length})` : `Eliminar (${selectedItems.length})`}
+                                    </button>
+                                ) : (
+                                    <>
+                                        {activeTab === "users" && (
+                                            <button
+                                                onClick={() => setBulkUploadModalOpen(true)}
+                                                className="bg-green-600 text-white px-4 py-2.5 rounded-xl font-semibold hover:bg-green-700 transition-colors cursor-pointer flex items-center gap-2"
+                                            >
+                                                <span className="icon-[mdi--upload] text-xl"></span>
+                                                Carga Masiva
+                                            </button>
+                                        )}
+                                        <button onClick={handleCreate} className="bg-sky-950 text-white px-4 py-2.5 rounded-xl font-semibold hover:bg-[#325B84] transition-colors cursor-pointer">Agregar</button>
+                                    </>
+                                )}
+                            </div>
                         </div>
 
-                        {/* Filtros específicos según el tipo de tabla */}
-                        {activeTab === "users" && (
-                            <>
-                                <div className="flex items-center gap-2">
-                                    <span className="text-sky-950 font-semibold whitespace-nowrap">Rol:</span>
-                                    <select
-                                        value={filtroRol}
-                                        onChange={(e) => setFiltroRol(e.target.value)}
-                                        className="bg-white border border-gray-300 text-sky-950 text-sm rounded-lg focus:ring-sky-950 focus:border-sky-950 block p-2.5 min-w-[150px]"
-                                    >
-                                        <option value="">Todos</option>
-                                        <option value="Estudiante">Estudiante</option>
-                                        <option value="Profesor">Profesor</option>
-                                        <option value="Coordinador">Coordinador</option>
-                                        <option value="Administrador">Administrador</option>
-                                    </select>
-                                </div>
-                                <div className="flex items-center gap-2">
-                                    <span className="text-sky-950 font-semibold whitespace-nowrap">Estatus:</span>
-                                    <select
-                                        value={filtroEstatus}
-                                        onChange={(e) => setFiltroEstatus(e.target.value)}
-                                        className="bg-white border border-gray-300 text-sky-950 text-sm rounded-lg focus:ring-sky-950 focus:border-sky-950 block p-2.5 min-w-[120px]"
-                                    >
-                                        <option value="">Todos</option>
-                                        <option value="Activo">Activo</option>
-                                        <option value="Inactivo">Inactivo</option>
-                                    </select>
-                                </div>
-                                <div className="flex items-center gap-2">
-                                    <span className="text-sky-950 font-semibold whitespace-nowrap">Semestre:</span>
-                                    <select
-                                        value={filtroSemestre}
-                                        onChange={(e) => setFiltroSemestre(e.target.value)}
-                                        className="bg-white border border-gray-300 text-sky-950 text-sm rounded-lg focus:ring-sky-950 focus:border-sky-950 block p-2.5 min-w-[120px]"
-                                    >
-                                        <option value="">Todos</option>
-                                        {semestres.map((sem: any) => (
-                                            <option key={sem.id} value={sem.term}>
-                                                {sem.term}
-                                            </option>
-                                        ))}
-                                    </select>
-                                </div>
-                            </>
-                        )}
+                        {/* Collapsible Filter Panel */}
+                        {isFilterPanelOpen && (
+                            <div className="bg-neutral-50 border border-neutral-200 rounded-2xl p-6 animate-in slide-in-from-top-2 fade-in duration-300">
+                                <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                                    {/* USERS FILTERS */}
+                                    {activeTab === "users" && (
+                                        <>
+                                            <FilterSelect
+                                                placeholder="Filtrar por Rol"
+                                                value={filtroRol}
+                                                onChange={setFiltroRol}
+                                                options={[
+                                                    { value: "Estudiante", label: "Estudiante" },
+                                                    { value: "Profesor", label: "Profesor" },
+                                                    { value: "Coordinador", label: "Coordinador" },
+                                                    { value: "Administrador", label: "Administrador" },
+                                                ]}
+                                                className="w-full"
+                                            />
+                                            <FilterSelect
+                                                placeholder="Filtrar por Estatus"
+                                                value={filtroEstatus}
+                                                onChange={setFiltroEstatus}
+                                                options={[
+                                                    { value: "Activo", label: "Activo" },
+                                                    { value: "Inactivo", label: "Inactivo" },
+                                                ]}
+                                                className="w-full"
+                                            />
+                                            <FilterSelect
+                                                placeholder="Filtrar por Semestre"
+                                                value={filtroSemestre}
+                                                onChange={setFiltroSemestre}
+                                                options={semestres.map((sem: any) => ({
+                                                    value: sem.term,
+                                                    label: sem.term
+                                                }))}
+                                                className="w-full"
+                                            />
+                                        </>
+                                    )}
 
-                        {activeTab === "subcatalogs" && (
-                            <>
-                                <div className="flex items-center gap-2">
-                                    <span className="text-sky-950 font-semibold whitespace-nowrap">Materia:</span>
-                                    <select
-                                        value={filtroMateria}
-                                        onChange={(e) => {
-                                            setFiltroMateria(e.target.value);
-                                            setFiltroCategoria(""); // Reset sub-filter
-                                        }}
-                                        className="bg-white border border-gray-300 text-sky-950 text-sm rounded-lg focus:ring-sky-950 focus:border-sky-950 block p-2.5 min-w-[200px]"
-                                    >
-                                        <option value="">Todas las materias</option>
-                                        {legalfield.map((materia: any) => (
-                                            <option key={materia.id} value={materia.id}>
-                                                {materia.nombre}
-                                            </option>
-                                        ))}
-                                    </select>
-                                </div>
-                                {filtroMateria && legalfield.find((m: any) => m.id === filtroMateria)?.nombre.toLowerCase().includes("civil") && (
-                                    <div className="flex items-center gap-2">
-                                        <span className="text-sky-950 font-semibold whitespace-nowrap">Categoría:</span>
-                                        <select
+                                    {/* SUBCATALOGS FILTERS */}
+                                    {activeTab === "subcatalogs" && (
+                                        <>
+                                            <FilterSelect
+                                                placeholder="Filtrar por Materia"
+                                                value={filtroMateria}
+                                                onChange={(val) => {
+                                                    setFiltroMateria(val);
+                                                    setFiltroCategoria("");
+                                                }}
+                                                options={legalfield.map((m: any) => ({
+                                                    value: m.id,
+                                                    label: m.nombre
+                                                }))}
+                                                className="w-full"
+                                            />
+                                            {filtroMateria && legalfield.find((m: any) => m.id === filtroMateria)?.nombre.toLowerCase().includes("civil") && (
+                                                <FilterSelect
+                                                    placeholder="Filtrar por Categoría"
+                                                    value={filtroCategoria}
+                                                    onChange={setFiltroCategoria}
+                                                    options={categorylegalfield
+                                                        .filter((c: any) => c.materiaid === filtroMateria)
+                                                        .map((c: any) => ({
+                                                            value: c.id,
+                                                            label: c.nombre
+                                                        }))}
+                                                    className="w-full"
+                                                />
+                                            )}
+                                        </>
+                                    )}
+
+                                    {/* LEGALFIELD FILTERS */}
+                                    {activeTab === "legalfield" && (
+                                        <FilterSelect
+                                            placeholder="Filtrar por Subcategoría"
                                             value={filtroCategoria}
-                                            onChange={(e) => setFiltroCategoria(e.target.value)}
-                                            className="bg-white border border-gray-300 text-sky-950 text-sm rounded-lg focus:ring-sky-950 focus:border-sky-950 block p-2.5 min-w-[200px]"
-                                        >
-                                            <option value="">Todas las categorías</option>
-                                            {categorylegalfield
-                                                .filter((c: any) => c.materiaid === filtroMateria)
-                                                .map((categoria: any) => (
-                                                    <option key={categoria.id} value={categoria.id}>
-                                                        {categoria.nombre}
-                                                    </option>
-                                                ))}
-                                        </select>
-                                    </div>
-                                )}
-                            </>
-                        )}
+                                            onChange={setFiltroCategoria}
+                                            options={subcategorylegalfield.map((s: any) => ({
+                                                value: s.id,
+                                                label: s.nombre
+                                            }))}
+                                            className="w-full"
+                                        />
+                                    )}
 
-                        {activeTab === "legalfield" && (
-                            <div className="flex items-center gap-2">
-                                <span className="text-sky-950 font-semibold whitespace-nowrap">Ámbito Legal:</span>
-                                <select
-                                    value={filtroCategoria}
-                                    onChange={(e) => setFiltroCategoria(e.target.value)}
-                                    className="bg-white border border-gray-300 text-sky-950 text-sm rounded-lg focus:ring-sky-950 focus:border-sky-950 block p-2.5 min-w-[200px]"
-                                >
-                                    <option value="">Todas las subcategorías</option>
-                                    {subcategorylegalfield.map((subcategoria) => (
-                                        <option key={subcategoria.id} value={subcategoria.id}>
-                                            {subcategoria.nombre}
-                                        </option>
-                                    ))}
-                                </select>
-                            </div>
-                        )}
+                                    {/* CENTERS FILTERS */}
+                                    {activeTab === "centers" && (
+                                        <>
+                                            <FilterSelect
+                                                placeholder="Filtrar por Estado"
+                                                value={filtroEstado}
+                                                onChange={setFiltroEstado}
+                                                options={estados.map((e: any) => ({
+                                                    value: e.id_estado,
+                                                    label: e.nombre_estado
+                                                }))}
+                                                className="w-full"
+                                            />
+                                            <FilterSelect
+                                                placeholder="Filtrar por Municipio"
+                                                value={filtroMunicipio}
+                                                onChange={setFiltroMunicipio}
+                                                disabled={!filtroEstado}
+                                                options={municipios.map((m: any) => ({
+                                                    value: m.id_municipio,
+                                                    label: m.nombre_municipio
+                                                }))}
+                                                className="w-full"
+                                            />
+                                        </>
+                                    )}
 
-                        {activeTab === "centers" && (
-                            <>
-                                <div className="flex items-center gap-2">
-                                    <span className="text-sky-950 font-semibold whitespace-nowrap">Estado:</span>
-                                    <select
-                                        value={filtroEstado}
-                                        onChange={(e) => setFiltroEstado(e.target.value)}
-                                        className="bg-white border border-gray-300 text-sky-950 text-sm rounded-lg focus:ring-sky-950 focus:border-sky-950 block p-2.5 min-w-[180px]"
-                                    >
-                                        <option value="">Todos los estados</option>
-                                        {estados.map((estado) => (
-                                            <option key={estado.id_estado} value={estado.id_estado}>
-                                                {estado.nombre_estado}
-                                            </option>
-                                        ))}
-                                    </select>
+                                    {/* SEMESTRES FILTERS */}
+                                    {activeTab === "semestres" && (
+                                        <FilterSelect
+                                            placeholder="Filtrar por Estado"
+                                            value={filtroEstadoSemestre}
+                                            onChange={setFiltroEstadoSemestre}
+                                            options={[
+                                                { value: "Activo", label: "Activo" },
+                                                { value: "Pendiente", label: "Pendiente" },
+                                                { value: "Finalizado", label: "Finalizado" },
+                                            ]}
+                                            className="w-full"
+                                        />
+                                    )}
                                 </div>
-                                <div className="flex items-center gap-2">
-                                    <span className="text-sky-950 font-semibold whitespace-nowrap">Municipio:</span>
-                                    <select
-                                        value={filtroMunicipio}
-                                        onChange={(e) => setFiltroMunicipio(e.target.value)}
-                                        disabled={!filtroEstado}
-                                        className="bg-white border border-gray-300 text-sky-950 text-sm rounded-lg focus:ring-sky-950 focus:border-sky-950 block p-2.5 min-w-[180px] disabled:bg-gray-100 disabled:cursor-not-allowed"
-                                    >
-                                        <option value="">Todos los municipios</option>
-                                        {municipios.map((municipio) => (
-                                            <option key={municipio.id_municipio} value={municipio.id_municipio}>
-                                                {municipio.nombre_municipio}
-                                            </option>
-                                        ))}
-                                    </select>
-                                </div>
-                            </>
-                        )}
-
-                        {activeTab === "semestres" && (
-                            <div className="flex items-center gap-2">
-                                <span className="text-sky-950 font-semibold whitespace-nowrap">Estado:</span>
-                                <select
-                                    value={filtroEstadoSemestre}
-                                    onChange={(e) => setFiltroEstadoSemestre(e.target.value)}
-                                    className="bg-white border border-gray-300 text-sky-950 text-sm rounded-lg focus:ring-sky-950 focus:border-sky-950 block p-2.5 min-w-[150px]"
-                                >
-                                    <option value="">Todos</option>
-                                    <option value="Activo">Activo</option>
-                                    <option value="Pendiente">Pendiente</option>
-                                    <option value="Finalizado">Finalizado</option>
-                                </select>
-                            </div>
-                        )}
-
-                        {/* Botón para limpiar filtros */}
-                        {(searchTerm || filtroRol || filtroEstatus || filtroMateria || filtroCategoria || filtroEstado || filtroMunicipio || filtroEstadoSemestre) && (
-                            <button
-                                onClick={() => {
-                                    setSearchTerm("");
-                                    setFiltroRol("");
-                                    setFiltroEstatus("");
-                                    setFiltroMateria("");
-                                    setFiltroCategoria("");
-                                    setFiltroEstado("");
-                                    setFiltroMunicipio("");
-                                    setFiltroEstadoSemestre("");
-                                }}
-                                className="bg-gray-500 text-white px-4 py-2 rounded-lg font-semibold hover:bg-gray-600 transition-colors cursor-pointer whitespace-nowrap"
-                                title="Limpiar filtros"
-                            >
-                                Limpiar
-                            </button>
-                        )}
-
-                        {/*boton de agregar */}
-                        {selectedItems.length > 0 ? (
-                            <button
-                                onClick={activeTab === 'users' ? handleBulkToggle : handleBulkDelete}
-                                className={`${activeTab === 'users' ? 'bg-sky-950 hover:bg-[#325B84]' : 'bg-red-600 hover:bg-red-700'} text-white px-4 py-2 rounded-lg font-semibold transition-colors cursor-pointer flex items-center gap-2`}
-                            >
-                                <span className={activeTab === 'users' ? "icon-[mdi--account-convert-outline] text-xl" : "icon-[mdi--trash-can-outline] text-xl"}></span>
-                                {activeTab === 'users' ? `Cambiar Estatus (${selectedItems.length})` : `Eliminar (${selectedItems.length})`}
-                            </button>
-                        ) : (
-                            <div className="flex gap-2">
-                                {activeTab === "users" && (
-                                    <button
-                                        onClick={() => setBulkUploadModalOpen(true)}
-                                        className="bg-green-600 text-white px-4 py-2 rounded-lg font-semibold hover:bg-green-700 transition-colors cursor-pointer flex items-center gap-2"
-                                    >
-                                        <span className="icon-[mdi--upload] text-xl"></span>
-                                        Carga Masiva
-                                    </button>
-                                )}
-                                <button onClick={handleCreate} className="bg-sky-950 text-white px-4 py-2 rounded-lg font-semibold hover:bg-[#325B84] transition-colors cursor-pointer">Agregar</button>
                             </div>
                         )}
                     </div>
@@ -1140,7 +1159,7 @@ export default function Administration({ currentUser }: { currentUser: any }) {
                         )}
                     </div>
 
-                    <div className="self-stretch py-2">
+                    <div className="self-stretch py-1">
                         {fullFilteredData.length > 0 && (
                             <Pagination
                                 currentPage={currentPage}
