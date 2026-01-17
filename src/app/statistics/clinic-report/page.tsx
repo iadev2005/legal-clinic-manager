@@ -62,10 +62,13 @@ export default function CustomReportPage() {
 
     if (loading) return <div>Cargando reporte personalizado...</div>;
     if (error) return <div>Error cargando datos: {error}</div>;
-    if (!data && !loading) return <div>No hay datos para mostrar.</div>;
+    if (!data) return <div>No hay datos para mostrar.</div>;
 
     const breakdown = data?.materiaDetails.detailedBreakdown || [];
     const materiaByMateria = data?.materiaDetails.byMateria || [];
+    const genderData = data?.socioEconomic.gender || [];
+    const parishData = data?.parish || [];
+    const stateData = data?.state || [];
 
     // ... (rest of data prep using data? or fallback)
     // To keep it simple, we just ensure the return block handles null data
@@ -131,15 +134,15 @@ export default function CustomReportPage() {
     );
     const otrosBar = otros.map((p: any) => ({ category: p.name, value: p.value }));
 
-    const porMateria = data.materiaDetails.byMateria.map((item: any) => ({
+    const porMateria = materiaByMateria.map((item: any) => ({
         name: item.name,
         value: item.value,
         fill: `var(--color-${item.name.toLowerCase().replace(/\s+/g, '-')})`
     }));
 
-    const genero = data.socioEconomic.gender.map((item: any) => ({ category: item.name, value: item.value }));
-    const parroquia = data.parish.map((item: any) => ({ category: item.name, value: item.value }));
-    const estado = data.state.map((item: any) => ({ category: item.name, value: item.value }));
+    const genero = genderData.map((item: any) => ({ category: item.name, value: item.value }));
+    const parroquia = parishData.map((item: any) => ({ category: item.name, value: item.value }));
+    const estado = stateData.map((item: any) => ({ category: item.name, value: item.value }));
 
     return (
         <div className="w-full h-screen min-h-screen bg-neutral-50 inline-flex justify-start items-center overflow-hidden">

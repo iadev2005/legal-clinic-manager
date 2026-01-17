@@ -55,7 +55,7 @@ export default function CaseCreateModal({
 }: CaseCreateModalProps) {
   const [loading, setLoading] = useState(false);
   const [submitError, setSubmitError] = useState<string | null>(null);
-  const [errors, setErrors] = useState<Record<string, string>>({});
+  const [errors, setErrors] = useState<Record<string, string | undefined>>({});
 
   // Catálogos
   const [solicitantes, setSolicitantes] = useState<
@@ -685,7 +685,8 @@ export default function CaseCreateModal({
                   setTerm(newTerm);
                   // Limpiar selección de alumno/profesor cuando cambia el term
                   if (asignarAlumno) {
-                    setCedulaAlumno("");
+                    setAlumnosSeleccionados([]);
+                    setCedulaAlumnoTemporal("");
                   }
                   if (asignarProfesor) {
                     setCedulaProfesor("");
