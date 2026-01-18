@@ -69,7 +69,7 @@ export function PieChart({ data, config, dataKey, nameKey, title, innerRadius = 
                     </RechartsPieChart>
                 </ChartContainer>
             </CardContent>
-            <div className="flex flex-wrap justify-center gap-x-4 gap-y-1 mt-4 max-w-[240px] mx-auto">
+            <div className="flex flex-wrap justify-center gap-x-6 gap-y-2 mt-4 w-full">
                 {processedData.map((entry, index) => {
                     const key = entry[nameKey] as string
                     return (

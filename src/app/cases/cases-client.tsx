@@ -760,8 +760,8 @@ export default function CasesClient({ userRole, userCedula, debugRole }: CasesCl
         </>
       ) : (
         /* Charts View */
-        <div className="self-stretch flex-1 min-h-0 grid grid-cols-2 gap-8 overflow-hidden animate-in fade-in zoom-in-95 duration-500">
-          <div className="bg-white rounded-[32px] shadow-sm border border-neutral-100 p-8 flex flex-col h-full hover:shadow-lg transition-shadow duration-300">
+        <div className="self-stretch flex-1 min-h-0 grid grid-cols-1 md:grid-cols-2 gap-8 overflow-hidden animate-in fade-in zoom-in-95 duration-500 pb-8">
+          <div className="bg-white rounded-[32px] shadow-sm border border-neutral-100 p-8 flex flex-col h-full hover:shadow-lg transition-shadow duration-300 items-center justify-center">
             <PieChart
               title="Distribución por Materia"
               data={pieChartData}
@@ -771,7 +771,7 @@ export default function CasesClient({ userRole, userCedula, debugRole }: CasesCl
               innerRadius={60}
             />
           </div>
-          <div className="bg-white rounded-[32px] shadow-sm border border-neutral-100 p-8 flex flex-col h-full hover:shadow-lg transition-shadow duration-300">
+          <div className="bg-white rounded-[32px] shadow-sm border border-neutral-100 p-8 flex flex-col h-full hover:shadow-lg transition-shadow duration-300 justify-center">
             <BarChart
               title="Distribución por Trámite"
               data={barChartData}

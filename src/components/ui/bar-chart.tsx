@@ -55,20 +55,20 @@ export function BarChart({
         </CardHeader>
       )}
       <CardContent className="flex-1 pb-0">
-        <ChartContainer config={config} className="h-[350px] w-full">
-          <RechartsBarChart data={processedData} margin={{ bottom: 40 }}>
+        <ChartContainer config={config} className="h-[300px] w-full">
+          <RechartsBarChart data={processedData} margin={{ bottom: 20, top: 10 }}>
             <CartesianGrid strokeDasharray="3 3" stroke="#E5E7EB" />
             <XAxis
               dataKey={nameKey}
               angle={-45}
               textAnchor="end"
-              height={150}
+              height={130}
               interval={0}
               tick={{ fill: "#0F172A", fontSize: 12 }}
             />
             <YAxis tick={{ fill: "#0F172A", fontSize: 12 }} />
             <ChartTooltip content={<ChartTooltipContent />} />
-            <Bar dataKey={dataKey} fill="#3E7DBB" radius={[8, 8, 0, 0]} isAnimationActive={!disableAnimation} />
+            <Bar dataKey={dataKey} fill="#3E7DBB" radius={[8, 8, 0, 0]} maxBarSize={60} isAnimationActive={!disableAnimation} />
           </RechartsBarChart>
         </ChartContainer>
       </CardContent>
