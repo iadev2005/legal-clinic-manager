@@ -235,6 +235,7 @@ export default function FollowUpClient({ user }: { user: any }) {
     // New Action State
     const [newActionProblem, setNewActionProblem] = useState("");
     const [newActionOrientation, setNewActionOrientation] = useState("");
+    const [newActionDate, setNewActionDate] = useState(new Date().toISOString().split('T')[0]);
     const [isHistoryModalOpen, setIsHistoryModalOpen] = useState(false);
     const [isDetailsModalOpen, setIsDetailsModalOpen] = useState(false);
     const [isSavingAction, setIsSavingAction] = useState(false);
@@ -321,13 +322,15 @@ export default function FollowUpClient({ user }: { user: any }) {
             const result = await createAccion({
                 nro_caso: selectedCaseId,
                 titulo_accion: titulo,
-                observacion: observacion || undefined
+                observacion: observacion || undefined,
+                fecha_realizacion: newActionDate
             });
 
             if (result.success) {
                 // Limpiar formulario
                 setNewActionProblem("");
                 setNewActionOrientation("");
+                setNewActionDate(new Date().toISOString().split('T')[0]);
                 setActionSuccess(true);
 
                 // Recargar datos del caso para mostrar la nueva acción
@@ -675,6 +678,16 @@ export default function FollowUpClient({ user }: { user: any }) {
                                         Registrar Nueva Acción:
                                     </h3>
                                     <div className="space-y-4">
+                                        <div>
+                                            <label className="block text-sky-950 font-semibold mb-2 text-sm">Fecha de Realización</label>
+                                            <Input
+                                                type="date"
+                                                value={newActionDate}
+                                                onChange={(e) => setNewActionDate(e.target.value)}
+                                                className="w-full"
+                                                max={new Date().toISOString().split('T')[0]}
+                                            />
+                                        </div>
                                         <div>
                                             <textarea
                                                 placeholder="Síntesis del problema..."

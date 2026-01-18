@@ -191,7 +191,7 @@ export default function CaseCreateModal({
                 sexo: (solicitante.sexo as "M" | "F") || "",
                 fecha_nacimiento: fechaNacimiento,
                 tipo_beneficiario: "Directo",
-                parentesco: "",
+                parentesco: "S",
               };
 
               return updated;

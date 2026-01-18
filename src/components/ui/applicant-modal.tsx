@@ -720,6 +720,42 @@ export default function ApplicantModal({
                       />
                     </div>
 
+                    {/* Periodo de Educación (Opcional) */}
+                    <div className="space-y-2">
+                      <Label htmlFor="tipo_periodo_educacion" className="text-sky-950 font-semibold">
+                        Tipo de Periodo Educativo
+                      </Label>
+                      <FilterSelect
+                        placeholder="Ej: Semestre"
+                        value={formData.tipo_periodo_educacion || ""}
+                        onChange={(value) => handleChange("tipo_periodo_educacion", value)}
+                        options={[
+                          { value: "Semestre", label: "Semestre" },
+                          { value: "Trimestre", label: "Trimestre" },
+                          { value: "Año", label: "Año" },
+                        ]}
+                      />
+                    </div>
+
+                    <div className="space-y-2">
+                      <Label htmlFor="cantidad_tiempo_educacion" className="text-sky-950 font-semibold">
+                        Nro. Periodo Actual
+                      </Label>
+                      <Input
+                        id="cantidad_tiempo_educacion"
+                        type="number"
+                        min="1"
+                        value={formData.cantidad_tiempo_educacion || ""}
+                        onChange={(e) =>
+                          handleChange(
+                            "cantidad_tiempo_educacion",
+                            e.target.value ? parseInt(e.target.value) : undefined
+                          )
+                        }
+                        placeholder="Ej: 4"
+                      />
+                    </div>
+
                     {/* Condición de Trabajo */}
                     <div className="space-y-2">
                       <Label htmlFor="trabajo" className="text-sky-950 font-semibold">
