@@ -100,27 +100,45 @@ export default function Sidebar({ user }: SidebarProps) {
                         <h1 className="self-stretch text-sky-950 text-sm font-bold leading-tight">Paz, Justicia e Instituciones</h1>
                     </div>
                 </div>
-                <div className="self-stretch inline-flex justify-start items-center gap-3">
-                    <div className="px-3 aspect-square bg-gradient-to-br from-cyan-600 to-blue-400 rounded-[45px] inline-flex flex-col justify-center items-center gap-2.5" style={{ background: "linear-gradient(99deg, #3E7DBB 0.65%, #73ACE6 117.83%)", }}>
-                        <h1 className="justify-start text-sky-950 text-xl font-semibold">{initials}</h1>
-                    </div>
-                    <div className="inline-flex flex-col justify-start items-start gap-0.5">
-                        <div className="flex items-center gap-0">
-                            <h1 className="self-stretch justify-start text-white text-lg font-semibold leading-tight [text-shadow:_0px_4px_6px_rgb(0_0_0_/_0.25)]">{displayName}</h1>
-                            <Link href="/profile" className="text-blue-200 hover:text-white transition-transform duration-200 hover:scale-110 active:scale-95 cursor-pointer ml-1" title="Editar Perfil">
-                                <span className="icon-[mdi--pencil-outline] text-3xl filter drop-shadow-[0_2px_2px_rgba(0,0,0,0.3)]"></span>
-                            </Link>
+                <div className="self-stretch bg-white/10 p-4 rounded-3xl border border-white/10 flex flex-col gap-4 shadow-inner">
+                    <div className="flex items-center gap-3">
+                        {/* Avatar */}
+                        <div className="w-12 h-12 bg-gradient-to-br from-[#EEF5FB] to-[#D0E3F3] rounded-2xl flex items-center justify-center shadow-md border border-white/20 shrink-0">
+                            <h1 className="text-[#3E7DBB] text-xl font-black">{initials}</h1>
                         </div>
-                        <button
-                            onClick={async () => {
-                                await logout();
-                            }}
-                            className="group flex justify-center items-center gap-2 mt-2 px-5 py-1.5 bg-gradient-to-r from-red-500 to-red-600 text-white text-sm font-bold rounded-xl shadow-md transition-transform duration-200 transform hover:scale-105 active:scale-95 cursor-pointer"
-                        >
-                            <span className="icon-[mdi--logout] text-xl"></span>
-                            <span>Cerrar Sesión</span>
-                        </button>
+
+                        {/* User Info */}
+                        <div className="flex-1 min-w-0 flex flex-col gap-1">
+                            <div className="flex items-start justify-between gap-2">
+                                <h1 className="text-white text-[14px] font-bold leading-tight tracking-normal uppercase break-words line-clamp-2">
+                                    {safeUser.nombre}
+                                </h1>
+                                <Link
+                                    href="/profile"
+                                    className="text-blue-300 hover:text-white transition-all transform hover:rotate-12 shrink-0 mt-0.5"
+                                    title="Editar Perfil"
+                                >
+                                    <span className="icon-[mdi--account-edit-outline] text-2xl"></span>
+                                </Link>
+                            </div>
+                            <div className="bg-white/10 self-start px-2 py-0.5 rounded-lg border border-white/5">
+                                <p className="text-blue-100/90 text-[9px] font-bold uppercase tracking-[0.15em] leading-none">
+                                    {safeUser.rol}
+                                </p>
+                            </div>
+                        </div>
                     </div>
+
+                    {/* Logout Button */}
+                    <button
+                        onClick={async () => {
+                            await logout();
+                        }}
+                        className="group flex justify-center items-center gap-2 w-full py-2 bg-gradient-to-r from-red-500/80 to-red-600/80 hover:from-red-500 hover:to-red-600 text-white text-[11px] font-black rounded-2xl shadow-[0_4px_12px_rgba(239,68,68,0.2)] transition-all duration-300 transform hover:scale-[1.02] active:scale-[0.98] cursor-pointer border border-white/10 uppercase tracking-widest"
+                    >
+                        <span className="icon-[mdi--logout] text-lg transition-transform group-hover:translate-x-1"></span>
+                        CERRAR SESIÓN
+                    </button>
                 </div>
             </div>
         </div>

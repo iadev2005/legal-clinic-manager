@@ -19,7 +19,7 @@ import {
   AlertDialogTrigger,
 } from "@/components/shadcn/alert-dialog";
 import StatusBadge from "./status-badge";
-import PrintButton from "@/app/cases/report/PrintButton";
+import { DownloadCaseReportButton } from "@/components/DownloadCaseReportButton";
 import { getCaseReportData } from "@/actions/cases";
 import { getHistorialEstatus } from "@/actions/casos";
 
@@ -669,10 +669,7 @@ export default function CaseDetailsModal({
 
         {/* Footer con botones de acción */}
         <div className="flex justify-between items-center pt-4 border-t">
-          <div className="flex items-center gap-2 text-sm text-sky-950/60">
-            <span className="icon-[mdi--information-outline] text-lg"></span>
-            <span>Info: Rol Mapeado: {userRole || 'N/A'} | Rol BD: {debugRole || 'N/A'}</span>
-          </div>
+
           <div className="flex gap-3">
             {/* DEBUG: Button is rendered if userRole is ADMIN or if raw role is right */}
             {(userRole === "ADMIN" || debugRole === "Administrador") && (
@@ -721,13 +718,13 @@ export default function CaseDetailsModal({
                 </AlertDialogContent>
               </AlertDialog>
             )}
-            <PrintButton
+            <DownloadCaseReportButton
               caseId={caseData.id}
               caseNumber={caseData.caseNumber}
             />
             <button
               onClick={onClose}
-              className="px-6 py-3 bg-neutral-200 hover:bg-neutral-300 rounded-2xl text-sky-950 text-lg font-semibold transition-all duration-300 hover:scale-105"
+              className="px-6 py-3 bg-neutral-200 hover:bg-neutral-300 rounded-2xl text-sky-950 text-lg font-semibold transition-all duration-300 hover:scale-105 cursor-pointer"
             >
               Cerrar
             </button>

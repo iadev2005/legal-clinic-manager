@@ -11,16 +11,19 @@ import {
     DialogDescription,
 } from "@/components/shadcn/dialog";
 import { CustomTable, type Column } from "@/components/ui/custom-table";
+import { DownloadCaseReportButton } from "@/components/DownloadCaseReportButton";
 import { Input } from "@/components/shadcn/input";
 
 import {
     getHistorialEstatus,
     getAccionesCaso,
     createAccion,
+    getEstatus,
     type CreateAccionData
 } from "@/actions/casos";
 import { getCaseReportData } from "@/actions/cases";
 import CaseDetailsModal from "@/components/ui/case-details-modal";
+import { StatusChangeDialog } from "@/components/ui/status-change-dialog";
 
 // --- Interfaces ---
 
@@ -98,7 +101,25 @@ function ActionHistoryModal({ open, onClose, data }: ActionHistoryModalProps) {
         {
             header: "Descripción",
             accessorKey: "description",
-            className: "text-base text-sky-950/80 leading-snug min-w-[300px]",
+            render: (item) => (
+                <div className="text-base text-sky-950/80 leading-snug whitespace-pre-wrap">
+                    {item.description.split(/(\bProblema:|\bOrientación:|\bNuevo estatus:|\bMotivo:)/).map((part, i) => {
+                        if (["Problema:", "Orientación:", "Nuevo estatus:", "Motivo:"].includes(part)) {
+                            return <strong key={i} className="text-sky-950 font-black">{part}</strong>;
+                        }
+                        return (
+                            <span key={i}>
+                                {part.split(/(\s+)/).map((subPart, j) => {
+                                    if (!/\s/.test(subPart) && subPart.length > 20) {
+                                        return subPart.match(/.{1,20}/g)?.join('\u200B') || subPart;
+                                    }
+                                    return subPart;
+                                }).join('')}
+                            </span>
+                        );
+                    })}
+                </div>
+            ),
         },
     ];
 
@@ -150,6 +171,7 @@ function ActionHistoryModal({ open, onClose, data }: ActionHistoryModalProps) {
 
                 <div className="flex-1 p-8 overflow-hidden bg-neutral-50 flex flex-col min-h-0">
                     <div className="flex-1 bg-white rounded-2xl border border-neutral-200 shadow-sm overflow-hidden flex flex-col min-h-0">
+
                         <CustomTable
                             data={paginatedData}
                             columns={columns}
@@ -218,6 +240,7 @@ export default function FollowUpClient() {
     const [isSavingAction, setIsSavingAction] = useState(false);
     const [actionError, setActionError] = useState<string | null>(null);
     const [actionSuccess, setActionSuccess] = useState(false);
+    const [isStatusDialogOpen, setIsStatusDialogOpen] = useState(false);
 
     // Redirect if no caseId
     useEffect(() => {
@@ -258,6 +281,24 @@ export default function FollowUpClient() {
 
     // Handlers removed (search/click)
 
+    const refreshData = async () => {
+        if (!selectedCaseId) return;
+        setIsLoadingDetails(true);
+        try {
+            const [details, history] = await Promise.all([
+                getCaseReportData(selectedCaseId.toString()),
+                getHistorialEstatus(selectedCaseId)
+            ]);
+
+            if (details) setCaseDetails(details);
+            if (history.success) setStatusHistory(history.data || []);
+        } catch (error) {
+            console.error("Error refreshing case details:", error);
+        } finally {
+            setIsLoadingDetails(false);
+        }
+    };
+
     const handleSaveAction = async () => {
         if (!selectedCaseId) return;
         if (!newActionProblem.trim() && !newActionOrientation.trim()) {
@@ -290,13 +331,7 @@ export default function FollowUpClient() {
                 setActionSuccess(true);
 
                 // Recargar datos del caso para mostrar la nueva acción
-                const [details, history] = await Promise.all([
-                    getCaseReportData(selectedCaseId.toString()),
-                    getHistorialEstatus(selectedCaseId)
-                ]);
-
-                if (details) setCaseDetails(details);
-                if (history.success) setStatusHistory(history.data || []);
+                await refreshData();
 
                 // Ocultar mensaje de éxito después de 3 segundos
                 setTimeout(() => setActionSuccess(false), 3000);
@@ -330,8 +365,8 @@ export default function FollowUpClient() {
         url: doc.documento_url // Correct property from API
     })) || [];
 
-    const actionsDisplay = caseDetails?.actions?.map((action: any) => ({
-        id: `action-${action.id_accion}`,
+    const actionsDisplay = caseDetails?.actions?.map((action: any, index: number) => ({
+        id: `action-${action.nro_accion || index}`,
         type: action.titulo_accion || "Acción",
         dateObj: new Date(action.fecha_registro || action.fecha_realizacion),
         date: new Date(action.fecha_realizacion).toLocaleDateString("es-ES", { day: '2-digit', month: 'long', year: 'numeric' }),
@@ -415,6 +450,12 @@ export default function FollowUpClient() {
                                     Expediente #{selectedCaseId}
                                 </h3>
                             </div>
+                            <div className="flex gap-2">
+                                <DownloadCaseReportButton
+                                    caseId={selectedCaseId.toString()}
+                                    caseNumber={caseDetails.caseInfo.nro_caso.toString()}
+                                />
+                            </div>
                         </div>
 
                         {/* Grid Layout */}
@@ -429,10 +470,10 @@ export default function FollowUpClient() {
                                         </h3>
                                         <button
                                             onClick={() => setIsDetailsModalOpen(true)}
-                                            className="text-sm font-bold text-[#3E7DBB] hover:underline uppercase tracking-wide cursor-pointer flex items-center gap-1"
+                                            className="px-4 py-2 bg-[#EEF5FB] hover:bg-[#E0EBF7] text-[#3E7DBB] text-xs font-bold rounded-xl transition-all hover:scale-105 flex items-center gap-2 cursor-pointer shadow-sm border border-[#3E7DBB]/10"
                                         >
-                                            <span className="icon-[mdi--eye-plus-outline] text-lg"></span>
-                                            Ver Todo
+                                            <span className="icon-[mdi--eye-plus-outline] text-xl"></span>
+                                            VER TODO
                                         </button>
                                     </div>
                                     <div className="space-y-3">
@@ -467,7 +508,16 @@ export default function FollowUpClient() {
                                             </div>
                                         </div>
                                         <div>
-                                            <div className="text-sky-950/60 text-sm font-medium mb-1">Estatus:</div>
+                                            <div className="text-sky-950/60 text-sm font-medium mb-1 flex items-center justify-between">
+                                                <span>Estatus:</span>
+                                                <button
+                                                    onClick={() => setIsStatusDialogOpen(true)}
+                                                    className="px-4 py-1.5 bg-[#EEF5FB] hover:bg-[#E0EBF7] text-[#3E7DBB] text-xs font-black uppercase tracking-widest rounded-lg transition-all hover:scale-105 flex items-center gap-2 cursor-pointer shadow-sm border border-[#3E7DBB]/10 active:scale-95"
+                                                >
+                                                    <span className="icon-[mdi--swap-horizontal] text-sm"></span>
+                                                    CAMBIAR
+                                                </button>
+                                            </div>
                                             <span className="inline-flex items-center px-3 py-1 rounded-full text-xs font-bold bg-yellow-100 text-yellow-700">
                                                 <span className="icon-[mdi--circle] text-[8px] mr-1.5"></span>
                                                 {caseDetails?.caseInfo?.estatus_actual || "Desconocido"}
@@ -683,47 +733,85 @@ export default function FollowUpClient() {
                                         </h3>
                                         <button
                                             onClick={() => setIsHistoryModalOpen(true)}
-                                            className="text-sm font-bold text-[#3E7DBB] hover:underline uppercase tracking-wide cursor-pointer flex items-center gap-1"
+                                            className="px-4 py-2 bg-[#EEF5FB] hover:bg-[#E0EBF7] text-[#3E7DBB] text-xs font-bold rounded-xl transition-all hover:scale-105 flex items-center gap-2 cursor-pointer shadow-sm border border-[#3E7DBB]/10"
                                         >
-                                            <span className="icon-[mdi--eye-outline] text-lg"></span>
-                                            Ver Todo
+                                            <span className="icon-[mdi--eye-outline] text-xl"></span>
+                                            VER TODO
                                         </button>
                                     </div>
 
                                     <div className="flex flex-col">
-                                        {historyPreview.length > 0 ? historyPreview.map((action: any, index: number) => (
-                                            <div key={action.id} className="flex gap-4">
-                                                {/* Timeline Icon */}
-                                                <div className="flex flex-col items-center">
-                                                    <div className={`w-10 h-10 rounded-full border-2 flex items-center justify-center flex-none ${action.isStatusChange ? "bg-yellow-50 border-yellow-500" : "bg-blue-50 border-[#3E7DBB]"}`}>
-                                                        <span className={`text-lg ${action.isStatusChange ? "icon-[mdi--swap-horizontal] text-yellow-600" : "icon-[mdi--file-document-outline] text-[#3E7DBB]"}`}></span>
-                                                    </div>
-                                                    {index < historyPreview.length - 1 && (
-                                                        <div className="w-0.5 flex-1 bg-neutral-200"></div>
-                                                    )}
-                                                </div>
+                                        {historyPreview.length > 0 ? (
+                                            <>
+                                                {historyPreview.map((action: any, index: number) => (
+                                                    <div key={action.id} className="flex gap-4">
+                                                        {/* Timeline Icon */}
+                                                        <div className="flex flex-col items-center">
+                                                            <div className={`w-10 h-10 rounded-full border-2 flex items-center justify-center flex-none ${action.isStatusChange ? "bg-yellow-50 border-yellow-500" : "bg-blue-50 border-[#3E7DBB]"}`}>
+                                                                <span className={`text-lg ${action.isStatusChange ? "icon-[mdi--swap-horizontal] text-yellow-600" : "icon-[mdi--file-document-outline] text-[#3E7DBB]"}`}></span>
+                                                            </div>
+                                                            {(index < historyPreview.length - 1 || historyDisplay.length > 3) && (
+                                                                <div className="w-0.5 flex-1 bg-neutral-200"></div>
+                                                            )}
+                                                        </div>
 
-                                                {/* Action Content */}
-                                                <div className="flex-1 pb-6">
-                                                    <div className="flex items-start justify-between mb-2">
-                                                        <div>
-                                                            <h4 className="text-sky-950 font-bold text-base mb-1">
-                                                                {action.type}
-                                                            </h4>
-                                                            <p className="text-sky-950/60 text-xs font-medium">
-                                                                {action.date}
+                                                        {/* Action Content */}
+                                                        <div className="flex-1 pb-6">
+                                                            <div className="flex items-start justify-between mb-2">
+                                                                <div>
+                                                                    <h4 className="text-sky-950 font-bold text-base mb-1">
+                                                                        {action.type}
+                                                                    </h4>
+                                                                    <p className="text-sky-950/60 text-xs font-medium">
+                                                                        {action.date}
+                                                                    </p>
+                                                                </div>
+                                                                <span className="px-3 py-1 bg-blue-50 text-[#3E7DBB] text-xs font-bold rounded-full">
+                                                                    {action.author}
+                                                                </span>
+                                                            </div>
+                                                            <p className="text-sky-950/80 text-sm leading-relaxed whitespace-pre-wrap">
+                                                                {action.description.split(/(\bProblema:|\bOrientación:|\bNuevo estatus:|\bMotivo:)/).map((part: string, i: number) => {
+                                                                    if (["Problema:", "Orientación:", "Nuevo estatus:", "Motivo:"].includes(part)) {
+                                                                        return <strong key={i} className="text-sky-950 font-black">{part}</strong>;
+                                                                    }
+                                                                    return (
+                                                                        <span key={i}>
+                                                                            {part.split(/(\s+)/).map((subPart: string) => {
+                                                                                if (!/\s/.test(subPart) && subPart.length > 20) {
+                                                                                    return subPart.match(/.{1,20}/g)?.join('\u200B') || subPart;
+                                                                                }
+                                                                                return subPart;
+                                                                            }).join('')}
+                                                                        </span>
+                                                                    );
+                                                                })}
                                                             </p>
                                                         </div>
-                                                        <span className="px-3 py-1 bg-blue-50 text-[#3E7DBB] text-xs font-bold rounded-full">
-                                                            {action.author}
-                                                        </span>
                                                     </div>
-                                                    <p className="text-sky-950/80 text-sm leading-relaxed whitespace-pre-wrap">
-                                                        {action.description}
-                                                    </p>
-                                                </div>
-                                            </div>
-                                        )) : <p className="text-gray-400 text-sm">No hay historial disponible.</p>}
+                                                ))}
+
+                                                {/* More Content Indicator */}
+                                                {historyDisplay.length > 3 && (
+                                                    <div className="flex gap-4">
+                                                        <div className="flex flex-col items-center">
+                                                            <div className="w-10 h-10 rounded-full bg-neutral-50 border-2 border-dashed border-neutral-300 flex items-center justify-center flex-none group">
+                                                                <span className="icon-[mdi--dots-vertical] text-neutral-400 text-xl group-hover:text-[#3E7DBB] transition-colors"></span>
+                                                            </div>
+                                                        </div>
+                                                        <div className="flex-1 pt-0.5">
+                                                            <button
+                                                                onClick={() => setIsHistoryModalOpen(true)}
+                                                                className="px-4 py-2 bg-[#EEF5FB] hover:bg-[#E0EBF7] text-[#3E7DBB] text-xs font-black uppercase tracking-widest rounded-xl transition-all hover:scale-105 flex items-center gap-2 cursor-pointer shadow-sm border border-[#3E7DBB]/10 active:scale-95 group"
+                                                            >
+                                                                <span className="icon-[mdi--eye-outline] text-lg group-hover:scale-110 transition-transform"></span>
+                                                                Ver {historyDisplay.length - 3} más en el historial completo
+                                                            </button>
+                                                        </div>
+                                                    </div>
+                                                )}
+                                            </>
+                                        ) : <p className="text-gray-400 text-sm">No hay historial disponible.</p>}
                                     </div>
                                 </div>
                             </div>
@@ -759,6 +847,17 @@ export default function FollowUpClient() {
                     }}
                     preloadedDetails={caseDetails}
                     preloadedStatusHistory={statusHistory}
+                />
+            )}
+
+            {/* Status Change Dialog */}
+            {selectedCaseId && (
+                <StatusChangeDialog
+                    open={isStatusDialogOpen}
+                    onClose={() => setIsStatusDialogOpen(false)}
+                    nroCaso={selectedCaseId}
+                    currentStatusId={statusHistory[0]?.id_estatus}
+                    onStatusChanged={refreshData}
                 />
             )}
         </div>
