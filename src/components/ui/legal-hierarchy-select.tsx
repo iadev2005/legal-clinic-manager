@@ -145,7 +145,12 @@ export default function LegalHierarchySelect({
                     setSelectedSubcategoria(value.num_subcategoria.toString());
                 }
 
-                if (value.num_ambito_legal != null) {
+                if (
+                    value.num_ambito_legal != null &&
+                    value.num_categoria != null &&
+                    value.num_subcategoria != null &&
+                    value.id_materia != null
+                ) {
                     setSelectedAmbito(value.num_ambito_legal.toString());
 
                     // Solo notificar si tenemos el valor completo y es diferente al que recibimos

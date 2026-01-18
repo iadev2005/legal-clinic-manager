@@ -36,6 +36,7 @@ interface Action {
     type: string;
     date: string;
     author: string;
+    role?: string;
     description: string;
 }
 
@@ -67,9 +68,10 @@ function ActionHistoryModal({ open, onClose, data }: ActionHistoryModalProps) {
 
         const matchesRole =
             roleFilter === "Todos" ||
-            (roleFilter === "Estudiante" && item.author.includes("Alumno")) ||
-            (roleFilter === "Profesor" && item.author.includes("Profesor")) ||
-            (roleFilter === "Sistema" && item.author === "Sistema");
+            (roleFilter === "Estudiantes" && (item.role === "Estudiante" || item.author.includes("Alumno"))) ||
+            (roleFilter === "Profesores" && (item.role === "Profesor" || item.author.includes("Profesor"))) ||
+            (roleFilter === "Coordinadores" && item.role === "Coordinador") ||
+            (roleFilter === "Administradores" && (item.role === "Administrador" || item.role === "Admin" || item.author === "Sistema"));
 
         return matchesText && matchesRole;
     });
@@ -128,7 +130,7 @@ function ActionHistoryModal({ open, onClose, data }: ActionHistoryModalProps) {
                             />
                         </div>
                         <div className="flex bg-neutral-100 p-1 rounded-xl">
-                            {["Todos", "Estudiante", "Profesor", "Sistema"].map((role) => (
+                            {["Todos", "Estudiantes", "Profesores", "Coordinadores", "Administradores"].map((role) => (
                                 <button
                                     key={role}
                                     onClick={() => setRoleFilter(role)}
@@ -331,22 +333,33 @@ export default function FollowUpClient() {
     const actionsDisplay = caseDetails?.actions?.map((action: any) => ({
         id: `action-${action.id_accion}`,
         type: action.titulo_accion || "Acción",
-        dateObj: new Date(action.fecha_realizacion),
+        dateObj: new Date(action.fecha_registro || action.fecha_realizacion),
         date: new Date(action.fecha_realizacion).toLocaleDateString("es-ES", { day: '2-digit', month: 'long', year: 'numeric' }),
         author: action.nombres ? `${action.nombres} ${action.apellidos}` : "Usuario",
+        role: action.rol,
         description: action.observacion || "",
         isStatusChange: false
     })) || [];
 
-    const statusDisplay = statusHistory.map((status: any, index: number) => ({
-        id: `status-${index}`,
-        type: "Cambio de Estatus",
-        dateObj: new Date(status.fecha_registro),
-        date: new Date(status.fecha_registro).toLocaleDateString("es-ES", { day: '2-digit', month: 'long', year: 'numeric' }),
-        author: status.usuario_nombre || "Sistema",
-        description: `Nuevo estatus: ${status.nombre_estatus}${status.motivo ? `.\nMotivo: ${status.motivo}` : ""}`,
-        isStatusChange: true
-    })) || [];
+    const statusDisplay = statusHistory.map((status: any, index: number) => {
+        // Logic for "Caso creado"
+        const isCaseCreated = status.motivo === "Caso creado";
+        const displayType = isCaseCreated ? "Caso creado" : "Cambio de Estatus";
+        const displayDescription = isCaseCreated
+            ? `Caso creado con estatus: ${status.nombre_estatus}`
+            : `Nuevo estatus: ${status.nombre_estatus}${status.motivo ? `.\nMotivo: ${status.motivo}` : ""}`;
+
+        return {
+            id: `status-${index}`,
+            type: displayType,
+            dateObj: new Date(status.fecha_registro),
+            date: new Date(status.fecha_registro).toLocaleDateString("es-ES", { day: '2-digit', month: 'long', year: 'numeric' }),
+            author: status.usuario_nombre || "Sistema",
+            role: status.rol || "Sistema",
+            description: displayDescription,
+            isStatusChange: true
+        };
+    }) || [];
 
     const historyDisplay = [...actionsDisplay, ...statusDisplay].sort((a, b) => b.dateObj.getTime() - a.dateObj.getTime());
 

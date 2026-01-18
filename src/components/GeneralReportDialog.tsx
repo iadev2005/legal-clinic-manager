@@ -117,7 +117,7 @@ export function GeneralReportDialog() {
     return (
         <Dialog open={isOpen} onOpenChange={setIsOpen}>
             <DialogTrigger asChild>
-                <Button className="bg-[#325B84] hover:bg-[#284a6e] text-white">
+                <Button className="bg-[#325B84] hover:bg-[#284a6e] text-white rounded-xl font-semibold transition-all duration-300 hover:scale-105 active:scale-95 cursor-pointer shadow-sm">
                     <Download className="mr-2 h-4 w-4" />
                     Reporte General
                 </Button>

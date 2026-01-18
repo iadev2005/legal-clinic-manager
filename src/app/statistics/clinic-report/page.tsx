@@ -7,6 +7,20 @@ import { useStatisticsData } from "@/hooks/useStatisticsData";
 import { Pie2Chart } from "@/components/ui/pie2-chart";
 import { BarChart } from "@/components/ui/bar-chart";
 
+// Palette derived from Dashboard + Complementary
+const CHART_COLORS = [
+    "#3E7DBB", // Dashboard Blue
+    "#16A34A", // Dashboard Green
+    "#E03E3E", // Dashboard Red
+    "#CB8C06", // Dashboard Orange
+    "#003366", // Dashboard Dark Blue
+    "#8B5CF6", // Purple
+    "#14B8A6", // Teal
+    "#F43F5E", // Rose
+    "#64748B", // Slate
+    "#D946EF", // Magenta
+];
+
 // Generic helper to filter and group data
 function getFilteredAndGroupedData(
     data: any[],
@@ -25,7 +39,7 @@ function getFilteredAndGroupedData(
                 acc.push({
                     name: groupName,
                     value: item.value,
-                    fill: `hsl(var(--chart-${(acc.length % 5) + 1}))`
+                    fill: CHART_COLORS[acc.length % CHART_COLORS.length]
                 });
             }
             return acc;
@@ -134,13 +148,19 @@ export default function CustomReportPage() {
     );
     const otrosBar = otros.map((p: any) => ({ category: p.name, value: p.value }));
 
-    const porMateria = materiaByMateria.map((item: any) => ({
+    const porMateria = materiaByMateria.map((item: any, index: number) => ({
         name: item.name,
         value: item.value,
-        fill: `var(--color-${item.name.toLowerCase().replace(/\s+/g, '-')})`
+        fill: CHART_COLORS[index % CHART_COLORS.length]
     }));
 
-    const genero = genderData.map((item: any) => ({ category: item.name, value: item.value }));
+    const genero = genderData.map((item: any, index: number) => ({
+        category: item.name,
+        value: item.value,
+        fill: item.name.toLowerCase().includes('femenino') || item.name.toLowerCase().includes('mujer') ? '#F43F5E' : // Pink
+            item.name.toLowerCase().includes('masculino') || item.name.toLowerCase().includes('hombre') ? '#3E7DBB' : // Blue
+                CHART_COLORS[index % CHART_COLORS.length]
+    }));
     const parroquia = parishData.map((item: any) => ({ category: item.name, value: item.value }));
     const estado = stateData.map((item: any) => ({ category: item.name, value: item.value }));
 

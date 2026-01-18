@@ -682,7 +682,8 @@ export async function getHistorialEstatus(nroCaso: number) {
       SELECT 
         sla.*,
         e.nombre_estatus,
-        u.nombres || ' ' || u.apellidos as usuario_nombre
+        u.nombres || ' ' || u.apellidos as usuario_nombre,
+        u.rol
       FROM Se_Le_Adjudican sla
       JOIN Estatus e ON sla.id_estatus = e.id_estatus
       LEFT JOIN Usuarios_Sistema u ON sla.cedula_usuario = u.cedula_usuario
@@ -1184,6 +1185,20 @@ export async function getTramites() {
         return { success: true, data: result.rows };
     } catch (error: any) {
         console.error('Error al obtener trámites:', error);
+        return { success: false, error: error.message };
+    }
+}
+
+export async function getSemestres() {
+    try {
+        const result = await query(`
+      SELECT term
+      FROM Semestres
+      ORDER BY fecha_inicio DESC
+    `);
+        return { success: true, data: result.rows };
+    } catch (error: any) {
+        console.error('Error al obtener semestres:', error);
         return { success: false, error: error.message };
     }
 }

@@ -9,6 +9,20 @@ import { Pie2Chart } from "@/components/ui/pie2-chart";
 import { StatisticsFilters } from "@/components/StatisticsFilters";
 import { useStatisticsData } from "@/hooks/useStatisticsData";
 
+// Palette derived from Dashboard + Complementary
+const CHART_COLORS = [
+    "#3E7DBB", // Dashboard Blue
+    "#16A34A", // Dashboard Green
+    "#E03E3E", // Dashboard Red
+    "#CB8C06", // Dashboard Orange
+    "#003366", // Dashboard Dark Blue
+    "#8B5CF6", // Purple
+    "#14B8A6", // Teal
+    "#F43F5E", // Rose
+    "#64748B", // Slate
+    "#D946EF", // Magenta
+];
+
 export default function StatisticsClient() {
     const searchParams = useSearchParams();
 
@@ -55,7 +69,7 @@ export default function StatisticsClient() {
                     <div id="stats-charts-container" className="grid grid-cols-1 md:grid-cols-2 gap-6 pb-10">
                         <div className="bg-neutral-50 rounded-[30px] shadow-[0px_0px_15.5px_0px_rgba(0,0,0,0.25)] p-8">
                             <BarChart
-                                data={data.parish.map((p: any) => ({ name: p.name, value: p.value }))}
+                                data={data.parish.map((p: any, index: number) => ({ name: p.name, value: p.value, fill: CHART_COLORS[index % CHART_COLORS.length] }))}
                                 config={{ value: { label: "Casos", color: "#3E7DBB" } }}
                                 dataKey="value"
                                 nameKey="name"
@@ -64,7 +78,7 @@ export default function StatisticsClient() {
                         </div>
                         <div className="bg-neutral-50 rounded-[30px] shadow-[0px_0px_15.5px_0px_rgba(0,0,0,0.25)] p-8">
                             <Pie2Chart
-                                data={data.caseStatus.map((s: any) => ({ name: s.name, value: s.value }))}
+                                data={data.caseStatus.map((s: any, index: number) => ({ name: s.name, value: s.value, fill: CHART_COLORS[index % CHART_COLORS.length] }))}
                                 config={{ value: { label: "Casos", color: "#3E7DBB" } }}
                                 dataKey="value"
                                 nameKey="name"
@@ -83,7 +97,13 @@ export default function StatisticsClient() {
 
                         <div className="bg-neutral-50 rounded-[30px] shadow-[0px_0px_15.5px_0px_rgba(0,0,0,0.25)] p-8">
                             <Pie2Chart
-                                data={data.socioEconomic.gender.map((g: any) => ({ name: g.name, value: g.value }))}
+                                data={data.socioEconomic.gender.map((g: any, index: number) => ({
+                                    name: g.name,
+                                    value: g.value,
+                                    fill: g.name.toLowerCase().includes('femenino') || g.name.toLowerCase().includes('mujer') ? '#F43F5E' : // Pink
+                                        g.name.toLowerCase().includes('masculino') || g.name.toLowerCase().includes('hombre') ? '#3E7DBB' : // Blue
+                                            CHART_COLORS[index % CHART_COLORS.length]
+                                }))}
                                 config={{ value: { label: "Cantidad", color: "#3E7DBB" } }}
                                 dataKey="value"
                                 nameKey="name"
@@ -93,7 +113,7 @@ export default function StatisticsClient() {
 
                         <div className="bg-neutral-50 rounded-[30px] shadow-[0px_0px_15.5px_0px_rgba(0,0,0,0.25)] p-8">
                             <BarChart
-                                data={data.socioEconomic.age.map((a: any) => ({ name: a.name, value: a.value }))}
+                                data={data.socioEconomic.age.map((a: any, index: number) => ({ name: a.name, value: a.value, fill: CHART_COLORS[index % CHART_COLORS.length] }))}
                                 config={{ value: { label: "Cantidad", color: "#3E7DBB" } }}
                                 dataKey="value"
                                 nameKey="name"
@@ -103,7 +123,7 @@ export default function StatisticsClient() {
 
                         <div className="bg-neutral-50 rounded-[30px] shadow-[0px_0px_15.5px_0px_rgba(0,0,0,0.25)] p-8">
                             <Pie2Chart
-                                data={data.socioEconomic.housing.map((h: any) => ({ name: h.name, value: h.value }))}
+                                data={data.socioEconomic.housing.map((h: any, index: number) => ({ name: h.name, value: h.value, fill: CHART_COLORS[index % CHART_COLORS.length] }))}
                                 config={{ value: { label: "Cantidad" } }}
                                 dataKey="value"
                                 nameKey="name"
@@ -113,7 +133,7 @@ export default function StatisticsClient() {
 
                         <div className="bg-neutral-50 rounded-[30px] shadow-[0px_0px_15.5px_0px_rgba(0,0,0,0.25)] p-8">
                             <BarChart
-                                data={data.socioEconomic.education.map((e: any) => ({ name: e.name, value: e.value }))}
+                                data={data.socioEconomic.education.map((e: any, index: number) => ({ name: e.name, value: e.value, fill: CHART_COLORS[index % CHART_COLORS.length] }))}
                                 config={{ value: { label: "Cantidad", color: "#2751BA" } }}
                                 dataKey="value"
                                 nameKey="name"
@@ -123,7 +143,7 @@ export default function StatisticsClient() {
 
                         <div className="bg-neutral-50 rounded-[30px] shadow-[0px_0px_15.5px_0px_rgba(0,0,0,0.25)] p-8">
                             <Pie2Chart
-                                data={data.socioEconomic.employment.map((e: any) => ({ name: e.name, value: e.value }))}
+                                data={data.socioEconomic.employment.map((e: any, index: number) => ({ name: e.name, value: e.value, fill: CHART_COLORS[index % CHART_COLORS.length] }))}
                                 config={{ value: { label: "Cantidad" } }}
                                 dataKey="value"
                                 nameKey="name"

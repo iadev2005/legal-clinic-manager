@@ -339,3 +339,33 @@ export async function getMateriaDetailsStats(filters: FilterParams = {}) {
         return { byMateriaAndStatus: [], byMateria: [], detailedBreakdown: [] };
     }
 }
+
+// Get all materias for filter dropdown
+export async function getFilterMaterias() {
+    try {
+        const result = await query(`
+            SELECT nombre_materia 
+            FROM Materias 
+            ORDER BY nombre_materia
+        `);
+        return result.rows.map(row => row.nombre_materia);
+    } catch (error) {
+        console.error("Error fetching materias for filter:", error);
+        return [];
+    }
+}
+
+// Get all nucleos for filter dropdown
+export async function getFilterNucleos() {
+    try {
+        const result = await query(`
+            SELECT nombre 
+            FROM Nucleos 
+            ORDER BY nombre
+        `);
+        return result.rows.map(row => row.nombre);
+    } catch (error) {
+        console.error("Error fetching nucleos for filter:", error);
+        return [];
+    }
+}

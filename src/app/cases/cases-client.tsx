@@ -28,6 +28,7 @@ import {
   asignarAlumno,
   asignarProfesor,
   getAsignacionesActivas,
+  getSemestres,
   type Caso as CasoBD,
 } from "@/actions/casos";
 
@@ -50,6 +51,7 @@ interface Case {
 interface CasesClientProps {
   userRole: "ADMIN" | "PROFESSOR" | "STUDENT";
   userCedula?: string;
+  debugRole?: "ADMIN" | "PROFESSOR" | "STUDENT";
 }
 
 const ITEMS_PER_PAGE = 10;
@@ -78,14 +80,16 @@ export default function CasesClient({ userRole, userCedula, debugRole }: CasesCl
   const [estatusList, setEstatusList] = useState<any[]>([]);
   const [materiasList, setMateriasList] = useState<any[]>([]);
   const [tramitesList, setTramitesList] = useState<any[]>([]);
+  const [semestersList, setSemestersList] = useState<any[]>([]);
 
   const [searchTerm, setSearchTerm] = useState("");
   const [statusFilter, setStatusFilter] = useState("");
   const [subjectFilter, setSubjectFilter] = useState("");
   const [procedureFilter, setProcedureFilter] = useState("");
   const [semesterFilter, setSemesterFilter] = useState("");
-  const [tribunalFilter, setTribunalFilter] = useState("");
+  // const [tribunalFilter, setTribunalFilter] = useState(""); // Eliminated
   const [dateFilter, setDateFilter] = useState("");
+  const [dateFilterEnd, setDateFilterEnd] = useState(""); // New End Date Filter
   const [currentPage, setCurrentPage] = useState(1);
 
   // Estados para los modales
@@ -178,10 +182,11 @@ export default function CasesClient({ userRole, userCedula, debugRole }: CasesCl
   };
 
   const loadCatalogs = async () => {
-    const [estatusResult, materiasResult, tramitesResult] = await Promise.all([
+    const [estatusResult, materiasResult, tramitesResult, semestersResult] = await Promise.all([
       getEstatus(),
       getMaterias(),
       getTramites(),
+      getSemestres(),
     ]);
 
     if (estatusResult.success && estatusResult.data) {
@@ -192,6 +197,9 @@ export default function CasesClient({ userRole, userCedula, debugRole }: CasesCl
     }
     if (tramitesResult.success && tramitesResult.data) {
       setTramitesList(tramitesResult.data);
+    }
+    if (semestersResult.success && semestersResult.data) {
+      setSemestersList(semestersResult.data);
     }
   };
 
@@ -218,12 +226,11 @@ export default function CasesClient({ userRole, userCedula, debugRole }: CasesCl
 
       const matchesSemester = !semesterFilter || caso.period === semesterFilter;
 
-      const matchesTribunal =
-        !tribunalFilter ||
-        caso.tribunal.toLowerCase().includes(tribunalFilter.toLowerCase());
+      // const matchesTribunal = ... // Removed
 
-      // Filtro por fecha
-      const matchesDate = !dateFilter || caso.createdAt >= dateFilter;
+      // Filtro por rango de fecha
+      const matchesDateStart = !dateFilter || caso.createdAt >= dateFilter;
+      const matchesDateEnd = !dateFilterEnd || caso.createdAt <= dateFilterEnd;
 
       // Filtro por applicantId desde URL (cuando viene desde Gestión de Solicitantes)
       const matchesApplicant =
@@ -235,8 +242,8 @@ export default function CasesClient({ userRole, userCedula, debugRole }: CasesCl
         matchesSubject &&
         matchesProcedure &&
         matchesSemester &&
-        matchesTribunal &&
-        matchesDate &&
+        matchesDateStart &&
+        matchesDateEnd &&
         matchesApplicant
       );
     });
@@ -246,8 +253,8 @@ export default function CasesClient({ userRole, userCedula, debugRole }: CasesCl
     subjectFilter,
     procedureFilter,
     semesterFilter,
-    tribunalFilter,
     dateFilter,
+    dateFilterEnd,
     applicantIdFilter,
     cases,
   ]);
@@ -388,12 +395,12 @@ export default function CasesClient({ userRole, userCedula, debugRole }: CasesCl
       },
     ];
 
-    // Columnas adicionales para Admin
-    if (userRole === "ADMIN") {
+    // Columnas adicionales para Admin y Profesor
+    if (userRole === "ADMIN" || userRole === "PROFESSOR") {
       baseColumns.push(
         {
-          header: "Tribunal",
-          accessorKey: "tribunal",
+          header: "Subcategoría",
+          accessorKey: "tribunal", // Used as prop for subcategory temporarily
           className: "text-center text-sm break-words leading-tight",
           headerClassName: "w-[13%]",
         },
@@ -498,16 +505,7 @@ export default function CasesClient({ userRole, userCedula, debugRole }: CasesCl
             </PrimaryButton>
           )}
 
-          {userRole === "PROFESSOR" && (
-            <PrimaryButton
-              onClick={handleValidateCase}
-              icon="icon-[mdi--check-circle]"
-              variant="secondary"
-              className="bg-green-600 hover:bg-green-700"
-            >
-              Validar/Asignar Caso
-            </PrimaryButton>
-          )}
+
         </div>
       </div>
 
@@ -591,8 +589,8 @@ export default function CasesClient({ userRole, userCedula, debugRole }: CasesCl
                   subjectFilter,
                   procedureFilter,
                   semesterFilter,
-                  tribunalFilter,
                   dateFilter,
+                  dateFilterEnd,
                 ].filter(Boolean).length;
                 return activeCount > 0 ? (
                   <span className="ml-1 px-2 py-0.5 bg-red-500 text-white text-xs font-bold rounded-full">
@@ -603,6 +601,25 @@ export default function CasesClient({ userRole, userCedula, debugRole }: CasesCl
               <span className={`icon-[mdi--chevron-down] text-lg transition-transform duration-300 ${isFilterPanelOpen ? "rotate-180" : ""
                 }`}></span>
             </button>
+
+            {/* Botón para limpiar filtros */}
+            {(searchTerm || statusFilter || subjectFilter || procedureFilter || semesterFilter || dateFilter || dateFilterEnd) && (
+              <button
+                onClick={() => {
+                  setSearchTerm("");
+                  setStatusFilter("");
+                  setSubjectFilter("");
+                  setProcedureFilter("");
+                  setSemesterFilter("");
+                  setDateFilter("");
+                  setDateFilterEnd("");
+                }}
+                className="bg-gray-100 text-gray-600 hover:bg-gray-200 px-4 py-2.5 rounded-xl font-semibold transition-colors cursor-pointer whitespace-nowrap flex items-center gap-2"
+                title="Limpiar filtros"
+              >
+                <span className="icon-[mdi--filter-off-outline] text-lg"></span>
+              </button>
+            )}
           </div>
 
           {/* Active Filter Chips */}
@@ -611,8 +628,8 @@ export default function CasesClient({ userRole, userCedula, debugRole }: CasesCl
             { value: subjectFilter, label: "Materia", setter: setSubjectFilter },
             { value: procedureFilter, label: "Trámite", setter: setProcedureFilter },
             { value: semesterFilter, label: "Semestre", setter: setSemesterFilter },
-            { value: tribunalFilter, label: "Tribunal", setter: setTribunalFilter },
-            { value: dateFilter, label: "Fecha", setter: setDateFilter },
+            { value: dateFilter, label: "Desde", setter: setDateFilter },
+            { value: dateFilterEnd, label: "Hasta", setter: setDateFilterEnd },
           ].some((f) => f.value) && (
               <div className="flex flex-wrap gap-2">
                 {[
@@ -620,8 +637,8 @@ export default function CasesClient({ userRole, userCedula, debugRole }: CasesCl
                   { value: subjectFilter, label: "Materia", setter: setSubjectFilter },
                   { value: procedureFilter, label: "Trámite", setter: setProcedureFilter },
                   { value: semesterFilter, label: "Semestre", setter: setSemesterFilter },
-                  { value: tribunalFilter, label: "Tribunal", setter: setTribunalFilter },
-                  { value: dateFilter, label: "Fecha", setter: setDateFilter },
+                  { value: dateFilter, label: "Desde", setter: setDateFilter },
+                  { value: dateFilterEnd, label: "Hasta", setter: setDateFilterEnd },
                 ]
                   .filter((f) => f.value)
                   .map((filter, idx) => (
@@ -644,74 +661,43 @@ export default function CasesClient({ userRole, userCedula, debugRole }: CasesCl
 
           {/* Collapsible Filter Panel */}
           {isFilterPanelOpen && (
-            <div className="bg-neutral-50 border border-neutral-200 rounded-2xl p-6 animate-in slide-in-from-top-2 fade-in duration-300">
-              <div className="grid grid-cols-3 gap-4">
-                <FilterSelect
-                  placeholder="Filtrar por Estatus"
-                  value={statusFilter}
-                  onChange={setStatusFilter}
-                  options={estatusList.map((e: any) => ({
-                    value: e.nombre_estatus,
-                    label: e.nombre_estatus,
-                  }))}
-                  className="w-full"
-                />
-                <FilterSelect
-                  placeholder="Filtrar por Materia"
-                  value={subjectFilter}
-                  onChange={setSubjectFilter}
-                  options={materiasList.map((m: any) => ({
-                    value: m.nombre_materia,
-                    label: m.nombre_materia,
-                  }))}
-                  className="w-full"
-                />
-                {userRole === "ADMIN" && (
+            <div className="bg-neutral-50 border border-neutral-200 rounded-2xl p-4 animate-in slide-in-from-top-2 fade-in duration-300">
+              <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-3">
+                {[
+                  { value: statusFilter, label: "Estatus", setter: setStatusFilter, options: estatusList.map((e: any) => ({ value: e.nombre_estatus, label: e.nombre_estatus })) },
+                  { value: subjectFilter, label: "Materia", setter: setSubjectFilter, options: materiasList.map((m: any) => ({ value: m.nombre_materia, label: m.nombre_materia })) },
+                  // Only show procedure filter for ADMIN or PROFESSOR
+                  ...(userRole === "ADMIN" || userRole === "PROFESSOR"
+                    ? [{ value: procedureFilter, label: "Trámite", setter: setProcedureFilter, options: tramitesList.map((t: any) => ({ value: t.nombre, label: t.nombre })) }]
+                    : []),
+                  // Only show semester filter for ADMIN or PROFESSOR
+                  ...(userRole === "ADMIN" || userRole === "PROFESSOR"
+                    ? [{ value: semesterFilter, label: "Semestre", setter: setSemesterFilter, options: semestersList.map((s: any) => ({ value: s.term, label: s.term })) }]
+                    : []),
+                ].map((filter, index) => (
                   <FilterSelect
-                    placeholder="Filtrar por Trámite"
-                    value={procedureFilter}
-                    onChange={setProcedureFilter}
-                    options={tramitesList.map((t: any) => ({
-                      value: t.nombre,
-                      label: t.nombre,
-                    }))}
-                    className="w-full"
+                    key={index}
+                    placeholder={filter.label}
+                    value={filter.value}
+                    onChange={filter.setter}
+                    options={filter.options}
+                    className="w-full text-sm"
                   />
-                )}
-              </div>
+                ))}
 
-              {userRole === "ADMIN" && (
-                <div className="grid grid-cols-3 gap-4 mt-4">
-                  <FilterSelect
-                    placeholder="Filtrar por Semestre"
-                    value={semesterFilter}
-                    onChange={setSemesterFilter}
-                    options={[
-                      { value: "2024-I", label: "2024-I" },
-                      { value: "2023-II", label: "2023-II" },
-                      { value: "2023-I", label: "2023-I" },
-                    ]}
-                    className="w-full"
-                  />
-                  <FilterSelect
-                    placeholder="Filtrar por Tribunal"
-                    value={tribunalFilter}
-                    onChange={setTribunalFilter}
-                    options={[
-                      { value: "Tribunal de Familia", label: "Tribunal de Familia" },
-                      { value: "Tribunal Penal", label: "Tribunal Penal" },
-                      { value: "Sin asignar", label: "Sin asignar" },
-                    ]}
-                    className="w-full"
-                  />
-                  <DateInput
-                    placeholder="Desde: 01/01/2025"
-                    value={dateFilter}
-                    onChange={setDateFilter}
-                    className="w-full"
-                  />
-                </div>
-              )}
+                <DateInput
+                  placeholder="Desde"
+                  value={dateFilter}
+                  onChange={setDateFilter}
+                  className="w-full text-sm"
+                />
+                <DateInput
+                  placeholder="Hasta"
+                  value={dateFilterEnd}
+                  onChange={setDateFilterEnd}
+                  className="w-full text-sm"
+                />
+              </div>
             </div>
           )}
         </div>
@@ -758,25 +744,7 @@ export default function CasesClient({ userRole, userCedula, debugRole }: CasesCl
             {/* Status Bar (Footer) */}
             <div className="self-stretch flex justify-between items-center min-h-[30px] pt-2">
               {/* Left: Clear Filters */}
-              <div className="flex-1 flex justify-start">
-                {(searchTerm || statusFilter || subjectFilter || procedureFilter || semesterFilter || tribunalFilter || dateFilter) && (
-                  <button
-                    onClick={() => {
-                      setSearchTerm("");
-                      setStatusFilter("");
-                      setSubjectFilter("");
-                      setProcedureFilter("");
-                      setSemesterFilter("");
-                      setTribunalFilter("");
-                      setDateFilter("");
-                    }}
-                    className="text-[#3E7DBB] font-semibold hover:text-[#2d5f8f] transition-colors cursor-pointer flex items-center gap-1 text-sm"
-                  >
-                    <span className="icon-[mdi--filter-off-outline] text-lg"></span>
-                    Limpiar filtros
-                  </button>
-                )}
-              </div>
+
 
               {/* Center: Total Count */}
               <div className="flex items-center justify-center bg-white px-4 py-1.5 rounded-full border border-[#003366]/10 shadow-sm">

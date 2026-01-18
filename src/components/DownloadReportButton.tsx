@@ -123,7 +123,7 @@ export function DownloadReportButton() {
         <button
             onClick={handleDownload}
             disabled={isGenerating}
-            className="bg-sky-950 text-white px-4 py-2 rounded-lg font-semibold hover:bg-[#325B84] transition-colors flex items-center gap-2 cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
+            className="bg-sky-950 text-white px-4 py-2 rounded-xl font-semibold hover:bg-[#325B84] transition-all duration-300 flex items-center gap-2 cursor-pointer hover:scale-105 active:scale-95 disabled:opacity-50 disabled:cursor-not-allowed whitespace-nowrap shadow-sm"
         >
             {isGenerating ? (
                 <Loader2 className="w-5 h-5 animate-spin" />

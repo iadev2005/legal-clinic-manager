@@ -45,7 +45,7 @@ export async function getCaseReportData(caseId: string) {
 
         // 2. Get Actions (Bitácora)
         const actionsResult = await query(`
-        SELECT a.*, u.nombres, u.apellidos
+        SELECT a.*, u.nombres, u.apellidos, u.rol
         FROM Acciones a
         LEFT JOIN Usuarios_Sistema u ON a.cedula_usuario_ejecutor = u.cedula_usuario
         WHERE a.nro_caso = $1

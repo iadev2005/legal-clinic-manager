@@ -56,13 +56,14 @@ export function BarChart({
       )}
       <CardContent className="flex-1 pb-0">
         <ChartContainer config={config} className="h-[350px] w-full">
-          <RechartsBarChart data={processedData}>
+          <RechartsBarChart data={processedData} margin={{ bottom: 40 }}>
             <CartesianGrid strokeDasharray="3 3" stroke="#E5E7EB" />
             <XAxis
               dataKey={nameKey}
               angle={-45}
               textAnchor="end"
-              height={120}
+              height={150}
+              interval={0}
               tick={{ fill: "#0F172A", fontSize: 12 }}
             />
             <YAxis tick={{ fill: "#0F172A", fontSize: 12 }} />
