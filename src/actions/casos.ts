@@ -100,7 +100,19 @@ export async function getCasos() {
               WHERE cs.nro_caso = c.nro_caso
               ORDER BY sem.fecha_inicio DESC
               LIMIT 1
+            (
+              SELECT cs.term
+              FROM Casos_Semestres cs
+              JOIN Semestres sem ON cs.term = sem.term
+              WHERE cs.nro_caso = c.nro_caso
+              ORDER BY sem.fecha_inicio DESC
+              LIMIT 1
             ) as periodo_actual,
+            (
+              SELECT STRING_AGG(cs.term, ',')
+              FROM Casos_Semestres cs
+              WHERE cs.nro_caso = c.nro_caso
+            ) as all_terms,
             (
               SELECT STRING_AGG(u.nombres || ' ' || u.apellidos, ', ')
               FROM Se_Asignan sa
@@ -160,6 +172,11 @@ export async function getCasos() {
           ORDER BY sem.fecha_inicio DESC
           LIMIT 1
         ) as periodo_actual,
+        (
+          SELECT STRING_AGG(cs.term, ',')
+          FROM Casos_Semestres cs
+          WHERE cs.nro_caso = c.nro_caso
+        ) as all_terms,
         (
           SELECT STRING_AGG(u.nombres || ' ' || u.apellidos, ', ')
           FROM Se_Asignan sa

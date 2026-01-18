@@ -45,7 +45,11 @@ interface Case {
   assignedStudent: string;
   status: "EN_PROCESO" | "ARCHIVADO" | "ENTREGADO" | "ASESORIA" | "PAUSADO";
   createdAt: string;
+  assignedStudent: string;
+  status: "EN_PROCESO" | "ARCHIVADO" | "ENTREGADO" | "ASESORIA" | "PAUSADO";
+  createdAt: string;
   usuario_participa?: boolean; // Indica si el usuario actual participa en el caso
+  allTerms: string[]; // Todos los semestres del caso
 }
 
 interface CasesClientProps {
@@ -165,7 +169,11 @@ export default function CasesClient({ userRole, userCedula, debugRole }: CasesCl
             assignedStudent: caso.alumno_asignado || "Sin asignar",
             status: mapEstatusToFrontend(caso.estatus_actual),
             createdAt: fechaStr,
+            assignedStudent: caso.alumno_asignado || "Sin asignar",
+            status: mapEstatusToFrontend(caso.estatus_actual),
+            createdAt: fechaStr,
             usuario_participa: caso.usuario_participa || false,
+            allTerms: caso.all_terms ? caso.all_terms.split(',') : [],
           };
         });
         setCases(mappedCases);
@@ -224,7 +232,9 @@ export default function CasesClient({ userRole, userCedula, debugRole }: CasesCl
         !procedureFilter ||
         caso.procedure.toLowerCase().includes(procedureFilter.toLowerCase());
 
-      const matchesSemester = !semesterFilter || caso.period === semesterFilter;
+      caso.procedure.toLowerCase().includes(procedureFilter.toLowerCase());
+
+      const matchesSemester = !semesterFilter || caso.allTerms.includes(semesterFilter);
 
       // const matchesTribunal = ... // Removed
 
