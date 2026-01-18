@@ -305,7 +305,7 @@ export async function updateUsuario(id: string, data: Partial<Usuario> & { passw
 
         for (const field of fieldsToAudit) {
             const dataKey = field.key as keyof typeof data;
-            let newValue = data[dataKey];
+            let newValue: any = data[dataKey];
 
             // Transformar si es necesario
             if (field.transform && newValue !== undefined) {
@@ -909,6 +909,21 @@ export async function createSemestre(data: Partial<Semestre>) {
             return { success: false, error: 'La fecha final debe ser posterior a la fecha de inicio' };
         }
 
+        // VALIDACIÓN: Solapamiento de fechas
+        const overlapCheck = await query(`
+            SELECT term FROM Semestres 
+            WHERE 
+                ($1 <= fecha_final AND $2 >= fecha_inicio)
+        `, [data.fecha_inicio, data.fecha_final]);
+
+        if (overlapCheck.rows.length > 0) {
+            const overlappingTerm = overlapCheck.rows[0].term;
+            return {
+                success: false,
+                error: `El rango de fechas choca con el semestre existente: ${overlappingTerm}`
+            };
+        }
+
         const result = await query(`
             INSERT INTO Semestres (term, fecha_inicio, fecha_final)
             VALUES ($1, $2, $3)
@@ -943,13 +958,41 @@ export async function updateSemestre(term: string, data: Partial<Semestre>) {
             return { success: false, error: 'El término del semestre es obligatorio' };
         }
 
-        // Validar que fecha_final > fecha_inicio si se proporcionan ambas
-        if (data.fecha_inicio && data.fecha_final) {
-            const fechaInicio = new Date(data.fecha_inicio);
-            const fechaFinal = new Date(data.fecha_final);
-            if (fechaFinal <= fechaInicio) {
-                return { success: false, error: 'La fecha final debe ser posterior a la fecha de inicio' };
-            }
+
+        // Obtener datos actuales para completar fechas faltantes y validar
+        const currentDataRes = await query('SELECT * FROM Semestres WHERE term = $1', [term]);
+        if (currentDataRes.rows.length === 0) {
+            return { success: false, error: 'Semestre no encontrado' };
+        }
+        const currentData = currentDataRes.rows[0];
+
+        // Fechas efectivas (nuevas o existentes)
+        const newFechaInicio = data.fecha_inicio ? new Date(data.fecha_inicio) : new Date(currentData.fecha_inicio);
+        const newFechaFinal = data.fecha_final ? new Date(data.fecha_final) : new Date(currentData.fecha_final);
+
+        // Validar coherencia de fechas efectivas
+        if (newFechaFinal <= newFechaInicio) {
+            return { success: false, error: 'La fecha final debe ser posterior a la fecha de inicio' };
+        }
+
+        // VALIDACIÓN: Solapamiento de fechas (excluyendo el semestre actual)
+        const overlapCheck = await query(`
+            SELECT term FROM Semestres 
+            WHERE 
+                term != $3 AND
+                ($1 <= fecha_final AND $2 >= fecha_inicio)
+        `, [
+            newFechaInicio.toISOString().split('T')[0],
+            newFechaFinal.toISOString().split('T')[0],
+            term
+        ]);
+
+        if (overlapCheck.rows.length > 0) {
+            const overlappingTerm = overlapCheck.rows[0].term;
+            return {
+                success: false,
+                error: `El rango de fechas choca con el semestre existente: ${overlappingTerm}`
+            };
         }
 
         const result = await query(`
