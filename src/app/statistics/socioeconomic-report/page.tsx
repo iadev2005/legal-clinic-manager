@@ -7,6 +7,20 @@ import { CaseGrowthChart } from "@/components/ui/area-chart";
 import { type ChartConfig } from "@/components/shadcn/chart";
 import { useStatisticsData } from "@/hooks/useStatisticsData";
 
+// Palette derived from Dashboard + Complementary
+const CHART_COLORS = [
+    "#3E7DBB", // Dashboard Blue
+    "#16A34A", // Dashboard Green
+    "#E03E3E", // Dashboard Red
+    "#CB8C06", // Dashboard Orange
+    "#003366", // Dashboard Dark Blue
+    "#8B5CF6", // Purple
+    "#14B8A6", // Teal
+    "#F43F5E", // Rose
+    "#64748B", // Slate
+    "#D946EF", // Magenta
+];
+
 const commonConfig = {
     value: {
         label: "Cantidad",
@@ -61,7 +75,7 @@ export default function ReportPage() {
                     </div>
                     <div className="p-5 ">
                         <BarChart
-                            data={data.parish.map((p: any) => ({ name: p.name, value: p.value }))}
+                            data={data.parish.map((p: any, index: number) => ({ name: p.name, value: p.value, fill: CHART_COLORS[index % CHART_COLORS.length] }))}
                             config={{ value: { label: "Casos", color: "#3E7DBB" } }}
                             dataKey="value"
                             nameKey="name"
@@ -71,7 +85,7 @@ export default function ReportPage() {
                     </div>
                     <div className="p-5 ">
                         <Pie2Chart
-                            data={data.caseStatus.map((s: any) => ({ name: s.name, value: s.value }))}
+                            data={data.caseStatus.map((s: any, index: number) => ({ name: s.name, value: s.value, fill: CHART_COLORS[index % CHART_COLORS.length] }))}
                             config={{ value: { label: "Casos", color: "#3E7DBB" } }}
                             dataKey="value"
                             nameKey="name"
@@ -87,7 +101,13 @@ export default function ReportPage() {
             <div id="socioeconomic-report-page-2" style={pageStyle} className="flex flex-col gap-10">
                 <div className="grid grid-cols-1 md:grid-cols-2 ">
                     <Pie2Chart
-                        data={data.socioEconomic.gender.map((g: any) => ({ name: g.name, value: g.value }))}
+                        data={data.socioEconomic.gender.map((g: any, index: number) => ({
+                            name: g.name,
+                            value: g.value,
+                            fill: g.name.toLowerCase().includes('femenino') || g.name.toLowerCase().includes('mujer') ? '#F43F5E' : // Pink
+                                g.name.toLowerCase().includes('masculino') || g.name.toLowerCase().includes('hombre') ? '#3E7DBB' : // Blue
+                                    CHART_COLORS[index % CHART_COLORS.length]
+                        }))}
                         title="Distribución por Género"
                         config={{ value: { label: "Cantidad" } }}
                         dataKey="value"
@@ -96,7 +116,7 @@ export default function ReportPage() {
                     />
                     {/* AgeChart -> BarChart */}
                     <BarChart
-                        data={data.socioEconomic.age.map((a: any) => ({ name: a.name, value: a.value }))}
+                        data={data.socioEconomic.age.map((a: any, index: number) => ({ name: a.name, value: a.value, fill: CHART_COLORS[index % CHART_COLORS.length] }))}
                         title="Rangos de Edad"
                         config={{ value: { label: "Cantidad" } }}
                         dataKey="value"
@@ -106,7 +126,7 @@ export default function ReportPage() {
                 </div>
                 <div className="grid grid-cols-1">
                     <Pie2Chart
-                        data={data.socioEconomic.housing.map((h: any) => ({ name: h.name, value: h.value }))}
+                        data={data.socioEconomic.housing.map((h: any, index: number) => ({ name: h.name, value: h.value, fill: CHART_COLORS[index % CHART_COLORS.length] }))}
                         title="Tipo de Vivienda"
                         config={{ value: { label: "Cantidad" } }}
                         dataKey="value"
@@ -120,7 +140,7 @@ export default function ReportPage() {
             <div id="socioeconomic-report-page-3" style={pageStyle} className="flex flex-col gap-10">
                 <div className="grid grid-cols-1 md:grid-cols-2 ">
                     <Pie2Chart
-                        data={data.socioEconomic.education.map((e: any) => ({ name: e.name, value: e.value }))}
+                        data={data.socioEconomic.education.map((e: any, index: number) => ({ name: e.name, value: e.value, fill: CHART_COLORS[index % CHART_COLORS.length] }))}
                         title="Nivel Educativo"
                         config={{ value: { label: "Cantidad" } }}
                         dataKey="value"
@@ -129,7 +149,7 @@ export default function ReportPage() {
                     />
 
                     <Pie2Chart
-                        data={data.socioEconomic.employment.map((e: any) => ({ name: e.name, value: e.value }))}
+                        data={data.socioEconomic.employment.map((e: any, index: number) => ({ name: e.name, value: e.value, fill: CHART_COLORS[index % CHART_COLORS.length] }))}
                         title="Condición Laboral"
                         config={{ value: { label: "Cantidad" } }}
                         dataKey="value"
