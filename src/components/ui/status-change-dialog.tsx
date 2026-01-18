@@ -18,6 +18,7 @@ interface StatusChangeDialogProps {
     nroCaso: number;
     currentStatusId?: number;
     onStatusChanged: () => void;
+    cedulaUsuario?: string;
 }
 
 const statusIconMap: Record<string, string> = {
@@ -35,6 +36,7 @@ export function StatusChangeDialog({
     nroCaso,
     currentStatusId,
     onStatusChanged,
+    cedulaUsuario,
 }: StatusChangeDialogProps) {
     const [statuses, setStatuses] = useState<{ id_estatus: number; nombre_estatus: string }[]>([]);
     const [selectedStatusId, setSelectedStatusId] = useState<number | "">("");
@@ -71,7 +73,7 @@ export function StatusChangeDialog({
         setError(null);
 
         try {
-            const res = await cambiarEstatus(nroCaso, Number(selectedStatusId), reason.trim());
+            const res = await cambiarEstatus(nroCaso, Number(selectedStatusId), reason.trim(), cedulaUsuario);
             if (res.success) {
                 onStatusChanged();
                 onClose();

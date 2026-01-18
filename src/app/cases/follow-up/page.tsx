@@ -8,7 +8,7 @@ export default async function FollowUp() {
     return (
         <div className="w-full h-screen min-h-screen bg-neutral-50 inline-flex justify-start items-center overflow-hidden">
             <Sidebar user={session as any} />
-            <FollowUpClient />
+            <FollowUpClient user={session} />
         </div>
     );
 }

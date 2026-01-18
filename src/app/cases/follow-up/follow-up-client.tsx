@@ -221,7 +221,7 @@ const mapEstatusToFrontend = (estatus: string | null): "EN_PROCESO" | "ARCHIVADO
     if (upper.includes("PAUSADO")) return "PAUSADO";
     return "EN_PROCESO";
 };
-export default function FollowUpClient() {
+export default function FollowUpClient({ user }: { user: any }) {
     const searchParams = useSearchParams();
     const router = useRouter();
     const paramCaseId = searchParams.get("caseId");
@@ -855,9 +855,10 @@ export default function FollowUpClient() {
                 <StatusChangeDialog
                     open={isStatusDialogOpen}
                     onClose={() => setIsStatusDialogOpen(false)}
-                    nroCaso={selectedCaseId}
-                    currentStatusId={statusHistory[0]?.id_estatus}
+                    nroCaso={selectedCaseId!}
+                    currentStatusId={caseDetails?.case?.id_estatus}
                     onStatusChanged={refreshData}
+                    cedulaUsuario={user?.cedula}
                 />
             )}
         </div>
