@@ -140,8 +140,6 @@ export default function CaseDetailsModal({
                 { id: "beneficiarios", label: "Beneficiarios", icon: "icon-[mdi--account-group]" },
                 { id: "soportes", label: "Soportes", icon: "icon-[mdi--file-document]" },
                 { id: "citas", label: "Citas", icon: "icon-[mdi--calendar]" },
-                { id: "bitacora", label: "Bitácora", icon: "icon-[mdi--notebook]" },
-                { id: "historial", label: "Historial", icon: "icon-[mdi--history]" },
               ].map((tab) => (
                 <button
                   key={tab.id}
@@ -210,6 +208,14 @@ export default function CaseDetailsModal({
                       <div className="mt-1">
                         <StatusBadge status={caseData.status} />
                       </div>
+                    </div>
+                    <div>
+                      <label className="text-sky-950/70 text-sm font-semibold">
+                        Semestre de Gestión
+                      </label>
+                      <p className="text-sky-950 text-lg font-semibold">
+                        {caseDetails.caseInfo.periodo_actual || "N/A"}
+                      </p>
                     </div>
                     {caseDetails.caseInfo.sintesis_caso && (
                       <div className="col-span-2">
@@ -571,99 +577,6 @@ export default function CaseDetailsModal({
               </div>
             )}
 
-            {/* Tab: Bitácora */}
-            {activeTab === "bitacora" && (
-              <div className="bg-gradient-to-r from-teal-50 to-teal-100 rounded-2xl p-6 border-2 border-teal-500/20">
-                <h3 className="text-sky-950 text-xl font-semibold mb-4 flex items-center gap-2">
-                  <span className="icon-[mdi--notebook] text-2xl text-teal-600"></span>
-                  Bitácora de Acciones ({caseDetails.actions?.length || 0})
-                </h3>
-                {caseDetails.actions && caseDetails.actions.length > 0 ? (
-                  <div className="space-y-4">
-                    {caseDetails.actions.map((accion: any, index: number) => (
-                      <div
-                        key={index}
-                        className="bg-white p-4 rounded-xl border border-teal-200"
-                      >
-                        <div className="flex justify-between items-start">
-                          <div className="flex-1">
-                            <p className="font-bold text-sky-950">{accion.titulo_accion || "Sin título"}</p>
-                            <p className="text-sm text-sky-950/60 mt-1">
-                              {accion.fecha_realizacion
-                                ? new Date(accion.fecha_realizacion).toLocaleDateString("es-ES")
-                                : "N/A"}
-                            </p>
-                            {accion.observacion && (
-                              <p className="text-sm text-sky-950/70 mt-2">{accion.observacion}</p>
-                            )}
-                          </div>
-                          {accion.nombres && accion.apellidos && (
-                            <div className="ml-4 text-right">
-                              <p className="text-xs font-semibold text-sky-950/60">Ejecutado por:</p>
-                              <p className="text-sm text-sky-950">
-                                {accion.nombres} {accion.apellidos}
-                              </p>
-                            </div>
-                          )}
-                        </div>
-                      </div>
-                    ))}
-                  </div>
-                ) : (
-                  <p className="text-sky-950/60 text-center py-8">
-                    No hay acciones registradas en la bitácora
-                  </p>
-                )}
-              </div>
-            )}
-
-            {/* Tab: Historial de Estatus */}
-            {activeTab === "historial" && (
-              <div className="bg-gradient-to-r from-gray-50 to-gray-100 rounded-2xl p-6 border-2 border-gray-500/20">
-                <h3 className="text-sky-950 text-xl font-semibold mb-4 flex items-center gap-2">
-                  <span className="icon-[mdi--history] text-2xl text-gray-600"></span>
-                  Historial de Estatus ({historialEstatus.length})
-                </h3>
-                {historialEstatus.length > 0 ? (
-                  <div className="space-y-4">
-                    {historialEstatus.map((hist: any, index: number) => (
-                      <div
-                        key={index}
-                        className="bg-white p-4 rounded-xl border border-gray-200"
-                      >
-                        <div className="flex justify-between items-start">
-                          <div className="flex-1">
-                            <p className="font-bold text-sky-950">{hist.nombre_estatus}</p>
-                            <p className="text-sm text-sky-950/60 mt-1">
-                              {new Date(hist.fecha_registro).toLocaleString("es-ES", {
-                                year: "numeric",
-                                month: "long",
-                                day: "numeric",
-                                hour: "2-digit",
-                                minute: "2-digit",
-                              })}
-                            </p>
-                            {hist.motivo && (
-                              <p className="text-sm text-sky-950/70 mt-2">{hist.motivo}</p>
-                            )}
-                          </div>
-                          {hist.usuario_nombre && (
-                            <div className="ml-4 text-right">
-                              <p className="text-xs font-semibold text-sky-950/60">Cambiado por:</p>
-                              <p className="text-sm text-sky-950">{hist.usuario_nombre}</p>
-                            </div>
-                          )}
-                        </div>
-                      </div>
-                    ))}
-                  </div>
-                ) : (
-                  <p className="text-sky-950/60 text-center py-8">
-                    No hay historial de cambios de estatus
-                  </p>
-                )}
-              </div>
-            )}
           </div>
         ) : null}
 

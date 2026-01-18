@@ -508,6 +508,12 @@ export default function FollowUpClient({ user }: { user: any }) {
                                             </div>
                                         </div>
                                         <div>
+                                            <div className="text-sky-950/60 text-sm font-medium mb-1">Semestre de Gestión:</div>
+                                            <div className="text-sky-950 font-bold">
+                                                {caseDetails?.caseInfo?.periodo_actual || "N/A"}
+                                            </div>
+                                        </div>
+                                        <div>
                                             <div className="text-sky-950/60 text-sm font-medium mb-1 flex items-center justify-between">
                                                 <span>Estatus:</span>
                                                 <button

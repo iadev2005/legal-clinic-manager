@@ -23,7 +23,15 @@ export async function getCaseReportData(caseId: string) {
             s.estado_civil,
             s.fecha_nacimiento,
             e.nombre_estatus as estatus_actual,
-            EXTRACT(YEAR FROM AGE(CURRENT_DATE, s.fecha_nacimiento)) as edad
+            EXTRACT(YEAR FROM AGE(CURRENT_DATE, s.fecha_nacimiento)) as edad,
+            (
+                SELECT cs.term
+                FROM Casos_Semestres cs
+                JOIN Semestres sem ON cs.term = sem.term
+                WHERE cs.nro_caso = c.nro_caso
+                ORDER BY sem.fecha_inicio DESC
+                LIMIT 1
+            ) as periodo_actual
         FROM Casos c
         JOIN Materias m ON c.id_materia = m.id_materia
         JOIN Categorias cat ON c.num_categoria = cat.num_categoria AND c.id_materia = cat.id_materia
