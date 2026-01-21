@@ -69,8 +69,9 @@ export const createReportDocument = ({ images, date, titles }: ReportDocxDocumen
                             data: base64ToBuffer(image),
                             transformation: {
                                 width: 550,
-                                height: 750, // Adjusted slightly to fit
+                                height: 750,
                             },
+                            type: "png",
                         }),
                     ],
                     alignment: AlignmentType.CENTER,

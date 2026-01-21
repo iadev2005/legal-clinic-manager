@@ -1,10 +1,10 @@
 "use client";
 
 import { useSearchParams } from "next/navigation";
-import { useEffect, useState } from "react";
+import { useEffect, useState, Suspense } from "react";
 import { getCaseReportData } from "@/actions/cases";
 
-export default function CaseReportPage() {
+function ReportContent() {
     const searchParams = useSearchParams();
     const caseId = searchParams.get("caseId");
     const [data, setData] = useState<any>(null);
@@ -290,3 +290,12 @@ export default function CaseReportPage() {
         </div>
     );
 }
+
+export default function CaseReportPage() {
+    return (
+        <Suspense fallback={<div className="p-10 text-center">Cargando reporte...</div>}>
+            <ReportContent />
+        </Suspense>
+    );
+}
+

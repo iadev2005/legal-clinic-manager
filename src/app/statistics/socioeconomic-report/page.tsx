@@ -6,6 +6,7 @@ import { BarChart } from "@/components/ui/bar-chart";
 import { CaseGrowthChart } from "@/components/ui/area-chart";
 import { type ChartConfig } from "@/components/shadcn/chart";
 import { useStatisticsData } from "@/hooks/useStatisticsData";
+import { Suspense } from "react";
 
 // Palette derived from Dashboard + Complementary
 const CHART_COLORS = [
@@ -28,7 +29,7 @@ const commonConfig = {
     }
 } satisfies ChartConfig
 
-export default function ReportPage() {
+function ReportContent() {
     const searchParams = useSearchParams();
 
     const filters = {
@@ -48,9 +49,7 @@ export default function ReportPage() {
         margin: "0 auto",
     };
 
-    const isLoading = loading || !data;
-
-    if (!data) {
+    if (loading || !data) {
         return (
             <div className="fixed inset-0 bg-white/80 flex items-center justify-center z-50">
                 <div className="text-sky-950 text-2xl font-semibold">Cargando reporte...</div>
@@ -159,5 +158,13 @@ export default function ReportPage() {
                 </div>
             </div>
         </div>
+    );
+}
+
+export default function ReportPage() {
+    return (
+        <Suspense fallback={<div>Cargando reporte...</div>}>
+            <ReportContent />
+        </Suspense>
     );
 }

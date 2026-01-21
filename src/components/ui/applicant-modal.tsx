@@ -124,9 +124,7 @@ export default function ApplicantModal({
 
   const [loading, setLoading] = useState(false);
   const [loadingCatalogs, setLoadingCatalogs] = useState(true);
-  const [errors, setErrors] = useState<
-    Partial<Record<keyof ApplicantFormData, string>>
-  >({});
+  const [errors, setErrors] = useState<Record<string, string | undefined>>({});
   const [submitError, setSubmitError] = useState<string | null>(null);
 
   // Catálogos
@@ -722,7 +720,28 @@ export default function ApplicantModal({
                         value={formData.id_nivel_educativo?.toString() || ""}
                         onChange={(value) => {
                           const nivelEducativo = value ? parseInt(value) : undefined;
-                          handleChange("id_nivel_educativo", nivelEducativo);
+                          const selectedLevel = nivelesEducativos.find(n => n.id === nivelEducativo);
+                          const isSinInstruccion = selectedLevel?.label === 'Sin instrucción';
+
+                          // Si no hay nivel educativo o es "Sin instrucción", limpiar campos dependientes
+                          if (!nivelEducativo) {
+                            setFormData(prev => ({
+                              ...prev,
+                              id_nivel_educativo: undefined,
+                              tipo_periodo_educacion: undefined,
+                              cantidad_tiempo_educacion: undefined
+                            }));
+                          } else if (isSinInstruccion) {
+                            setFormData(prev => ({
+                              ...prev,
+                              id_nivel_educativo: nivelEducativo,
+                              tipo_periodo_educacion: undefined,
+                              cantidad_tiempo_educacion: undefined
+                            }));
+                          } else {
+                            handleChange("id_nivel_educativo", nivelEducativo);
+                          }
+
                           // Si es jefe de hogar, sincronizar el nivel educativo del jefe
                           if (formData.familia?.es_jefe_hogar) {
                             handleChange("familia", {
@@ -752,6 +771,7 @@ export default function ApplicantModal({
                           { value: "Trimestre", label: "Trimestre" },
                           { value: "Año", label: "Año" },
                         ]}
+                        disabled={!formData.id_nivel_educativo || nivelesEducativos.find(n => n.id === formData.id_nivel_educativo)?.label === 'Sin instrucción'}
                       />
                     </div>
 
@@ -771,6 +791,7 @@ export default function ApplicantModal({
                           )
                         }
                         placeholder="Ej: 4"
+                        disabled={!formData.id_nivel_educativo || nivelesEducativos.find(n => n.id === formData.id_nivel_educativo)?.label === 'Sin instrucción'}
                       />
                     </div>
 

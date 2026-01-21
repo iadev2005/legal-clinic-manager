@@ -6,6 +6,7 @@ import { type ChartConfig } from "@/components/shadcn/chart";
 import { useStatisticsData } from "@/hooks/useStatisticsData";
 import { Pie2Chart } from "@/components/ui/pie2-chart";
 import { BarChart } from "@/components/ui/bar-chart";
+import { Suspense } from "react";
 
 // Palette derived from Dashboard + Complementary
 const CHART_COLORS = [
@@ -54,7 +55,7 @@ const commonConfig = {
     }
 } satisfies ChartConfig
 
-export default function CustomReportPage() {
+function ReportContent() {
     const searchParams = useSearchParams();
 
     const activeFilters = {
@@ -311,6 +312,14 @@ export default function CustomReportPage() {
                 </div>
             </div>
         </div>
+    );
+}
+
+export default function CustomReportPage() {
+    return (
+        <Suspense fallback={<div>Cargando reporte personalizado...</div>}>
+            <ReportContent />
+        </Suspense>
     );
 }
 

@@ -45,9 +45,7 @@ interface Case {
   assignedStudent: string;
   status: "EN_PROCESO" | "ARCHIVADO" | "ENTREGADO" | "ASESORIA" | "PAUSADO";
   createdAt: string;
-  assignedStudent: string;
-  status: "EN_PROCESO" | "ARCHIVADO" | "ENTREGADO" | "ASESORIA" | "PAUSADO";
-  createdAt: string;
+
   usuario_participa?: boolean; // Indica si el usuario actual participa en el caso
   allTerms: string[]; // Todos los semestres del caso
 }
@@ -55,7 +53,7 @@ interface Case {
 interface CasesClientProps {
   userRole: "ADMIN" | "PROFESSOR" | "STUDENT";
   userCedula?: string;
-  debugRole?: "ADMIN" | "PROFESSOR" | "STUDENT";
+  debugRole?: string;
 }
 
 const ITEMS_PER_PAGE = 10;
@@ -169,9 +167,7 @@ export default function CasesClient({ userRole, userCedula, debugRole }: CasesCl
             assignedStudent: caso.alumno_asignado || "Sin asignar",
             status: mapEstatusToFrontend(caso.estatus_actual),
             createdAt: fechaStr,
-            assignedStudent: caso.alumno_asignado || "Sin asignar",
-            status: mapEstatusToFrontend(caso.estatus_actual),
-            createdAt: fechaStr,
+
             usuario_participa: caso.usuario_participa || false,
             allTerms: caso.all_terms ? caso.all_terms.split(',') : [],
           };
