@@ -12,6 +12,7 @@ import { PieChart } from "@/components/ui/pie-chart";
 import { BarChart } from "@/components/ui/bar-chart";
 import Pagination from "@/components/ui/pagination";
 import { type ChartConfig } from "@/components/shadcn/chart";
+import LoadingScreen from "@/components/ui/loading-screen";
 import CaseDetailsModal from "@/components/ui/case-details-modal";
 import CaseEditModal, {
   type CaseEditData,
@@ -484,9 +485,7 @@ export default function CasesClient({ userRole, userCedula, debugRole }: CasesCl
 
   if (loading) {
     return (
-      <div className="w-full h-full flex items-center justify-center">
-        <div className="text-2xl text-sky-950">Cargando casos...</div>
-      </div>
+      <LoadingScreen message="Cargando casos..." className="w-full h-full" />
     );
   }
 

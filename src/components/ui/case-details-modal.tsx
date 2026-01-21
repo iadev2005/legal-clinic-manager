@@ -21,7 +21,7 @@ import {
 import StatusBadge from "./status-badge";
 import { DownloadCaseReportButton } from "@/components/DownloadCaseReportButton";
 import { getCaseReportData } from "@/actions/cases";
-import { getHistorialEstatus } from "@/actions/casos";
+import { getHistorialEstatus, getSemestresCaso } from "@/actions/casos";
 
 interface CaseDetailsModalProps {
   open: boolean;
@@ -57,8 +57,9 @@ export default function CaseDetailsModal({
   const [loading, setLoading] = useState(false);
   const [caseDetails, setCaseDetails] = useState<any>(null);
   const [historialEstatus, setHistorialEstatus] = useState<any[]>([]);
+  const [academicHistory, setAcademicHistory] = useState<any[]>([]); // New state for Semester History
   const [error, setError] = useState<string | null>(null);
-  const [activeTab, setActiveTab] = useState<"general" | "beneficiarios" | "soportes" | "citas" | "bitacora" | "historial">("general");
+  const [activeTab, setActiveTab] = useState<"general" | "beneficiarios" | "soportes" | "citas" | "historial">("general");
 
   useEffect(() => {
     if (open && caseData) {
@@ -78,9 +79,10 @@ export default function CaseDetailsModal({
     setError(null);
 
     try {
-      const [details, historial] = await Promise.all([
+      const [details, historial, semestres] = await Promise.all([
         getCaseReportData(caseData.id),
         getHistorialEstatus(parseInt(caseData.id)),
+        getSemestresCaso(parseInt(caseData.id)),
       ]);
 
       if (details) {
@@ -92,6 +94,11 @@ export default function CaseDetailsModal({
       if (historial.success && historial.data) {
         setHistorialEstatus(historial.data);
       }
+
+      if (semestres.success && semestres.data) {
+        setAcademicHistory(semestres.data);
+      }
+
     } catch (err: any) {
       setError(err.message || "Error al cargar los detalles del caso");
     } finally {
@@ -140,6 +147,7 @@ export default function CaseDetailsModal({
                 { id: "beneficiarios", label: "Beneficiarios", icon: "icon-[mdi--account-group]" },
                 { id: "soportes", label: "Soportes", icon: "icon-[mdi--file-document]" },
                 { id: "citas", label: "Citas", icon: "icon-[mdi--calendar]" },
+                { id: "historial", label: "Historial y Bitácora", icon: "icon-[mdi--history]" },
               ].map((tab) => (
                 <button
                   key={tab.id}
@@ -576,6 +584,100 @@ export default function CaseDetailsModal({
                 )}
               </div>
             )}
+
+            {/* Tab: Historial */}
+            {activeTab === "historial" && (
+              <div className="space-y-6">
+
+                {/* Section 1: Evolución por Semestre (Academic History) */}
+                <div className="bg-gradient-to-r from-teal-50 to-teal-100 rounded-2xl p-6 border-2 border-teal-500/20">
+                  <h3 className="text-sky-950 text-xl font-semibold mb-4 flex items-center gap-2">
+                    <span className="icon-[mdi--school] text-2xl text-teal-600"></span>
+                    Evolución Académica por Semestre
+                  </h3>
+
+                  <div className="bg-white rounded-xl shadow-sm border border-teal-200 overflow-hidden">
+                    {academicHistory.length > 0 ? (
+                      <table className="w-full text-sm text-left">
+                        <thead className="bg-teal-50 text-teal-900 font-semibold border-b border-teal-200">
+                          <tr>
+                            <th className="p-4">Semestre</th>
+                            <th className="p-4">Estatus Final</th>
+                            {/* <th className="p-4">Responsable</th> */}
+                          </tr>
+                        </thead>
+                        <tbody className="divide-y divide-gray-100">
+                          {academicHistory.map((item, idx) => (
+                            <tr key={idx} className="hover:bg-gray-50 transition-colors">
+                              <td className="p-4 font-bold text-sky-950">{item.term}</td>
+                              <td className="p-4">
+                                <StatusBadge status={item.nombre_estatus || "DESCONOCIDO"} />
+                              </td>
+                              {/* <td className="p-4 text-gray-600">{item.usuario_nombre}</td> */}
+                            </tr>
+                          ))}
+                        </tbody>
+                      </table>
+                    ) : (
+                      <p className="p-8 text-center text-gray-500 italic">No hay historial académico registrado.</p>
+                    )}
+                  </div>
+                  <p className="text-xs text-teal-800/60 mt-2 px-1">
+                    * Muestra el estado del caso en cada periodo académico.
+                  </p>
+                </div>
+
+                {/* Section 2: Bitácora de Cambios (Audit Log) */}
+                <div className="bg-gradient-to-r from-gray-50 to-gray-100 rounded-2xl p-6 border-2 border-gray-400/20">
+                  <h3 className="text-sky-950 text-xl font-semibold mb-4 flex items-center gap-2">
+                    <span className="icon-[mdi--history] text-2xl text-gray-600"></span>
+                    Bitácora de Cambios de Estatus
+                  </h3>
+
+                  <div className="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden">
+                    {historialEstatus.length > 0 ? (
+                      <div className="divide-y divide-gray-100">
+                        {historialEstatus.map((item, idx) => (
+                          <div key={idx} className="p-4 flex flex-col md:flex-row md:items-center justify-between gap-4 hover:bg-gray-50">
+                            <div className="flex items-start gap-3">
+                              <div className="mt-1">
+                                <div className="w-2 h-2 rounded-full bg-gray-400 ring-4 ring-gray-100"></div>
+                              </div>
+                              <div>
+                                <div className="flex items-center gap-2 mb-1">
+                                  <span className="text-xs font-bold text-gray-500 uppercase tracking-wider">
+                                    {new Date(item.fecha_registro).toLocaleDateString("es-ES")}
+                                  </span>
+                                  <span className="text-xs text-gray-400">
+                                    {new Date(item.fecha_registro).toLocaleTimeString("es-ES", { hour: '2-digit', minute: '2-digit' })}
+                                  </span>
+                                </div>
+                                <div className="flex items-center gap-2">
+                                  <span className="text-gray-600">Cambio a:</span>
+                                  <StatusBadge status={item.nombre_estatus} />
+                                </div>
+                              </div>
+                            </div>
+
+                            <div className="text-right md:text-sm">
+                              <p className="font-semibold text-gray-800">{item.usuario_nombre || "Sistema/Usuario"}</p>
+                              <p className="text-xs text-gray-500">{item.rol || "Acción registrada"}</p>
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    ) : (
+                      <p className="p-8 text-center text-gray-500 italic">No hay cambios de estatus registrados.</p>
+                    )}
+                  </div>
+                  <p className="text-xs text-gray-500 mt-2 px-1">
+                    * Registro cronológico de auditoría de todos los cambios de estatus.
+                  </p>
+                </div>
+
+              </div>
+            )}
+
 
           </div>
         ) : null}
