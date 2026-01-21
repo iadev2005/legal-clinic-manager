@@ -50,7 +50,11 @@ interface Solicitante {
 
 const ITEMS_PER_PAGE = 10;
 
-export default function ApplicantsClient() {
+interface ApplicantsClientProps {
+  userRole: string;
+}
+
+export default function ApplicantsClient({ userRole }: ApplicantsClientProps) {
   const router = useRouter();
   const [applicants, setApplicants] = useState<Solicitante[]>([]);
   const [loading, setLoading] = useState(true);
@@ -302,13 +306,15 @@ export default function ApplicantsClient() {
           >
             <span className="icon-[uil--pen] text-3xl text-[#003366] group-hover:scale-110 transition-transform"></span>
           </button>
-          <button
-            onClick={() => handleDelete(applicant)}
-            className="w-10 h-10 flex justify-center items-center hover:bg-red-100 rounded-lg transition-colors group cursor-pointer"
-            title="Eliminar"
-          >
-            <span className="icon-[mdi--trash-can-outline] text-3xl text-red-600 group-hover:scale-110 transition-transform"></span>
-          </button>
+          {userRole !== 'Estudiante' && (
+            <button
+              onClick={() => handleDelete(applicant)}
+              className="w-10 h-10 flex justify-center items-center hover:bg-red-100 rounded-lg transition-colors group cursor-pointer"
+              title="Eliminar"
+            >
+              <span className="icon-[mdi--trash-can-outline] text-3xl text-red-600 group-hover:scale-110 transition-transform"></span>
+            </button>
+          )}
         </div>
       ),
       className: "text-center",
@@ -389,7 +395,7 @@ export default function ApplicantsClient() {
             }))}
             className="w-96"
           />
-          {selectedItems.length > 0 && (
+          {selectedItems.length > 0 && userRole !== 'Estudiante' && (
             <button
               onClick={handleBulkDelete}
               className="bg-red-600 text-white px-4 py-2 rounded-lg font-semibold hover:bg-red-700 transition-colors cursor-pointer flex items-center gap-2 h-[42px] shadow-sm whitespace-nowrap"

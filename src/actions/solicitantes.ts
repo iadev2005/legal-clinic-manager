@@ -20,6 +20,7 @@ export interface Solicitante {
     buscando_trabajo?: boolean;
     tipo_periodo_educacion?: string;
     cantidad_tiempo_educacion?: number;
+    direccion?: string;
     id_parroquia: number;
     id_actividad_solicitante?: number;
     id_trabajo?: number;
@@ -111,9 +112,9 @@ export async function createSolicitante(data: Partial<Solicitante> & {
         cedula_solicitante, nombres, apellidos, telefono_local, telefono_celular,
         correo_electronico, sexo, nacionalidad, estado_civil, en_concubinato,
         fecha_nacimiento, buscando_trabajo, tipo_periodo_educacion,
-        cantidad_tiempo_educacion, id_parroquia, id_actividad_solicitante,
+        cantidad_tiempo_educacion, direccion, id_parroquia, id_actividad_solicitante,
         id_trabajo, id_nivel_educativo
-      ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18)
+      ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18, $19)
       RETURNING *`,
             [
                 data.cedula_solicitante,
@@ -130,6 +131,7 @@ export async function createSolicitante(data: Partial<Solicitante> & {
                 data.buscando_trabajo || false,
                 data.tipo_periodo_educacion || null,
                 data.cantidad_tiempo_educacion || null,
+                data.direccion || null,
                 data.id_parroquia,
                 data.id_actividad_solicitante || null,
                 data.id_trabajo || null,
@@ -288,11 +290,12 @@ export async function updateSolicitante(cedula: string, data: Partial<Solicitant
         buscando_trabajo = $11,
         tipo_periodo_educacion = $12,
         cantidad_tiempo_educacion = $13,
-        id_parroquia = $14,
-        id_actividad_solicitante = $15,
-        id_trabajo = $16,
-        id_nivel_educativo = $17
-      WHERE cedula_solicitante = $18
+        direccion = $14,
+        id_parroquia = $15,
+        id_actividad_solicitante = $16,
+        id_trabajo = $17,
+        id_nivel_educativo = $18
+      WHERE cedula_solicitante = $19
       RETURNING *`,
             [
                 data.nombres,
@@ -308,6 +311,7 @@ export async function updateSolicitante(cedula: string, data: Partial<Solicitant
                 data.buscando_trabajo || false,
                 data.tipo_periodo_educacion || null,
                 data.cantidad_tiempo_educacion || null,
+                data.direccion || null,
                 data.id_parroquia,
                 data.id_actividad_solicitante || null,
                 data.id_trabajo || null,
@@ -328,7 +332,7 @@ export async function updateSolicitante(cedula: string, data: Partial<Solicitant
             'nombres', 'apellidos', 'telefono_local', 'telefono_celular',
             'correo_electronico', 'sexo', 'nacionalidad', 'estado_civil',
             'en_concubinato', 'fecha_nacimiento', 'buscando_trabajo',
-            'tipo_periodo_educacion', 'cantidad_tiempo_educacion',
+            'tipo_periodo_educacion', 'cantidad_tiempo_educacion', 'direccion',
             'id_parroquia', 'id_actividad_solicitante', 'id_trabajo', 'id_nivel_educativo'
         ];
 

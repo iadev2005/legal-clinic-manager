@@ -141,6 +141,7 @@ CREATE TABLE Solicitantes (
     buscando_trabajo BOOLEAN DEFAULT FALSE,
     tipo_periodo_educacion VARCHAR(20),
     cantidad_tiempo_educacion INTEGER,
+    direccion TEXT, -- Dirección específica opcional
     
     -- FKs
     id_parroquia INTEGER NOT NULL REFERENCES Parroquias(id_parroquia),

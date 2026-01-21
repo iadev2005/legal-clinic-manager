@@ -71,6 +71,7 @@ export interface ApplicantFormData {
   tipo_periodo_educacion?: string;
   cantidad_tiempo_educacion?: number;
   id_parroquia: number;
+  direccion?: string;
   id_actividad_solicitante?: number;
   id_trabajo?: number;
   id_nivel_educativo?: number;
@@ -108,6 +109,7 @@ export default function ApplicantModal({
     tipo_periodo_educacion: undefined,
     cantidad_tiempo_educacion: undefined,
     id_parroquia: 0,
+    direccion: "",
     id_actividad_solicitante: undefined,
     id_trabajo: undefined,
     id_nivel_educativo: undefined,
@@ -189,6 +191,7 @@ export default function ApplicantModal({
         cantidad_tiempo_educacion:
           applicant.cantidad_tiempo_educacion || undefined,
         id_parroquia: applicant.id_parroquia || 0,
+        direccion: (applicant as any).direccion || "",
         id_actividad_solicitante:
           applicant.id_actividad_solicitante || undefined,
         id_trabajo: applicant.id_trabajo || undefined,
@@ -216,6 +219,7 @@ export default function ApplicantModal({
         tipo_periodo_educacion: undefined,
         cantidad_tiempo_educacion: undefined,
         id_parroquia: 0,
+        direccion: "",
         id_actividad_solicitante: undefined,
         id_trabajo: undefined,
         id_nivel_educativo: undefined,
@@ -685,6 +689,20 @@ export default function ApplicantModal({
                     error={errors.id_parroquia}
                     required
                   />
+
+                  {/* Dirección Específica */}
+                  <div className="space-y-2">
+                    <Label htmlFor="direccion" className="text-sky-950 font-semibold">
+                      Dirección Específica <span className="text-gray-400 font-normal">(Opcional)</span>
+                    </Label>
+                    <Textarea
+                      id="direccion"
+                      value={formData.direccion}
+                      onChange={(e) => handleChange("direccion", e.target.value)}
+                      placeholder="Ej: Calle 3, Casa Nro. 45, Sector Las Casitas"
+                      className="resize-none"
+                    />
+                  </div>
                 </div>
 
                 {/* Sección 4: Información Socioeconómica */}
