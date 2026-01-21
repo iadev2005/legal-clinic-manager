@@ -1,6 +1,7 @@
 "use client";
 
 import Link from "next/link";
+import NextImage from "next/image";
 
 
 import { useActionState, useState } from "react";
@@ -28,7 +29,13 @@ export default function Login() {
 
     return (
         <div className="w-full h-screen relative overflow-hidden">
-            <img src="/bg.svg" className="w-full h-full object-cover" />
+            <NextImage
+                src="/bg.svg"
+                alt="Background"
+                fill
+                className="object-cover"
+                priority
+            />
             <div className="w-full h-full left-0 top-0 absolute" style={{ background: "linear-gradient(111deg, #036 42.22%, rgba(0, 102, 204, 0.64) 102.14%)" }} />
 
             <Link href="/" className="absolute top-8 left-8 transition-all duration-300 z-50 group">
@@ -36,7 +43,15 @@ export default function Login() {
             </Link>
 
             <div className="w-full h-full px-[19%] py-[3%] left-0 top-0 absolute inline-flex flex-col justify-center items-center gap-6 overflow-hidden">
-                <img src="/logo.svg" className="w-[47%]" />
+                <NextImage
+                    src="/logo.svg"
+                    alt="Logo"
+                    width={0}
+                    height={0}
+                    sizes="100vw"
+                    className="w-[47%] h-auto"
+                    priority
+                />
                 <div className="self-stretch px-[3%] py-[2%] bg-neutral-50 rounded-[20px] shadow-[0px_5px_24.600000381469727px_0px_rgba(0,0,0,0.25)] flex flex-col justify-start items-center gap-5">
 
                     <form action={formAction} className="self-stretch flex flex-col gap-5">

@@ -1,6 +1,7 @@
 "use client";
 
 import Link from "next/link";
+import NextImage from "next/image";
 import { usePathname } from "next/navigation";
 import { logout } from "@/actions/auth";
 import { useState, useEffect } from "react";
@@ -68,7 +69,14 @@ export default function Sidebar({ user }: SidebarProps) {
             <div className="self-stretch inline-flex flex-col justify-start items-start gap-2">
                 {/* Logo */}
                 <div className="self-stretch pb-2 flex flex-col justify-start items-start gap-3">
-                    <img src="/logoH.svg" alt="Logo Horizontal" className="w-75" />
+                    <NextImage
+                        src="/logoH.svg"
+                        alt="Logo Horizontal"
+                        width={300}
+                        height={100}
+                        className="w-75 h-auto"
+                        priority
+                    />
                     <div className="self-stretch h-[4px] bg-white rounded-full"></div>
                 </div>
 

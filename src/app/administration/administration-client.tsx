@@ -16,6 +16,7 @@ import { getParroquias, getEstados, getMunicipiosByEstado } from "@/actions/soli
 import Pagination from "@/components/ui/pagination";
 import SearchInput from "@/components/ui/search-input";
 import FilterSelect from "@/components/ui/filter-select";
+import LoadingScreen from "@/components/ui/loading-screen";
 
 
 export default function Administration({ currentUser }: { currentUser: any }) {
@@ -811,10 +812,12 @@ export default function Administration({ currentUser }: { currentUser: any }) {
 
     if (loading) {
         return (
-            <div className="w-full h-screen min-h-screen bg-neutral-50 inline-flex justify-start items-center overflow-hidden">
-                <div className="w-full h-full p-6 overflow-y-auto flex items-center justify-center">
-                    <div className="text-sky-950 text-xl">Cargando datos...</div>
-                </div>
+            <div className="w-full h-full flex items-center justify-center">
+                <LoadingScreen
+                    message="Cargando administración..."
+                    subMessage="Por favor espera mientras se cargan los datos"
+                    size="lg"
+                />
             </div>
         );
     }
