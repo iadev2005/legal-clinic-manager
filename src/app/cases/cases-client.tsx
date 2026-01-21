@@ -41,7 +41,7 @@ interface Case {
   applicantId: string;
   subject: string; // Materia
   procedure: string; // Trámite
-  tribunal: string;
+  legalAmbient: string; // Ámbito Legal (antes Tribunal/Subcategoría)
   period: string;
   assignedStudent: string;
   status: "EN_PROCESO" | "ARCHIVADO" | "ENTREGADO" | "ASESORIA" | "PAUSADO";
@@ -163,7 +163,7 @@ export default function CasesClient({ userRole, userCedula, debugRole }: CasesCl
             applicantId: caso.cedula_solicitante || "",
             subject: caso.nombre_materia || "N/A",
             procedure: caso.nombre_tramite || "N/A",
-            tribunal: caso.nombre_subcategoria || "Sin asignar", // Usar subcategoría como tribunal temporalmente
+            legalAmbient: caso.nombre_ambito_legal || "N/A", // Mostrar ámbito legal
             period: caso.periodo_actual || "N/A",
             assignedStudent: caso.alumno_asignado || "Sin asignar",
             status: mapEstatusToFrontend(caso.estatus_actual),
@@ -406,8 +406,8 @@ export default function CasesClient({ userRole, userCedula, debugRole }: CasesCl
     if (userRole === "ADMIN" || userRole === "PROFESSOR") {
       baseColumns.push(
         {
-          header: "Subcategoría",
-          accessorKey: "tribunal", // Used as prop for subcategory temporarily
+          header: "Ámbito Legal",
+          accessorKey: "legalAmbient",
           className: "text-center text-sm break-words leading-tight",
           headerClassName: "w-[13%]",
         },
