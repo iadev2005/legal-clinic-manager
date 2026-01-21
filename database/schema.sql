@@ -1,14 +1,4 @@
 /* ==========================================================================
-   ARQUITECTURA DE BASE DE DATOS: CLÍNICA JURÍDICA UCAB
-   Versión: 1.0 (Release Candidate)
-   Autor: DBA Senior & Profesor Titular
-   ========================================================================== */
-
--- Limpieza preventiva (Solo en desarrollo)
--- DROP SCHEMA public CASCADE;
--- CREATE SCHEMA public;
-
-/* ==========================================================================
    MÓDULO D: CATÁLOGOS GEOGRÁFICOS Y SOCIOECONÓMICOS (Tablas Base)
    ========================================================================== */
 
@@ -79,7 +69,7 @@ INSERT INTO Bienes (descripcion) VALUES
 ('Nevera'), ('Lavadora'), ('Computadora'), ('Carro'), ('Moto'), ('Televisor'), ('Cocina'), ('Aire Acondicionado');
 
 /* ==========================================================================
-   MÓDULO B: CLASIFICACIÓN LEGAL (Jerarquía Matrioska)
+   MÓDULO B: CLASIFICACIÓN LEGAL
    ========================================================================== */
 
 -- Tabla 31 (Materias)
@@ -137,11 +127,10 @@ CREATE TABLE Solicitantes (
     estado_civil VARCHAR(20) NOT NULL CHECK (estado_civil IN ('Soltero', 'Casado', 'Divorciado', 'Viudo')),
     en_concubinato BOOLEAN DEFAULT FALSE,
     fecha_nacimiento DATE NOT NULL,
-    -- edad INTEGER GENERATED ALWAYS AS (EXTRACT(YEAR FROM AGE(CURRENT_DATE, fecha_nacimiento))) STORED, -- Atributo Derivado Automático
     buscando_trabajo BOOLEAN DEFAULT FALSE,
     tipo_periodo_educacion VARCHAR(20),
     cantidad_tiempo_educacion INTEGER,
-    direccion TEXT, -- Dirección específica opcional
+    direccion TEXT, 
     
     -- FKs
     id_parroquia INTEGER NOT NULL REFERENCES Parroquias(id_parroquia),

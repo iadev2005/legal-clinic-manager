@@ -33,7 +33,7 @@ interface CaseDetailsModalProps {
     applicantId: string;
     subject: string;
     procedure: string;
-    tribunal: string;
+    legalAmbient: string;
     period: string;
     assignedStudent: string;
     status: "EN_PROCESO" | "ARCHIVADO" | "ENTREGADO" | "ASESORIA" | "PAUSADO";

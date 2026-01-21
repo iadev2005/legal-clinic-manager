@@ -858,7 +858,7 @@ export default function FollowUpClient({ user }: { user: any }) {
                         applicantId: caseDetails.caseInfo?.cedula_solicitante || "",
                         subject: caseDetails.caseInfo?.nombre_materia || "",
                         procedure: caseDetails.caseInfo?.nombre_tramite || "",
-                        tribunal: caseDetails.caseInfo?.nombre_nucleo || "",
+                        legalAmbient: caseDetails.caseInfo?.nombre_ambito_legal || "",
                         period: "2024-2025",
                         assignedStudent: caseDetails.students?.[0] ? `${caseDetails.students[0].nombres} ${caseDetails.students[0].apellidos}` : "Sin Asignar",
                         status: mapEstatusToFrontend(caseDetails.caseInfo?.estatus_actual),
