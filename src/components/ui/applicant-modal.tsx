@@ -294,12 +294,10 @@ export default function ApplicantModal({
       newErrors.apellidos = "Los apellidos son requeridos";
     }
 
-    // Validar cédula (prefijo + número)
+    // Validar cédula (prefijo + número) - permitir cualquier formato
     if (mode === "create") {
       if (!cedulaNumber.trim()) {
         newErrors.cedula_solicitante = "El número de cédula es requerido";
-      } else if (!/^\d{6,8}$/.test(cedulaNumber.replace(/\D/g, ""))) {
-        newErrors.cedula_solicitante = "El número de cédula debe tener entre 6 y 8 dígitos";
       }
     }
 
@@ -318,12 +316,7 @@ export default function ApplicantModal({
       newErrors.correo_electronico = "Email inválido";
     }
 
-    if (
-      dataToValidate.telefono_celular &&
-      !/^(\+?58\s?)?0?4\d{2}-?\d{7}$/.test(dataToValidate.telefono_celular)
-    ) {
-      newErrors.telefono_celular = "Formato inválido (Ej: 0412-1234567)";
-    }
+    // Teléfono celular es opcional, sin validación de formato
 
     // Validar constraint de familia/hogar
     if (dataToValidate.familia?.cantidad_personas) {
@@ -467,7 +460,6 @@ export default function ApplicantModal({
                         placeholder="Ej: 12345678"
                         className={errors.cedula_solicitante ? "border-red-500" : ""}
                         disabled={mode === "edit"}
-                        maxLength={8}
                       />
                       {errors.cedula_solicitante && (
                         <p className="text-red-500 text-sm">
@@ -619,14 +611,16 @@ export default function ApplicantModal({
                     {/* Teléfono Celular */}
                     <div className="space-y-2">
                       <Label htmlFor="telefono_celular" className="text-sky-950 font-semibold">
-                        Teléfono Celular <span className="text-red-500">*</span>
+                        Teléfono Celular
                       </Label>
                       <Input
                         id="telefono_celular"
                         value={formData.telefono_celular}
-                        onChange={(e) =>
-                          handleChange("telefono_celular", e.target.value)
-                        }
+                        onChange={(e) => {
+                          // Permitir números y símbolos especiales, pero no letras
+                          const value = e.target.value.replace(/[a-zA-Z]/g, "");
+                          handleChange("telefono_celular", value);
+                        }}
                         placeholder="Ej: 0412-1234567"
                         className={errors.telefono_celular ? "border-red-500" : ""}
                       />
@@ -645,9 +639,11 @@ export default function ApplicantModal({
                       <Input
                         id="telefono_local"
                         value={formData.telefono_local}
-                        onChange={(e) =>
-                          handleChange("telefono_local", e.target.value)
-                        }
+                        onChange={(e) => {
+                          // Permitir números y símbolos especiales, pero no letras
+                          const value = e.target.value.replace(/[a-zA-Z]/g, "");
+                          handleChange("telefono_local", value);
+                        }}
                         placeholder="Ej: 0212-1234567"
                       />
                     </div>

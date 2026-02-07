@@ -116,11 +116,11 @@ CREATE TABLE Ambitos_Legales (
 
 -- Tabla 7
 CREATE TABLE Solicitantes (
-    cedula_solicitante VARCHAR(20) PRIMARY KEY, -- Alfanumérico por si es pasaporte
+    cedula_solicitante VARCHAR(50) PRIMARY KEY, -- Alfanumérico flexible para pasaportes y otros documentos
     nombres VARCHAR(100) NOT NULL,
     apellidos VARCHAR(100) NOT NULL,
-    telefono_local VARCHAR(20),
-    telefono_celular VARCHAR(20) NOT NULL,
+    telefono_local VARCHAR(30),
+    telefono_celular VARCHAR(30), -- Ahora opcional
     correo_electronico VARCHAR(100) NOT NULL,
     sexo CHAR(1) NOT NULL CHECK (sexo IN ('M', 'F')),
     nacionalidad CHAR(1) NOT NULL CHECK (nacionalidad IN ('V', 'E')),
@@ -141,14 +141,14 @@ CREATE TABLE Solicitantes (
 
 -- Tabla 26 (Relación N:M Solicitante-Bienes)
 CREATE TABLE Almacenan (
-    cedula_solicitante VARCHAR(20) REFERENCES Solicitantes(cedula_solicitante),
+    cedula_solicitante VARCHAR(50) REFERENCES Solicitantes(cedula_solicitante),
     id_bien INTEGER REFERENCES Bienes(id_bien),
     PRIMARY KEY (cedula_solicitante, id_bien)
 );
 
 -- Tabla 8 (Viviendas - Con los constraints estrictos del Anexo)
 CREATE TABLE Viviendas (
-    cedula_solicitante VARCHAR(20) PRIMARY KEY REFERENCES Solicitantes(cedula_solicitante),
+    cedula_solicitante VARCHAR(50) PRIMARY KEY REFERENCES Solicitantes(cedula_solicitante),
     tipo_vivienda VARCHAR(50) NOT NULL CHECK (tipo_vivienda IN ('Casa', 'Apartamento', 'Rancho', 'Otro')),
     cantidad_habitaciones INTEGER NOT NULL CHECK (cantidad_habitaciones >= 0),
     cantidad_banos INTEGER NOT NULL CHECK (cantidad_banos >= 0),
@@ -164,7 +164,7 @@ CREATE TABLE Viviendas (
 
 -- Tabla 9
 CREATE TABLE Familias_Hogares (
-    cedula_solicitante VARCHAR(20) PRIMARY KEY REFERENCES Solicitantes(cedula_solicitante),
+    cedula_solicitante VARCHAR(50) PRIMARY KEY REFERENCES Solicitantes(cedula_solicitante),
     cantidad_personas INTEGER NOT NULL,
     cantidad_trabajadores INTEGER DEFAULT 0,
     cantidad_ninos INTEGER DEFAULT 0,
@@ -190,14 +190,14 @@ CREATE TABLE Semestres (
 
 -- Tabla 16 (Supertipo)
 CREATE TABLE Usuarios_Sistema (
-    cedula_usuario VARCHAR(20) PRIMARY KEY,
+    cedula_usuario VARCHAR(50) PRIMARY KEY,
     correo_electronico VARCHAR(100) NOT NULL UNIQUE, -- Debe ser UNIQUE para login
     username VARCHAR(50) GENERATED ALWAYS AS (SPLIT_PART(correo_electronico, '@', 1)) STORED, -- Derivado
     contrasena_hash VARCHAR(255) NOT NULL, -- Seguridad básica
     activo BOOLEAN DEFAULT TRUE,
     ultimo_acceso TIMESTAMP,
-    telefono_celular VARCHAR(20),
-    telefono_local VARCHAR(20),
+    telefono_celular VARCHAR(30),
+    telefono_local VARCHAR(30),
     nombres VARCHAR(100) NOT NULL,
     apellidos VARCHAR(100) NOT NULL,
     rol VARCHAR(20) NOT NULL CHECK (rol IN ('Estudiante', 'Profesor', 'Coordinador', 'Administrador'))
@@ -205,13 +205,13 @@ CREATE TABLE Usuarios_Sistema (
 
 -- Subtipos (Tablas 17, 18, 19)
 CREATE TABLE Coordinadores (
-    cedula_coordinador VARCHAR(20) PRIMARY KEY REFERENCES Usuarios_Sistema(cedula_usuario),
+    cedula_coordinador VARCHAR(50) PRIMARY KEY REFERENCES Usuarios_Sistema(cedula_usuario),
     term_asignado VARCHAR(10) REFERENCES Semestres(term)
 );
 
 -- 18. Alumnos (Subtipo Débil)
 CREATE TABLE Alumnos (
-    cedula_alumno VARCHAR(20) REFERENCES Usuarios_Sistema(cedula_usuario),
+    cedula_alumno VARCHAR(50) REFERENCES Usuarios_Sistema(cedula_usuario),
     term VARCHAR(10) REFERENCES Semestres(term),
     nrc VARCHAR(20),
     tipo VARCHAR(20) CHECK (tipo IN ('Voluntario', 'Inscrito', 'Egresado')),
@@ -220,7 +220,7 @@ CREATE TABLE Alumnos (
 
 -- 19. Profesores (Subtipo Débil)
 CREATE TABLE Profesores (
-    cedula_profesor VARCHAR(20) REFERENCES Usuarios_Sistema(cedula_usuario),
+    cedula_profesor VARCHAR(50) REFERENCES Usuarios_Sistema(cedula_usuario),
     term VARCHAR(10) REFERENCES Semestres(term),
     nrc VARCHAR(20),
     tipo VARCHAR(20) CHECK (tipo IN ('Voluntario', 'Asesor', 'Titular')),
@@ -258,7 +258,7 @@ CREATE TABLE Casos (
     fecha_caso_final DATE,
     
     -- FKs
-    cedula_solicitante VARCHAR(20) NOT NULL REFERENCES Solicitantes(cedula_solicitante),
+    cedula_solicitante VARCHAR(50) NOT NULL REFERENCES Solicitantes(cedula_solicitante),
     id_nucleo INTEGER NOT NULL REFERENCES Nucleos(id_nucleo),
     id_tramite INTEGER NOT NULL REFERENCES Tramites(id_tramite),
     
@@ -275,7 +275,7 @@ CREATE TABLE Casos (
 
 -- Tabla 6 (Beneficiarios - Weak)
 CREATE TABLE Beneficiarios (
-    cedula_beneficiario VARCHAR(20),
+    cedula_beneficiario VARCHAR(50),
     nro_caso INTEGER REFERENCES Casos(nro_caso) ON DELETE CASCADE,
     cedula_es_propia BOOLEAN DEFAULT FALSE,
     nombres VARCHAR(100) NOT NULL,
@@ -333,14 +333,14 @@ CREATE TABLE Acciones (
     titulo_accion VARCHAR(100) NOT NULL,
     observacion TEXT,
     fecha_realizacion DATE NOT NULL,
-    cedula_usuario_ejecutor VARCHAR(20) NOT NULL REFERENCES Usuarios_Sistema(cedula_usuario),
+    cedula_usuario_ejecutor VARCHAR(50) NOT NULL REFERENCES Usuarios_Sistema(cedula_usuario),
     fecha_registro TIMESTAMP DEFAULT NOW(),
     PRIMARY KEY (nro_accion, nro_caso)
 );
 
 -- Tabla 25 (Atienden N:M)
 CREATE TABLE Atienden (
-    cedula_usuario VARCHAR(20) REFERENCES Usuarios_Sistema(cedula_usuario),
+    cedula_usuario VARCHAR(50) REFERENCES Usuarios_Sistema(cedula_usuario),
     nro_caso INTEGER,
     id_cita INTEGER,
     fecha_registro TIMESTAMP DEFAULT NOW(),
@@ -358,7 +358,7 @@ CREATE TABLE Se_Asignan (
     id_asignacion SERIAL PRIMARY KEY,
     id_caso INTEGER REFERENCES Casos(nro_caso),
     term VARCHAR(10) NOT NULL,
-    cedula_alumno VARCHAR(20) NOT NULL,
+    cedula_alumno VARCHAR(50) NOT NULL,
     estatus VARCHAR(20) CHECK (estatus IN ('Activo', 'Inactivo')),
     fecha_asignacion DATE DEFAULT CURRENT_DATE,
     FOREIGN KEY (cedula_alumno, term) REFERENCES Alumnos(cedula_alumno, term)
@@ -373,7 +373,7 @@ CREATE TABLE Supervisan (
     id_supervision SERIAL PRIMARY KEY,
     id_caso INTEGER REFERENCES Casos(nro_caso),
     term VARCHAR(10) NOT NULL,
-    cedula_profesor VARCHAR(20) NOT NULL,
+    cedula_profesor VARCHAR(50) NOT NULL,
     estatus VARCHAR(20) CHECK (estatus IN ('Activo', 'Inactivo')),
     FOREIGN KEY (cedula_profesor, term) REFERENCES Profesores(cedula_profesor, term)
 );
@@ -387,7 +387,7 @@ CREATE TABLE Se_Le_Adjudican (
     id_historial SERIAL PRIMARY KEY,
     id_caso INTEGER REFERENCES Casos(nro_caso),
     id_estatus INTEGER REFERENCES Estatus(id_estatus),
-    cedula_usuario VARCHAR(20) REFERENCES Usuarios_Sistema(cedula_usuario),
+    cedula_usuario VARCHAR(50) REFERENCES Usuarios_Sistema(cedula_usuario),
     motivo TEXT,
     fecha_registro TIMESTAMP DEFAULT NOW()
 );
@@ -406,7 +406,7 @@ CREATE TABLE Notificaciones (
 -- Tabla 32 (Notificaciones-Usuarios N:M)
 CREATE TABLE Notificaciones_Usuarios (
     id_notificacion INTEGER NOT NULL REFERENCES Notificaciones(id_notificacion) ON DELETE CASCADE,
-    cedula_usuario VARCHAR(20) NOT NULL REFERENCES Usuarios_Sistema(cedula_usuario) ON DELETE CASCADE,
+    cedula_usuario VARCHAR(50) NOT NULL REFERENCES Usuarios_Sistema(cedula_usuario) ON DELETE CASCADE,
     revisado BOOLEAN DEFAULT FALSE NOT NULL,
     fecha_revision TIMESTAMP,
     PRIMARY KEY (id_notificacion, cedula_usuario)
@@ -422,7 +422,7 @@ CREATE TABLE casos_semestres (
     nro_caso INTEGER NOT NULL,
     term VARCHAR(10) NOT NULL,
     id_estatus INTEGER NOT NULL,
-    cedula_usuario VARCHAR(20),
+    cedula_usuario VARCHAR(50),
     fecha_registro TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
 
     -- Restricciones de Integridad
@@ -452,7 +452,7 @@ ON Notificaciones (fecha_notificacion DESC);
 CREATE TABLE Auditoria_Casos_Eliminados (
     id_auditoria SERIAL PRIMARY KEY,
     nro_caso_original INTEGER,
-    cedula_responsable VARCHAR(20),
+    cedula_responsable VARCHAR(50),
     nombre_responsable VARCHAR(100),
     rol_responsable VARCHAR(50),
     fecha_eliminacion TIMESTAMP DEFAULT NOW(),
@@ -462,11 +462,11 @@ CREATE TABLE Auditoria_Casos_Eliminados (
 -- Tabla 35 (Auditoría de Usuarios del Sistema)
 CREATE TABLE Auditoria_Usuarios (
     id_auditoria SERIAL PRIMARY KEY,
-    cedula_usuario_modificado VARCHAR(20) NOT NULL,
+    cedula_usuario_modificado VARCHAR(50) NOT NULL,
     campo_modificado VARCHAR(50) NOT NULL,
     valor_anterior TEXT,
     valor_nuevo TEXT,
-    cedula_responsable VARCHAR(20),
+    cedula_responsable VARCHAR(50),
     nombre_responsable VARCHAR(100),
     fecha_cambio TIMESTAMP DEFAULT NOW()
 );
@@ -474,11 +474,11 @@ CREATE TABLE Auditoria_Usuarios (
 -- Tabla 36 (Auditoría de Solicitantes)
 CREATE TABLE Auditoria_Solicitantes (
     id_auditoria SERIAL PRIMARY KEY,
-    cedula_solicitante_modificado VARCHAR(20) NOT NULL,
+    cedula_solicitante_modificado VARCHAR(50) NOT NULL,
     campo_modificado VARCHAR(50) NOT NULL,
     valor_anterior TEXT,
     valor_nuevo TEXT,
-    cedula_responsable VARCHAR(20),
+    cedula_responsable VARCHAR(50),
     nombre_responsable VARCHAR(100),
     fecha_cambio TIMESTAMP DEFAULT NOW()
 );
@@ -492,7 +492,7 @@ CREATE TABLE Auditoria_Casos (
     campo_modificado VARCHAR(50) NOT NULL,
     valor_anterior TEXT,
     valor_nuevo TEXT,
-    cedula_responsable VARCHAR(20),
+    cedula_responsable VARCHAR(50),
     nombre_responsable VARCHAR(100),
     fecha_cambio TIMESTAMP DEFAULT NOW()
 );
