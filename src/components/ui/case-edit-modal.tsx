@@ -199,18 +199,30 @@ export default function CaseEditModal({
         ]);
 
         if (alum.success) {
-          setAlumnos((alum.data || []).map((a: any) => ({
-            value: a.cedula_usuario,
-            label: `${a.nombres} ${a.apellidos}`,
-            term: a.term_activo || "N/A" // Asumiendo que viene el term
-          })));
+          const uniqueAlumnos = new Map();
+          (alum.data || []).forEach((a: any) => {
+            if (!uniqueAlumnos.has(a.cedula_usuario)) {
+              uniqueAlumnos.set(a.cedula_usuario, {
+                value: a.cedula_usuario,
+                label: `${a.nombres} ${a.apellidos}`,
+                term: a.term || "N/A"
+              });
+            }
+          });
+          setAlumnos(Array.from(uniqueAlumnos.values()));
         }
         if (prof.success) {
-          setProfesores((prof.data || []).map((p: any) => ({
-            value: p.cedula_usuario,
-            label: `${p.nombres} ${p.apellidos}`,
-            term: p.term_activo || "N/A"
-          })));
+          const uniqueProfesores = new Map();
+          (prof.data || []).forEach((p: any) => {
+            if (!uniqueProfesores.has(p.cedula_usuario)) {
+              uniqueProfesores.set(p.cedula_usuario, {
+                value: p.cedula_usuario,
+                label: `${p.nombres} ${p.apellidos}`,
+                term: p.term || "N/A"
+              });
+            }
+          });
+          setProfesores(Array.from(uniqueProfesores.values()));
         }
 
       } catch (error) {
