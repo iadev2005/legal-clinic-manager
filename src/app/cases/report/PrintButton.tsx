@@ -84,7 +84,10 @@ export default function PrintButton({ caseId, caseNumber }: PrintButtonProps) {
             const url = URL.createObjectURL(blob)
             const link = document.createElement("a")
             link.href = url
-            link.download = `Reporte_Caso_${caseNumber.replace('#', '')}_${new Date().toISOString().split('T')[0]}.docx`
+            const now = new Date()
+            const dateStr = now.toISOString().split('T')[0]
+            const timeStr = now.getHours().toString().padStart(2, '0') + ':' + now.getMinutes().toString().padStart(2, '0')
+            link.download = `Reporte_Caso_${caseNumber.replace('#', '')}_${dateStr}_${timeStr}.docx`
             link.click()
             URL.revokeObjectURL(url)
 

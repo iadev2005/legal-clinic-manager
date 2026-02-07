@@ -184,6 +184,7 @@ function ReportContent() {
                         <header className="text-center mb-6">
                             <h1 className="text-3xl font-bold text-sky-950">Reporte de Gestión - Página 1</h1>
                             <p className="text-gray-500">Materia Civil: Sucesiones y Familia</p>
+                            <p className="text-xs text-gray-400 mt-2 font-mono">Emisión: {new Date().toLocaleString()}</p>
                         </header>
                         <div className="grid grid-cols-1 md:grid-cols-2">
                             <div className="p-3 col-span-2">
@@ -224,6 +225,7 @@ function ReportContent() {
                         <header className="text-center mb-6">
                             <h1 className="text-3xl font-bold text-sky-950">Reporte de Gestión - Página 2</h1>
                             <p className="text-gray-500">Materia Civil: Personas, Bienes y Contratos</p>
+                            <p className="text-xs text-gray-400 mt-2 font-mono">Emisión: {new Date().toLocaleString()}</p>
                         </header>
                         <div className="grid grid-cols-1 md:grid-cols-2">
                             <div className="p-3 col-span-2">
@@ -251,6 +253,7 @@ function ReportContent() {
                         <header className="text-center mb-6">
                             <h1 className="text-3xl font-bold text-sky-950">Reporte de Gestión - Página 3</h1>
                             <p className="text-gray-500">Materias: Penal, Laboral y Mercantil</p>
+                            <p className="text-xs text-gray-400 mt-2 font-mono">Emisión: {new Date().toLocaleString()}</p>
                         </header>
                         <div className="grid grid-cols-1 md:grid-cols-2">
                             <div className="p-3 col-span-2">
@@ -267,6 +270,7 @@ function ReportContent() {
                         <header className="text-center mb-6">
                             <h1 className="text-3xl font-bold text-sky-950">Reporte de Gestión - Página 4</h1>
                             <p className="text-gray-500">Otros Casos y Resumen General</p>
+                            <p className="text-xs text-gray-400 mt-2 font-mono">Emisión: {new Date().toLocaleString()}</p>
                         </header>
                         <div className="grid grid-cols-1 md:grid-cols-2">
                             <div className="p-3 col-span-2">
@@ -286,6 +290,7 @@ function ReportContent() {
                         <header className="text-center mb-6">
                             <h1 className="text-3xl font-bold text-sky-950">Reporte de Gestión - Página 5</h1>
                             <p className="text-gray-500">Demografía: Género y Ubicación</p>
+                            <p className="text-xs text-gray-400 mt-2 font-mono">Emisión: {new Date().toLocaleString()}</p>
                         </header>
                         <div className="grid grid-cols-1 md:grid-cols-2">
                             <div className="p-3 col-span-2">
@@ -302,6 +307,7 @@ function ReportContent() {
                         <header className="text-center mb-6">
                             <h1 className="text-3xl font-bold text-sky-950">Reporte de Gestión - Página 6</h1>
                             <p className="text-gray-500">Distribución por Parroquia</p>
+                            <p className="text-xs text-gray-400 mt-2 font-mono">Emisión: {new Date().toLocaleString()}</p>
                         </header>
                         <div className="grid grid-cols-1 md:grid-cols-2">
                             <div className="p-3 col-span-2">

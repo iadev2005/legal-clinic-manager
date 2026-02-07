@@ -102,7 +102,10 @@ export function DownloadReportButton() {
             const url = URL.createObjectURL(blob)
             const link = document.createElement("a")
             link.href = url
-            link.download = `reporte_socio_cultural_${new Date().toISOString().split('T')[0]}.docx`
+            const now = new Date()
+            const dateStr = now.toISOString().split('T')[0]
+            const timeStr = now.getHours().toString().padStart(2, '0') + 'h' + now.getMinutes().toString().padStart(2, '0')
+            link.download = `reporte_socio_cultural_${dateStr}_${timeStr}.docx`
             document.body.appendChild(link)
             link.click()
             document.body.removeChild(link)

@@ -48,9 +48,33 @@ function ReportContent() {
                         <div className="bg-sky-950 text-white px-4 py-2 rounded-lg font-bold text-xl mb-1">
                             Caso {caseInfo.nro_caso}
                         </div>
-                        <p className="text-sm text-gray-500 font-medium">Fecha de Emisión: {new Date().toLocaleDateString()}</p>
+                        <p className="text-sm text-gray-500 font-medium">Fecha de Emisión: {new Date().toLocaleString()}</p>
                     </div>
                 </div>
+
+                <section className="mb-8">
+                    <h2 className="text-2xl font-bold text-sky-950 mb-4 flex items-center gap-2 border-l-4 border-blue-600 pl-3">
+                        Datos del Solicitante
+                    </h2>
+                    <div className="grid grid-cols-2 gap-y-4 gap-x-8 bg-gray-50 p-6 rounded-2xl">
+                        <div>
+                            <label className="text-xs font-bold text-gray-500 uppercase">Nombre Completo</label>
+                            <p className="text-lg font-semibold">{caseInfo.solicitante_nombres} {caseInfo.solicitante_apellidos}</p>
+                        </div>
+                        <div>
+                            <label className="text-xs font-bold text-gray-500 uppercase">Cédula</label>
+                            <p className="text-lg font-semibold">{caseInfo.cedula_solicitante}</p>
+                        </div>
+                        <div>
+                            <label className="text-xs font-bold text-gray-500 uppercase">Teléfono</label>
+                            <p className="text-md font-medium">{caseInfo.telefono_celular || 'N/A'}</p>
+                        </div>
+                        <div>
+                            <label className="text-xs font-bold text-gray-500 uppercase">Correo</label>
+                            <p className="text-md font-medium">{caseInfo.correo_electronico || 'N/A'}</p>
+                        </div>
+                    </div>
+                </section>
 
                 <section className="mb-8">
                     <h2 className="text-2xl font-bold text-sky-950 mb-4 flex items-center gap-2 border-l-4 border-blue-600 pl-3">
@@ -82,29 +106,7 @@ function ReportContent() {
                     </div>
                 </section>
 
-                <section className="mb-8">
-                    <h2 className="text-2xl font-bold text-sky-950 mb-4 flex items-center gap-2 border-l-4 border-blue-600 pl-3">
-                        Datos del Solicitante
-                    </h2>
-                    <div className="grid grid-cols-2 gap-y-4 gap-x-8 bg-gray-50 p-6 rounded-2xl">
-                        <div>
-                            <label className="text-xs font-bold text-gray-500 uppercase">Nombre Completo</label>
-                            <p className="text-lg font-semibold">{caseInfo.solicitante_nombres} {caseInfo.solicitante_apellidos}</p>
-                        </div>
-                        <div>
-                            <label className="text-xs font-bold text-gray-500 uppercase">Cédula</label>
-                            <p className="text-lg font-semibold">{caseInfo.cedula_solicitante}</p>
-                        </div>
-                        <div>
-                            <label className="text-xs font-bold text-gray-500 uppercase">Teléfono</label>
-                            <p className="text-md font-medium">{caseInfo.telefono_celular || 'N/A'}</p>
-                        </div>
-                        <div>
-                            <label className="text-xs font-bold text-gray-500 uppercase">Correo</label>
-                            <p className="text-md font-medium">{caseInfo.correo_electronico || 'N/A'}</p>
-                        </div>
-                    </div>
-                </section>
+
 
                 <section>
                     <h2 className="text-2xl font-bold text-sky-950 mb-4 flex items-center gap-2 border-l-4 border-blue-600 pl-3">

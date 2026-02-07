@@ -60,7 +60,12 @@ function ReportContent() {
     return (
         <div className="bg-white">
             {/* Page 1: Case Metrics */}
-            <div id="socioeconomic-report-page-1" style={pageStyle} className="flex flex-col gap-10">
+            <div id="socioeconomic-report-page-1" style={pageStyle} className="flex flex-col gap-10 shadow-md">
+                <header className="text-center mb-6">
+                    <h1 className="text-3xl font-bold text-sky-950">Métricas de Casos y Crecimiento</h1>
+                    <p className="text-gray-500">Reporte Socio-Cultural - Página 1</p>
+                    <p className="text-xs text-gray-400 mt-2 font-mono">Emisión: {new Date().toLocaleString()}</p>
+                </header>
                 <div className="grid grid-cols-1 md:grid-cols-2">
                     <div className="p-5 col-span-2">
                         <CaseGrowthChart
@@ -97,7 +102,12 @@ function ReportContent() {
             </div>
 
             {/* Page 2: Socio-Economic Part 1 */}
-            <div id="socioeconomic-report-page-2" style={pageStyle} className="flex flex-col gap-10">
+            <div id="socioeconomic-report-page-2" style={pageStyle} className="flex flex-col gap-10 shadow-md">
+                <header className="text-center mb-6">
+                    <h1 className="text-3xl font-bold text-sky-950">Datos Socio-Económicos I</h1>
+                    <p className="text-gray-500">Reporte Socio-Cultural - Página 2</p>
+                    <p className="text-xs text-gray-400 mt-2 font-mono">Emisión: {new Date().toLocaleString()}</p>
+                </header>
                 <div className="grid grid-cols-1 md:grid-cols-2 ">
                     <Pie2Chart
                         data={data.socioEconomic.gender.map((g: any, index: number) => ({
@@ -136,7 +146,12 @@ function ReportContent() {
             </div>
 
             {/* Page 3: Socio-Economic Part 2 */}
-            <div id="socioeconomic-report-page-3" style={pageStyle} className="flex flex-col gap-10">
+            <div id="socioeconomic-report-page-3" style={pageStyle} className="flex flex-col gap-10 shadow-md">
+                <header className="text-center mb-6">
+                    <h1 className="text-3xl font-bold text-sky-950">Datos Socio-Económicos II</h1>
+                    <p className="text-gray-500">Reporte Socio-Cultural - Página 3</p>
+                    <p className="text-xs text-gray-400 mt-2 font-mono">Emisión: {new Date().toLocaleString()}</p>
+                </header>
                 <div className="grid grid-cols-1 md:grid-cols-2 ">
                     <Pie2Chart
                         data={data.socioEconomic.education.map((e: any, index: number) => ({ name: e.name, value: e.value, fill: CHART_COLORS[index % CHART_COLORS.length] }))}

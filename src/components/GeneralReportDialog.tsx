@@ -97,7 +97,10 @@ export function GeneralReportDialog() {
             const link = document.createElement("a")
             link.href = url
             // "Reporte General - [Fecha Inicio] a [Fecha Fin]"
-            link.download = `Reporte_General_${startStr}_${endStr}.docx`
+            const now = new Date()
+            const genDate = now.toISOString().split('T')[0]
+            const genTime = now.getHours().toString().padStart(2, '0') + ':' + now.getMinutes().toString().padStart(2, '0')
+            link.download = `Reporte_General_${startStr}_${endStr}_(${genDate}_${genTime}).docx`
             document.body.appendChild(link)
             link.click()
             document.body.removeChild(link)

@@ -101,7 +101,10 @@ export function DownloadCaseReportButton({ caseId, caseNumber }: DownloadCaseRep
             const url = URL.createObjectURL(blob)
             const link = document.createElement("a")
             link.href = url
-            link.download = `reporte_caso_${caseNumber}_${new Date().toISOString().split('T')[0]}.docx`
+            const now = new Date()
+            const dateStr = now.toISOString().split('T')[0]
+            const timeStr = now.getHours().toString().padStart(2, '0') + ':' + now.getMinutes().toString().padStart(2, '0')
+            link.download = `reporte_caso_${caseNumber}_${dateStr}_${timeStr}.docx`
             document.body.appendChild(link)
             link.click()
             document.body.removeChild(link)

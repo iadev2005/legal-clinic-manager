@@ -55,12 +55,7 @@ export const createReportDocument = ({ images, date, titles }: ReportDocxDocumen
                 new Paragraph({
                     text: pageTitles[index]?.title || `Página ${index + 1}`,
                     alignment: AlignmentType.CENTER,
-                    spacing: { after: 100 },
-                }),
-                new Paragraph({
-                    text: date,
-                    alignment: AlignmentType.RIGHT,
-                    spacing: { after: 400 },
+                    spacing: { after: 400 }, // Increased spacing since date is gone
                 }),
                 // Main Image
                 new Paragraph({
