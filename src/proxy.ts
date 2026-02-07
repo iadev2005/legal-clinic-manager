@@ -6,7 +6,7 @@ import { verifyToken } from '@/lib/auth-utils';
 const protectedRoutes = ['/dashboard', '/cases', '/applicants', '/citations', '/statistics', '/administration'];
 const adminRoles = ['Profesor', 'Coordinador', 'Administrador'];
 
-export async function middleware(request: NextRequest) {
+export async function proxy(request: NextRequest) {
     const path = request.nextUrl.pathname;
 
     // Verificar si la ruta es protegida (empieza con...)
