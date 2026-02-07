@@ -48,3 +48,5 @@ next-env.d.ts
 /src/generated/prisma
 
 queri.txt
+# Sentry Config File
+.env.sentry-build-plugin
