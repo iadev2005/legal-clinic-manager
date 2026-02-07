@@ -9,17 +9,20 @@ import {
     DialogHeader,
     DialogTitle,
     DialogDescription,
+    DialogFooter
 } from "@/components/shadcn/dialog";
 import { CustomTable, type Column } from "@/components/ui/custom-table";
 import { DownloadCaseReportButton } from "@/components/DownloadCaseReportButton";
 import { Input } from "@/components/shadcn/input";
-
 import {
     getHistorialEstatus,
     getAccionesCaso,
     createAccion,
+    updateAccion,
+    deleteAccion,
     getEstatus,
-    type CreateAccionData
+    type CreateAccionData,
+    type UpdateAccionData
 } from "@/actions/casos";
 import { getCaseReportData } from "@/actions/cases";
 import CaseDetailsModal from "@/components/ui/case-details-modal";
@@ -27,8 +30,6 @@ import { StatusChangeDialog } from "@/components/ui/status-change-dialog";
 
 // --- Interfaces ---
 
-// Interface for search results no longer used here but might be kept if imported elsewhere? 
-// cleaning up...
 interface SearchResultCase {
     nro_caso: number;
     // ...
@@ -36,22 +37,241 @@ interface SearchResultCase {
 
 interface Action {
     id: string;
+    rawId?: number; // nro_accion real
+    nroCaso?: number; // nro_caso relateed
     type: string;
     date: string;
+    dateObj: Date;
     author: string;
     role?: string;
     description: string;
+    isStatusChange: boolean;
 }
 
-// --- Action History Modal ---
+// --- Modals Components ---
+
+// 1. Edit Action Dialog
+interface EditActionDialogProps {
+    open: boolean;
+    onClose: () => void;
+    action: Action | null;
+    onSave: (data: UpdateAccionData) => Promise<void>;
+}
+
+function EditActionDialog({ open, onClose, action, onSave }: EditActionDialogProps) {
+    const [problem, setProblem] = useState("");
+    const [orientation, setOrientation] = useState("");
+    const [date, setDate] = useState("");
+    const [isSaving, setIsSaving] = useState(false);
+    const [error, setError] = useState<string | null>(null);
+
+    useEffect(() => {
+        if (action && open) {
+            // Parse description to extract problem and orientation if possible
+            const desc = action.description;
+            const probMatch = desc.match(/Problema:\s*([\s\S]*?)(?=\n\nOrientación:|$)/);
+            const orientMatch = desc.match(/Orientación:\s*([\s\S]*?)$/);
+
+            if (probMatch || orientMatch) {
+                setProblem(probMatch ? probMatch[1].trim() : "");
+                setOrientation(orientMatch ? orientMatch[1].trim() : "");
+            } else {
+                // If not structured, put everything in Problem for now or split logically? 
+                // Let's put it in Problem to avoid data loss
+                setProblem(desc);
+                setOrientation("");
+            }
+
+            // check if dateObj is valid
+            if (action.dateObj && !isNaN(action.dateObj.getTime())) {
+                setDate(action.dateObj.toISOString().split('T')[0]);
+            } else {
+                setDate(new Date().toISOString().split('T')[0]);
+            }
+
+            setError(null);
+        }
+    }, [action, open]);
+
+    const handleSave = async () => {
+        if (!problem.trim() && !orientation.trim()) {
+            setError("Por favor ingrese al menos una descripción (Problema u Orientación)");
+            return;
+        }
+
+        setIsSaving(true);
+        setError(null);
+
+        try {
+            // Reconstruct description
+            const titulo = problem.trim().substring(0, 50) || 'Acción actualizada'; // Simple title derived
+            const observacion = [
+                problem.trim() && `Problema: ${problem.trim()}`,
+                orientation.trim() && `Orientación: ${orientation.trim()}`
+            ].filter(Boolean).join('\n\n');
+
+            await onSave({
+                titulo_accion: titulo,
+                observacion: observacion,
+                fecha_realizacion: date
+            });
+            onClose();
+        } catch (err: any) {
+            setError(err.message || "Error al guardar");
+        } finally {
+            setIsSaving(false);
+        }
+    };
+
+    return (
+        <Dialog open={open} onOpenChange={onClose}>
+            <DialogContent className="max-w-2xl bg-white rounded-3xl p-0 overflow-hidden">
+                <DialogHeader className="p-6 border-b border-neutral-100">
+                    <DialogTitle className="text-xl font-bold text-sky-950 flex items-center gap-2">
+                        <span className="icon-[mdi--pencil] text-[#3E7DBB]"></span>
+                        Editar Acción
+                    </DialogTitle>
+                </DialogHeader>
+
+                <div className="p-6 space-y-4">
+                    <div>
+                        <label className="block text-sky-950 font-semibold mb-2 text-sm">Fecha</label>
+                        <Input
+                            type="date"
+                            value={date}
+                            onChange={(e) => setDate(e.target.value)}
+                            max={new Date().toISOString().split('T')[0]}
+                            className="bg-neutral-50 border-neutral-200"
+                        />
+                    </div>
+                    <div>
+                        <label className="block text-sky-950 font-semibold mb-2 text-sm">Síntesis del Problema</label>
+                        <textarea
+                            className="w-full px-4 py-3 bg-neutral-50 rounded-xl border border-neutral-200 text-sky-950 text-sm focus:outline-none focus:border-[#3E7DBB] h-24 resize-none placeholder:text-sky-950/30"
+                            value={problem}
+                            onChange={(e) => setProblem(e.target.value)}
+                            placeholder="Descripción del problema..."
+                        />
+                    </div>
+                    <div>
+                        <label className="block text-sky-950 font-semibold mb-2 text-sm">Orientación dada</label>
+                        <textarea
+                            className="w-full px-4 py-3 bg-neutral-50 rounded-xl border border-neutral-200 text-sky-950 text-sm focus:outline-none focus:border-[#3E7DBB] h-24 resize-none placeholder:text-sky-950/30"
+                            value={orientation}
+                            onChange={(e) => setOrientation(e.target.value)}
+                            placeholder="Orientación..."
+                        />
+                    </div>
+
+                    {error && (
+                        <div className="bg-red-50 text-red-600 text-sm p-3 rounded-lg flex items-center gap-2">
+                            <span className="icon-[mdi--alert-circle]"></span>
+                            {error}
+                        </div>
+                    )}
+                </div>
+
+                <DialogFooter className="p-6 bg-neutral-50 border-t border-neutral-100 flex gap-2 justify-end">
+                    <button
+                        onClick={onClose}
+                        className="px-4 py-2 text-sky-950 font-bold hover:bg-neutral-200 rounded-lg transition-colors text-sm"
+                        disabled={isSaving}
+                    >
+                        Cancelar
+                    </button>
+                    <button
+                        onClick={handleSave}
+                        className="px-4 py-2 bg-[#003366] text-white font-bold rounded-lg hover:bg-[#002244] transition-colors flex items-center gap-2 text-sm"
+                        disabled={isSaving}
+                    >
+                        {isSaving ? <span className="icon-[svg-spinners--180-ring-with-bg]"></span> : <span className="icon-[mdi--content-save]"></span>}
+                        Guardar Cambios
+                    </button>
+                </DialogFooter>
+            </DialogContent>
+        </Dialog>
+    );
+}
+
+// 2. Delete Confirmation Dialog
+interface DeleteActionDialogProps {
+    open: boolean;
+    onClose: () => void;
+    onConfirm: () => Promise<void>;
+}
+
+function DeleteActionDialog({ open, onClose, onConfirm }: DeleteActionDialogProps) {
+    const [isDeleting, setIsDeleting] = useState(false);
+    const [error, setError] = useState<string | null>(null);
+
+    const handleConfirm = async () => {
+        setIsDeleting(true);
+        setError(null);
+        try {
+            await onConfirm();
+            onClose();
+        } catch (err: any) {
+            setError(err.message || "Error al eliminar");
+        } finally {
+            setIsDeleting(false);
+        }
+    };
+
+    return (
+        <Dialog open={open} onOpenChange={onClose}>
+            <DialogContent className="max-w-md bg-white rounded-3xl p-6">
+                <DialogHeader>
+                    <DialogTitle className="text-xl font-bold text-red-600 flex items-center gap-2">
+                        <span className="icon-[mdi--alert] text-2xl"></span>
+                        Eliminar Acción
+                    </DialogTitle>
+                    <DialogDescription className="text-sky-950/70 mt-2 text-base">
+                        ¿Estás seguro de que deseas eliminar esta acción de la bitácora? <br /><br />
+                        <span className="font-bold">Esta acción no se puede deshacer.</span>
+                    </DialogDescription>
+                </DialogHeader>
+
+                {error && (
+                    <div className="mt-4 bg-red-50 text-red-600 text-sm p-3 rounded-lg flex items-center gap-2">
+                        <span className="icon-[mdi--alert-circle]"></span>
+                        {error}
+                    </div>
+                )}
+
+                <DialogFooter className="mt-6 flex gap-2 justify-end">
+                    <button
+                        onClick={onClose}
+                        className="px-4 py-2 text-sky-950 font-bold hover:bg-neutral-100 rounded-lg transition-colors text-sm"
+                        disabled={isDeleting}
+                    >
+                        Cancelar
+                    </button>
+                    <button
+                        onClick={handleConfirm}
+                        className="px-4 py-2 bg-red-600 text-white font-bold rounded-lg hover:bg-red-700 transition-colors flex items-center gap-2 text-sm"
+                        disabled={isDeleting}
+                    >
+                        {isDeleting ? <span className="icon-[svg-spinners--180-ring-with-bg]"></span> : <span className="icon-[mdi--trash-can-outline]"></span>}
+                        Eliminar
+                    </button>
+                </DialogFooter>
+            </DialogContent>
+        </Dialog>
+    );
+}
+
+
+// --- Action History Modal (Updated) ---
 
 interface ActionHistoryModalProps {
     open: boolean;
     onClose: () => void;
     data: Action[];
+    onEdit: (action: Action) => void;
+    onDelete: (action: Action) => void;
 }
 
-function ActionHistoryModal({ open, onClose, data }: ActionHistoryModalProps) {
+function ActionHistoryModal({ open, onClose, data, onEdit, onDelete }: ActionHistoryModalProps) {
     const [filterText, setFilterText] = useState("");
     const [roleFilter, setRoleFilter] = useState("Todos");
     const [currentPage, setCurrentPage] = useState(1);
@@ -121,6 +341,32 @@ function ActionHistoryModal({ open, onClose, data }: ActionHistoryModalProps) {
                 </div>
             ),
         },
+        {
+            header: "Acciones",
+            render: (item) => {
+                // Don't show actions for Status Changes, only for regular Actions
+                if (item.isStatusChange) return null;
+
+                return (
+                    <div className="flex gap-2">
+                        <button
+                            onClick={() => onEdit(item)}
+                            className="p-2 hover:bg-neutral-100 rounded-lg text-sky-950/60 hover:text-[#3E7DBB] transition-colors"
+                            title="Editar"
+                        >
+                            <span className="icon-[mdi--pencil] text-lg"></span>
+                        </button>
+                        <button
+                            onClick={() => onDelete(item)}
+                            className="p-2 hover:bg-red-50 rounded-lg text-sky-950/60 hover:text-red-600 transition-colors"
+                            title="Eliminar"
+                        >
+                            <span className="icon-[mdi--trash-can-outline] text-lg"></span>
+                        </button>
+                    </div>
+                );
+            }
+        }
     ];
 
     return (
@@ -243,6 +489,12 @@ export default function FollowUpClient({ user }: { user: any }) {
     const [actionSuccess, setActionSuccess] = useState(false);
     const [isStatusDialogOpen, setIsStatusDialogOpen] = useState(false);
 
+    // Edit/Delete State
+    const [editingAction, setEditingAction] = useState<Action | null>(null);
+    const [isEditModalOpen, setIsEditModalOpen] = useState(false);
+    const [actionToDelete, setActionToDelete] = useState<Action | null>(null);
+    const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
+
     // Redirect if no caseId
     useEffect(() => {
         if (!paramCaseId) {
@@ -313,7 +565,7 @@ export default function FollowUpClient({ user }: { user: any }) {
 
         try {
             // Combinar problema y orientación en el formato esperado
-            const titulo = newActionProblem.trim() || 'Acción registrada';
+            const titulo = newActionProblem.trim().substring(0, 50) || 'Acción registrada';
             const observacion = [
                 newActionProblem.trim() && `Problema: ${newActionProblem.trim()}`,
                 newActionOrientation.trim() && `Orientación: ${newActionOrientation.trim()}`
@@ -348,6 +600,38 @@ export default function FollowUpClient({ user }: { user: any }) {
         }
     };
 
+    const handleEditAction = (action: Action) => {
+        setEditingAction(action);
+        setIsEditModalOpen(true);
+    };
+
+    const handleDeleteAction = (action: Action) => {
+        setActionToDelete(action);
+        setIsDeleteModalOpen(true);
+    };
+
+    const onUpdateAction = async (data: UpdateAccionData) => {
+        if (!editingAction || !editingAction.rawId || !editingAction.nroCaso) return;
+
+        const result = await updateAccion(editingAction.rawId!, editingAction.nroCaso!, data);
+        if (result.success) {
+            await refreshData();
+        } else {
+            throw new Error(result.error || "Error al actualizar la acción");
+        }
+    };
+
+    const onDeleteConfirm = async () => {
+        if (!actionToDelete || !actionToDelete.rawId || !actionToDelete.nroCaso) return;
+
+        const result = await deleteAccion(actionToDelete.rawId!, actionToDelete.nroCaso!);
+        if (result.success) {
+            await refreshData();
+        } else {
+            throw new Error(result.error || "Error al eliminar la acción");
+        }
+    };
+
     const handleAttachFile = () => {
         console.log("Attaching file");
         // TODO: Implement file attachment
@@ -368,8 +652,10 @@ export default function FollowUpClient({ user }: { user: any }) {
         url: doc.documento_url // Correct property from API
     })) || [];
 
-    const actionsDisplay = caseDetails?.actions?.map((action: any, index: number) => ({
+    const actionsDisplay: Action[] = caseDetails?.actions?.map((action: any, index: number) => ({
         id: `action-${action.nro_accion || index}`,
+        rawId: action.nro_accion,
+        nroCaso: action.nro_caso,
         type: action.titulo_accion || "Acción",
         dateObj: new Date(action.fecha_registro || action.fecha_realizacion),
         date: new Date(action.fecha_realizacion).toLocaleDateString("es-ES", { day: '2-digit', month: 'long', year: 'numeric' }),
@@ -379,7 +665,7 @@ export default function FollowUpClient({ user }: { user: any }) {
         isStatusChange: false
     })) || [];
 
-    const statusDisplay = statusHistory.map((status: any, index: number) => {
+    const statusDisplay: Action[] = statusHistory.map((status: any, index: number) => {
         // Logic for "Caso creado"
         const isCaseCreated = status.motivo === "Caso creado";
         const displayType = isCaseCreated ? "Caso creado" : "Cambio de Estatus";
@@ -785,9 +1071,33 @@ export default function FollowUpClient({ user }: { user: any }) {
                                                                         {action.date}
                                                                     </p>
                                                                 </div>
-                                                                <span className="px-3 py-1 bg-blue-50 text-[#3E7DBB] text-xs font-bold rounded-full">
-                                                                    {action.author}
-                                                                </span>
+                                                                <div className="flex items-center gap-2">
+                                                                    <span className="px-3 py-1 bg-blue-50 text-[#3E7DBB] text-xs font-bold rounded-full">
+                                                                        {action.author}
+                                                                    </span>
+                                                                    {/* Buttons for quick edit/delete in preview if desired, 
+                                                                         for now keeping it simple as only history modal was requested 
+                                                                         explicitly, but let's add them for consistency with the modal if it's not a status change 
+                                                                     */}
+                                                                    {!action.isStatusChange && (
+                                                                        <div className="flex gap-1">
+                                                                            <button
+                                                                                onClick={() => handleEditAction(action)}
+                                                                                className="p-1 text-sky-950/40 hover:text-[#3E7DBB] transition-colors"
+                                                                                title="Editar"
+                                                                            >
+                                                                                <span className="icon-[mdi--pencil]"></span>
+                                                                            </button>
+                                                                            <button
+                                                                                onClick={() => handleDeleteAction(action)}
+                                                                                className="p-1 text-sky-950/40 hover:text-red-500 transition-colors"
+                                                                                title="Eliminar"
+                                                                            >
+                                                                                <span className="icon-[mdi--trash-can-outline]"></span>
+                                                                            </button>
+                                                                        </div>
+                                                                    )}
+                                                                </div>
                                                             </div>
                                                             <p className="text-sky-950/80 text-sm leading-relaxed whitespace-pre-wrap">
                                                                 {action.description.split(/(\bProblema:|\bOrientación:|\bNuevo estatus:|\bMotivo:)/).map((part: string, i: number) => {
@@ -844,6 +1154,23 @@ export default function FollowUpClient({ user }: { user: any }) {
                 open={isHistoryModalOpen}
                 onClose={() => setIsHistoryModalOpen(false)}
                 data={historyDisplay}
+                onEdit={handleEditAction}
+                onDelete={handleDeleteAction}
+            />
+
+            {/* Edit Action Dialog */}
+            <EditActionDialog
+                open={isEditModalOpen}
+                onClose={() => setIsEditModalOpen(false)}
+                action={editingAction}
+                onSave={onUpdateAction}
+            />
+
+            {/* Delete Action Dialog */}
+            <DeleteActionDialog
+                open={isDeleteModalOpen}
+                onClose={() => setIsDeleteModalOpen(false)}
+                onConfirm={onDeleteConfirm}
             />
 
             {/* Case Details Modal */}
