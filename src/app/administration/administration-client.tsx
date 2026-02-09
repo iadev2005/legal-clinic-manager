@@ -6,11 +6,12 @@ import DeleteConfirmationModal from "@/components/ui/delete-confirmation-modal";
 import BulkUploadModal from "@/components/ui/bulk-upload-modal";
 import {
     getUsuarios, createUsuario, updateUsuario, deleteUsuario, toggleUsuarioStatus, getParticipacionesUsuario,
+    getNucleos, createNucleo, updateNucleo, deleteNucleo,
+    getSemestres, createSemestre, updateSemestre, deleteSemestre,
+    getMaterias, createMateria, updateMateria, deleteMateria,
     getCategorias, createCategoria, updateCategoria, deleteCategoria,
     getSubCategorias, createSubCategoria, updateSubCategoria, deleteSubCategoria,
-    getLegalField, createLegalField, updateLegalField, deleteLegalField,
-    getNucleos, createNucleo, updateNucleo, deleteNucleo,
-    getMaterias, getSemestres, createSemestre, updateSemestre, deleteSemestre
+    getLegalField, createLegalField, updateLegalField, deleteLegalField
 } from "@/actions/administracion";
 import { getParroquias, getEstados, getMunicipiosByEstado } from "@/actions/solicitantes";
 import Pagination from "@/components/ui/pagination";
@@ -24,13 +25,17 @@ export default function Administration({ currentUser }: { currentUser: any }) {
     const [users, setUsers] = useState<any[]>([]);
     const [students, setStudents] = useState<any[]>([]);
     const [teachers, setTeachers] = useState<any[]>([]);
-    const [legalfield, setlegalfield] = useState<any[]>([]);
-    const [categorylegalfield, setcategorylegalfield] = useState<any[]>([]);
-    const [subcategorylegalfield, setsubcategorylegalfield] = useState<any[]>([]);
-    const [ambitoslegales, setambitoslegales] = useState<any[]>([]);
+
     const [centers, setCenters] = useState<any[]>([]);
     const [parishes, setParishes] = useState<any[]>([]);
     const [semestres, setSemestres] = useState<any[]>([]);
+
+    // Materias Hierarchy State
+    const [materias, setMaterias] = useState<any[]>([]);
+    const [categorias, setCategorias] = useState<any[]>([]);
+    const [subcategorias, setSubcategorias] = useState<any[]>([]);
+    const [ambitoslegales, setAmbitoslegales] = useState<any[]>([]);
+
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState<string | null>(null);
 
@@ -43,11 +48,7 @@ export default function Administration({ currentUser }: { currentUser: any }) {
     const [filtroEstatus, setFiltroEstatus] = useState<string>("");
     const [filtroSemestre, setFiltroSemestre] = useState<string>("");
 
-    // Categorías
-    const [filtroMateria, setFiltroMateria] = useState<string>("");
 
-    // Subcategorías
-    const [filtroCategoria, setFiltroCategoria] = useState<string>("");
 
     // Centros
     const [estados, setEstados] = useState<any[]>([]);
@@ -73,42 +74,7 @@ export default function Administration({ currentUser }: { currentUser: any }) {
                 setUsers(usuariosRes.data || []);
             }
 
-            // Cargar categorías
-            const categoriasRes = await getCategorias();
-            if (categoriasRes.success) {
-                setcategorylegalfield(categoriasRes.data || []);
-            }
 
-            // Cargar subcategorías
-            const subcategoriasRes = await getSubCategorias();
-            if (subcategoriasRes.success) {
-                setsubcategorylegalfield(subcategoriasRes.data || []);
-            }
-
-            // Cargar ámbitos legales
-            const legalfieldRes = await getLegalField();
-            if (legalfieldRes.success) {
-                setambitoslegales(legalfieldRes.data || []);
-            }
-
-            // Cargar núcleos
-            const nucleosRes = await getNucleos();
-            if (nucleosRes.success) {
-                setCenters(nucleosRes.data || []);
-            }
-
-            // Cargar materias
-            const materiasRes = await getMaterias();
-            if (materiasRes.success) {
-                const materiasData = materiasRes.data || [];
-                // Asegurar que todas las materias tengan el campo 'id'
-                const materiasNormalizadas = materiasData.map((m: any) => ({
-                    id: String(m.id || m.id_materia || ''),
-                    nombre: m.nombre || m.nombre_materia || ''
-                })).filter((m: any) => m.id && m.id !== 'undefined' && m.id !== 'null');
-                console.log('Materias cargadas:', materiasNormalizadas);
-                setlegalfield(materiasNormalizadas);
-            }
 
             // Cargar parroquias
             const parroquiasRes = await getParroquias();
@@ -130,6 +96,19 @@ export default function Administration({ currentUser }: { currentUser: any }) {
             if (semestresRes.success) {
                 setSemestres(semestresRes.data || []);
             }
+
+            // Cargar materias hierarchy
+            const materiasRes = await getMaterias();
+            if (materiasRes.success) setMaterias(materiasRes.data || []);
+
+            const categoriasRes = await getCategorias();
+            if (categoriasRes.success) setCategorias(categoriasRes.data || []);
+
+            const subcategoriasRes = await getSubCategorias();
+            if (subcategoriasRes.success) setSubcategorias(subcategoriasRes.data || []);
+
+            const legalfieldRes = await getLegalField();
+            if (legalfieldRes.success) setAmbitoslegales(legalfieldRes.data || []);
         } catch (err: any) {
             setError(err.message || 'Error al cargar datos');
             console.error('Error al cargar datos:', err);
@@ -157,7 +136,7 @@ export default function Administration({ currentUser }: { currentUser: any }) {
     }, [filtroEstado]);
 
     // Active tab state
-    const [activeTab, setActiveTab] = useState<"users" | "subcatalogs" | "legalfield" | "centers" | "semestres">("users");
+    const [activeTab, setActiveTab] = useState<"users" | "centers" | "semestres" | "materias">("users");
 
     // Limpiar selección cuando cambia la pestaña activa
     useEffect(() => {
@@ -169,7 +148,7 @@ export default function Administration({ currentUser }: { currentUser: any }) {
     useEffect(() => {
         setSelectedItems([]);
         setCurrentPage(1);
-    }, [searchTerm, filtroRol, filtroEstatus, filtroMateria, filtroCategoria, filtroEstado, filtroMunicipio, filtroEstadoSemestre]);
+    }, [searchTerm, filtroRol, filtroEstatus, filtroEstado, filtroMunicipio, filtroEstadoSemestre]);
 
     // Pagination State
     const [currentPage, setCurrentPage] = useState(1);
@@ -186,25 +165,12 @@ export default function Administration({ currentUser }: { currentUser: any }) {
     const [selectedItems, setSelectedItems] = useState<any[]>([]);
 
     // Handlers
-    const handleEdit = async (item: any) => {
-        setCurrentItem(item);
-        setCurrentMode("edit");
 
-        // Si es usuario, cargar participaciones
-        if (activeTab === "users") {
-            const participacionesRes = await getParticipacionesUsuario(item.id);
-            if (participacionesRes.success) {
-                setStudents(participacionesRes.data.filter((p: any) => p.tipo === 'Voluntario' || p.tipo === 'Inscrito' || p.tipo === 'Egresado'));
-                setTeachers(participacionesRes.data.filter((p: any) => p.tipo === 'Voluntario' || p.tipo === 'Asesor' || p.tipo === 'Titular'));
-            }
-        }
 
-        setAdminModalOpen(true);
-    };
-
-    const handleDelete = (item: any) => {
+    const handleDelete = (item: any, type: string = activeTab) => {
         setCurrentItem(item); // For single delete
         setSelectedItems([]); // Clear selection to avoid confusion
+        setModalType(type); // Ensure confirmDelete knows the type
         setDeleteModalOpen(true);
     };
 
@@ -215,10 +181,32 @@ export default function Administration({ currentUser }: { currentUser: any }) {
 
     const [toggleModalOpen, setToggleModalOpen] = useState(false);
     const [isFilterPanelOpen, setIsFilterPanelOpen] = useState(false);
+    const [modalType, setModalType] = useState<string>("users");
+    const [initialModalData, setInitialModalData] = useState<any>({});
 
-    const handleCreate = () => {
+    const handleCreate = (type: string = activeTab, parentData: any = {}) => {
         setCurrentItem(null);
         setCurrentMode("create");
+        setModalType(type);
+        setInitialModalData(parentData);
+        setAdminModalOpen(true);
+    };
+
+    const handleEdit = async (item: any, type: string = activeTab) => {
+        setCurrentItem(item);
+        setCurrentMode("edit");
+        setModalType(type);
+        setInitialModalData({});
+
+        // Si es usuario, cargar participaciones
+        if (type === "users") {
+            const participacionesRes = await getParticipacionesUsuario(item.id);
+            if (participacionesRes.success) {
+                setStudents(participacionesRes.data.filter((p: any) => p.tipo === 'Voluntario' || p.tipo === 'Inscrito' || p.tipo === 'Egresado'));
+                setTeachers(participacionesRes.data.filter((p: any) => p.tipo === 'Voluntario' || p.tipo === 'Asesor' || p.tipo === 'Titular'));
+            }
+        }
+
         setAdminModalOpen(true);
     };
 
@@ -271,7 +259,7 @@ export default function Administration({ currentUser }: { currentUser: any }) {
     const handleSave = async (formData: any) => {
         try {
             if (currentMode === "create") {
-                if (activeTab === "users") {
+                if (modalType === "users") {
                     const result = await createUsuario(formData);
                     if (result.success) {
                         await loadData();
@@ -279,23 +267,8 @@ export default function Administration({ currentUser }: { currentUser: any }) {
                     } else {
                         throw new Error(result.error || 'Error al crear usuario');
                     }
-                } else if (activeTab === "subcatalogs") {
-                    const result = await createSubCategoria(formData);
-                    if (result.success) {
-                        await loadData();
-                        setAdminModalOpen(false);
-                    } else {
-                        throw new Error(result.error || 'Error al crear subcategoría');
-                    }
-                } else if (activeTab === "legalfield") {
-                    const result = await createLegalField(formData);
-                    if (result.success) {
-                        await loadData();
-                        setAdminModalOpen(false);
-                    } else {
-                        throw new Error(result.error || 'Error al crear ámbito legal');
-                    }
-                } else if (activeTab === "centers") {
+
+                } else if (modalType === "centers") {
                     const result = await createNucleo(formData);
                     if (result.success) {
                         await loadData();
@@ -303,7 +276,7 @@ export default function Administration({ currentUser }: { currentUser: any }) {
                     } else {
                         throw new Error(result.error || 'Error al crear núcleo');
                     }
-                } else if (activeTab === "semestres") {
+                } else if (modalType === "semestres") {
                     const result = await createSemestre(formData);
                     if (result.success) {
                         await loadData();
@@ -311,10 +284,42 @@ export default function Administration({ currentUser }: { currentUser: any }) {
                     } else {
                         throw new Error(result.error || 'Error al crear semestre');
                     }
+                } else if (modalType === "materias") {
+                    const result = await createMateria(formData);
+                    if (result.success) {
+                        await loadData();
+                        setAdminModalOpen(false);
+                    } else {
+                        throw new Error(result.error || 'Error al crear materia');
+                    }
+                } else if (modalType === "categorias") {
+                    const result = await createCategoria(formData);
+                    if (result.success) {
+                        await loadData();
+                        setAdminModalOpen(false);
+                    } else {
+                        throw new Error(result.error || 'Error al crear categoría');
+                    }
+                } else if (modalType === "subcategorias") {
+                    const result = await createSubCategoria(formData);
+                    if (result.success) {
+                        await loadData();
+                        setAdminModalOpen(false);
+                    } else {
+                        throw new Error(result.error || 'Error al crear subcategoría');
+                    }
+                } else if (modalType === "ambitos") {
+                    const result = await createLegalField(formData);
+                    if (result.success) {
+                        await loadData();
+                        setAdminModalOpen(false);
+                    } else {
+                        throw new Error(result.error || 'Error al crear ámbito legal');
+                    }
                 }
             } else {
                 // Edit mode
-                if (activeTab === "users") {
+                if (modalType === "users") {
                     const result = await updateUsuario(currentItem.id, formData);
                     if (result.success) {
                         await loadData();
@@ -322,23 +327,8 @@ export default function Administration({ currentUser }: { currentUser: any }) {
                     } else {
                         throw new Error(result.error || 'Error al actualizar usuario');
                     }
-                } else if (activeTab === "subcatalogs") {
-                    const result = await updateSubCategoria(currentItem.id, formData);
-                    if (result.success) {
-                        await loadData();
-                        setAdminModalOpen(false);
-                    } else {
-                        throw new Error(result.error || 'Error al actualizar subcategoría');
-                    }
-                } else if (activeTab === "legalfield") {
-                    const result = await updateLegalField(currentItem.id, formData);
-                    if (result.success) {
-                        await loadData();
-                        setAdminModalOpen(false);
-                    } else {
-                        throw new Error(result.error || 'Error al actualizar ámbito legal');
-                    }
-                } else if (activeTab === "centers") {
+
+                } else if (modalType === "centers") {
                     const result = await updateNucleo(currentItem.id, formData);
                     if (result.success) {
                         await loadData();
@@ -346,13 +336,45 @@ export default function Administration({ currentUser }: { currentUser: any }) {
                     } else {
                         throw new Error(result.error || 'Error al actualizar núcleo');
                     }
-                } else if (activeTab === "semestres") {
+                } else if (modalType === "semestres") {
                     const result = await updateSemestre(currentItem.id, formData);
                     if (result.success) {
                         await loadData();
                         setAdminModalOpen(false);
                     } else {
                         throw new Error(result.error || 'Error al actualizar semestre');
+                    }
+                } else if (modalType === "materias") {
+                    const result = await updateMateria(currentItem.id, formData);
+                    if (result.success) {
+                        await loadData();
+                        setAdminModalOpen(false);
+                    } else {
+                        throw new Error(result.error || 'Error al actualizar materia');
+                    }
+                } else if (modalType === "categorias") {
+                    const result = await updateCategoria(currentItem.id, formData);
+                    if (result.success) {
+                        await loadData();
+                        setAdminModalOpen(false);
+                    } else {
+                        throw new Error(result.error || 'Error al actualizar categoría');
+                    }
+                } else if (modalType === "subcategorias") {
+                    const result = await updateSubCategoria(currentItem.id, formData);
+                    if (result.success) {
+                        await loadData();
+                        setAdminModalOpen(false);
+                    } else {
+                        throw new Error(result.error || 'Error al actualizar subcategoría');
+                    }
+                } else if (modalType === "ambitos") {
+                    const result = await updateLegalField(currentItem.id, formData);
+                    if (result.success) {
+                        await loadData();
+                        setAdminModalOpen(false);
+                    } else {
+                        throw new Error(result.error || 'Error al actualizar ámbito legal');
                     }
                 }
             }
@@ -369,10 +391,7 @@ export default function Administration({ currentUser }: { currentUser: any }) {
                 for (const item of selectedItems) {
                     if (activeTab === "users") {
                         await deleteUsuario(item.id);
-                    } else if (activeTab === "subcatalogs") {
-                        await deleteSubCategoria(item.id);
-                    } else if (activeTab === "legalfield") {
-                        await deleteLegalField(item.id);
+
                     } else if (activeTab === "centers") {
                         await deleteNucleo(item.id);
                     } else if (activeTab === "semestres") {
@@ -385,34 +404,50 @@ export default function Administration({ currentUser }: { currentUser: any }) {
             // Single Delete
             else if (currentItem) {
                 const id = currentItem.id;
-                if (activeTab === "users") {
+                // Use modalType if available (set by handleDelete), fallback to activeTab for safety (compat)
+                const typeToDelete = modalType || activeTab;
+
+                if (typeToDelete === "users") {
                     const result = await deleteUsuario(id);
                     if (!result.success) {
                         alert(result.error || 'Error al eliminar usuario');
                         return;
                     }
-                } else if (activeTab === "subcatalogs") {
-                    const result = await deleteSubCategoria(id);
-                    if (!result.success) {
-                        alert(result.error || 'Error al eliminar subcategoría');
-                        return;
-                    }
-                } else if (activeTab === "legalfield") {
-                    const result = await deleteLegalField(id);
-                    if (!result.success) {
-                        alert(result.error || 'Error al eliminar ámbito legal');
-                        return;
-                    }
-                } else if (activeTab === "centers") {
+
+                } else if (typeToDelete === "centers") {
                     const result = await deleteNucleo(id);
                     if (!result.success) {
                         alert(result.error || 'Error al eliminar núcleo');
                         return;
                     }
-                } else if (activeTab === "semestres") {
+                } else if (typeToDelete === "semestres") {
                     const result = await deleteSemestre(id);
                     if (!result.success) {
                         alert(result.error || 'Error al eliminar semestre');
+                        return;
+                    }
+                } else if (typeToDelete === "materias") {
+                    const result = await deleteMateria(id);
+                    if (!result.success) {
+                        alert(result.error || 'Error al eliminar materia');
+                        return;
+                    }
+                } else if (typeToDelete === "categorias") {
+                    const result = await deleteCategoria(id);
+                    if (!result.success) {
+                        alert(result.error || 'Error al eliminar categoría');
+                        return;
+                    }
+                } else if (typeToDelete === "subcategorias") {
+                    const result = await deleteSubCategoria(id);
+                    if (!result.success) {
+                        alert(result.error || 'Error al eliminar subcategoría');
+                        return;
+                    }
+                } else if (typeToDelete === "ambitos") {
+                    const result = await deleteLegalField(id);
+                    if (!result.success) {
+                        alert(result.error || 'Error al eliminar ámbito legal');
                         return;
                     }
                 }
@@ -673,45 +708,7 @@ export default function Administration({ currentUser }: { currentUser: any }) {
                 }
                 break;
 
-            case "subcatalogs":
-                // Filtro por búsqueda de texto
-                if (searchTerm.trim()) {
-                    const searchLower = searchTerm.toLowerCase().trim();
-                    filtered = filtered.filter((item) =>
-                        searchInField(item.id, searchLower) ||
-                        searchInField(item.nombre, searchLower)
-                    );
-                }
-                // Filtro por Materia (nuevo)
-                if (filtroMateria) {
-                    filtered = filtered.filter((item) =>
-                        String(item.id_materia) === String(filtroMateria)
-                    );
-                }
-                // Filtro por Categoría (para Civil)
-                if (filtroCategoria) {
-                    filtered = filtered.filter((item) =>
-                        item.categorymateriaid === filtroCategoria
-                    );
-                }
-                break;
 
-            case "legalfield":
-                // Filtro por búsqueda de texto
-                if (searchTerm.trim()) {
-                    const searchLower = searchTerm.toLowerCase().trim();
-                    filtered = filtered.filter((item) =>
-                        searchInField(item.id, searchLower) ||
-                        searchInField(item.nombre, searchLower)
-                    );
-                }
-                // Filtro por subcategoría (longid contiene num_subcategoria-num_categoria-id_materia)
-                if (filtroCategoria) {
-                    filtered = filtered.filter((item) =>
-                        item.longid === filtroCategoria
-                    );
-                }
-                break;
 
             case "centers":
                 // Filtro por búsqueda de texto
@@ -774,14 +771,7 @@ export default function Administration({ currentUser }: { currentUser: any }) {
                 rawData = users;
                 columns = ManagementUserColumns;
                 break;
-            case "subcatalogs":
-                rawData = subcategorylegalfield;
-                columns = GenericColumns;
-                break;
-            case "legalfield":
-                rawData = ambitoslegales;
-                columns = GenericColumns;
-                break;
+
             case "centers":
                 rawData = centers;
                 columns = GenericColumns;
@@ -854,28 +844,7 @@ export default function Administration({ currentUser }: { currentUser: any }) {
                         >
                             Usuarios
                         </button>
-                        <button
-                            onClick={() => {
-                                setActiveTab("subcatalogs");
-                                setSelectedItems([]);
-                                setSearchTerm("");
-                                setFiltroMateria("");
-                            }}
-                            className={`px-4 py-2 rounded-lg font-semibold transition-colors cursor-pointer ${activeTab === "subcatalogs" ? "bg-sky-950 text-white" : "bg-gray-200 text-sky-950 hover:bg-gray-300"}`}
-                        >
-                            SubCatálogos
-                        </button>
-                        <button
-                            onClick={() => {
-                                setActiveTab("legalfield");
-                                setSelectedItems([]);
-                                setSearchTerm("");
-                                setFiltroCategoria("");
-                            }}
-                            className={`px-4 py-2 rounded-lg font-semibold transition-colors cursor-pointer ${activeTab === "legalfield" ? "bg-sky-950 text-white" : "bg-gray-200 text-sky-950 hover:bg-gray-300"}`}
-                        >
-                            Ambitos Legales
-                        </button>
+
                         <button
                             onClick={() => {
                                 setActiveTab("centers");
@@ -899,67 +868,75 @@ export default function Administration({ currentUser }: { currentUser: any }) {
                         >
                             Semestres
                         </button>
+                        <button
+                            onClick={() => {
+                                setActiveTab("materias");
+                                setSelectedItems([]);
+                                setSearchTerm("");
+                            }}
+                            className={`px-4 py-2 rounded-lg font-semibold transition-colors cursor-pointer ${activeTab === "materias" ? "bg-sky-950 text-white" : "bg-gray-200 text-sky-950 hover:bg-gray-300"}`}
+                        >
+                            Materias
+                        </button>
                     </div>
 
                     <div className="flex flex-col gap-4 py-4 w-full">
                         <div className="flex flex-wrap items-center gap-4 w-full">
-                            {/* Campo de búsqueda - siempre visible */}
-                            <div className="flex-1 min-w-[200px]">
-                                <SearchInput
-                                    placeholder={activeTab === "users" ? "Buscar por nombre, cédula..." : "Buscar..."}
-                                    value={searchTerm}
-                                    onChange={setSearchTerm}
-                                    className="w-full"
-                                />
-                            </div>
+                            {/* Campo de búsqueda - siempre visible excepto en materias */}
+                            {activeTab !== 'materias' && (
+                                <div className="flex-1 min-w-[200px]">
+                                    <SearchInput
+                                        placeholder={activeTab === "users" ? "Buscar por nombre, cédula..." : "Buscar..."}
+                                        value={searchTerm}
+                                        onChange={setSearchTerm}
+                                        className="w-full"
+                                    />
+                                </div>
+                            )}
 
                             {/* Botón de Filtros */}
-                            <button
-                                onClick={() => setIsFilterPanelOpen(!isFilterPanelOpen)}
-                                className={`px-4 py-2.5 rounded-xl font-semibold transition-all duration-300 flex items-center gap-2 cursor-pointer border-2 ${isFilterPanelOpen
-                                    ? "bg-[#003366] text-white border-[#003366]"
-                                    : "bg-white text-[#003366] border-neutral-200 hover:border-[#003366]"
-                                    }`}
-                            >
-                                <span className="icon-[mdi--filter-variant] text-lg"></span>
-                                Filtros
-                                {(() => {
-                                    /* Calculate active filters count */
-                                    let activeCount = 0;
-                                    if (activeTab === "users") {
-                                        if (filtroRol) activeCount++;
-                                        if (filtroEstatus) activeCount++;
-                                        if (filtroSemestre) activeCount++;
-                                    } else if (activeTab === "subcatalogs") {
-                                        if (filtroMateria) activeCount++;
-                                        if (filtroCategoria) activeCount++;
-                                    } else if (activeTab === "legalfield") {
-                                        if (filtroCategoria) activeCount++;
-                                    } else if (activeTab === "centers") {
-                                        if (filtroEstado) activeCount++;
-                                        if (filtroMunicipio) activeCount++;
-                                    } else if (activeTab === "semestres") {
-                                        if (filtroEstadoSemestre) activeCount++;
-                                    }
-                                    return activeCount > 0 ? (
-                                        <span className="ml-1 px-2 py-0.5 bg-red-500 text-white text-xs font-bold rounded-full">
-                                            {activeCount}
-                                        </span>
-                                    ) : null;
-                                })()}
-                                <span className={`icon-[mdi--chevron-down] text-lg transition-transform duration-300 ${isFilterPanelOpen ? "rotate-180" : ""
-                                    }`}></span>
-                            </button>
+                            {activeTab !== 'materias' && (
+                                <button
+                                    onClick={() => setIsFilterPanelOpen(!isFilterPanelOpen)}
+                                    className={`px-4 py-2.5 rounded-xl font-semibold transition-all duration-300 flex items-center gap-2 cursor-pointer border-2 ${isFilterPanelOpen
+                                        ? "bg-[#003366] text-white border-[#003366]"
+                                        : "bg-white text-[#003366] border-neutral-200 hover:border-[#003366]"
+                                        }`}
+                                >
+                                    <span className="icon-[mdi--filter-variant] text-lg"></span>
+                                    Filtros
+                                    {(() => {
+                                        /* Calculate active filters count */
+                                        let activeCount = 0;
+                                        if (activeTab === "users") {
+                                            if (filtroRol) activeCount++;
+                                            if (filtroEstatus) activeCount++;
+                                            if (filtroSemestre) activeCount++;
+
+                                        } else if (activeTab === "centers") {
+                                            if (filtroEstado) activeCount++;
+                                            if (filtroMunicipio) activeCount++;
+                                        } else if (activeTab === "semestres") {
+                                            if (filtroEstadoSemestre) activeCount++;
+                                        }
+                                        return activeCount > 0 ? (
+                                            <span className="ml-1 px-2 py-0.5 bg-red-500 text-white text-xs font-bold rounded-full">
+                                                {activeCount}
+                                            </span>
+                                        ) : null;
+                                    })()}
+                                    <span className={`icon-[mdi--chevron-down] text-lg transition-transform duration-300 ${isFilterPanelOpen ? "rotate-180" : ""
+                                        }`}></span>
+                                </button>
+                            )}
 
                             {/* Botón para limpiar filtros */}
-                            {(searchTerm || filtroRol || filtroEstatus || filtroMateria || filtroCategoria || filtroEstado || filtroMunicipio || filtroEstadoSemestre) && (
+                            {(searchTerm || filtroRol || filtroEstatus || filtroEstado || filtroMunicipio || filtroEstadoSemestre) && (
                                 <button
                                     onClick={() => {
                                         setSearchTerm("");
                                         setFiltroRol("");
                                         setFiltroEstatus("");
-                                        setFiltroMateria("");
-                                        setFiltroCategoria("");
                                         setFiltroEstado("");
                                         setFiltroMunicipio("");
                                         setFiltroEstadoSemestre("");
@@ -969,6 +946,13 @@ export default function Administration({ currentUser }: { currentUser: any }) {
                                 >
                                     <span className="icon-[mdi--filter-off-outline] text-lg"></span>
                                 </button>
+                            )}
+
+                            {/* Total de materias - Only visible for materias tab */}
+                            {activeTab === 'materias' && (
+                                <div className="text-sky-950 font-bold text-lg">
+                                    Total de materias: {materias.length}
+                                </div>
                             )}
 
                             {/* Actions Group */}
@@ -992,7 +976,7 @@ export default function Administration({ currentUser }: { currentUser: any }) {
                                                 Carga Masiva
                                             </button>
                                         )}
-                                        <button onClick={handleCreate} className="bg-sky-950 text-white px-4 py-2.5 rounded-xl font-semibold hover:bg-[#325B84] transition-colors cursor-pointer">Agregar</button>
+                                        <button onClick={() => handleCreate()} className="bg-sky-950 text-white px-4 py-2.5 rounded-xl font-semibold hover:bg-[#325B84] transition-colors cursor-pointer">Agregar</button>
                                     </>
                                 )}
                             </div>
@@ -1040,52 +1024,7 @@ export default function Administration({ currentUser }: { currentUser: any }) {
                                         </>
                                     )}
 
-                                    {/* SUBCATALOGS FILTERS */}
-                                    {activeTab === "subcatalogs" && (
-                                        <>
-                                            <FilterSelect
-                                                placeholder="Filtrar por Materia"
-                                                value={filtroMateria}
-                                                onChange={(val) => {
-                                                    setFiltroMateria(val);
-                                                    setFiltroCategoria("");
-                                                }}
-                                                options={legalfield.map((m: any) => ({
-                                                    value: m.id,
-                                                    label: m.nombre
-                                                }))}
-                                                className="w-full"
-                                            />
-                                            {filtroMateria && legalfield.find((m: any) => m.id === filtroMateria)?.nombre.toLowerCase().includes("civil") && (
-                                                <FilterSelect
-                                                    placeholder="Filtrar por Categoría"
-                                                    value={filtroCategoria}
-                                                    onChange={setFiltroCategoria}
-                                                    options={categorylegalfield
-                                                        .filter((c: any) => c.materiaid === filtroMateria)
-                                                        .map((c: any) => ({
-                                                            value: c.id,
-                                                            label: c.nombre
-                                                        }))}
-                                                    className="w-full"
-                                                />
-                                            )}
-                                        </>
-                                    )}
 
-                                    {/* LEGALFIELD FILTERS */}
-                                    {activeTab === "legalfield" && (
-                                        <FilterSelect
-                                            placeholder="Filtrar por Subcategoría"
-                                            value={filtroCategoria}
-                                            onChange={setFiltroCategoria}
-                                            options={subcategorylegalfield.map((s: any) => ({
-                                                value: s.id,
-                                                label: s.nombre
-                                            }))}
-                                            className="w-full"
-                                        />
-                                    )}
 
                                     {/* CENTERS FILTERS */}
                                     {activeTab === "centers" && (
@@ -1133,32 +1072,47 @@ export default function Administration({ currentUser }: { currentUser: any }) {
                         )}
                     </div>
 
-                    {/* Contador de resultados */}
-                    <div className="flex justify-between items-center mb-2 px-2">
-                        <div className="text-sm text-sky-950 font-medium">
-                            Mostrando {paginatedData.length} de {fullFilteredData.length} registros
+
+                    {/* Contador de resultados - Hidden for materias */}
+                    {activeTab !== 'materias' && (
+                        <div className="flex justify-between items-center mb-2 px-2">
+                            <div className="text-sm text-sky-950 font-medium">
+                                Mostrando {paginatedData.length} de {fullFilteredData.length} registros
+                            </div>
                         </div>
-                    </div>
+                    )}
 
                     <div className="flex-1 min-h-0 w-full overflow-hidden flex flex-col bg-white rounded-2xl shadow-sm border border-neutral-100">
-                        {paginatedData.length === 0 ? (
-                            <div className="flex flex-col items-center justify-center flex-1 py-12 overflow-y-auto">
-                                <span className="icon-[mdi--database-off] text-4xl text-neutral-300 mb-2"></span>
-                                <p className="text-neutral-400">No se encontraron registros</p>
-                            </div>
+                        {activeTab === "materias" ? (
+                            <MateriasHierarchy
+                                materias={materias}
+                                categorias={categorias}
+                                subcategorias={subcategorias}
+                                ambitos={ambitoslegales}
+                                onEdit={handleEdit}
+                                onDelete={handleDelete}
+                                onCreate={handleCreate}
+                            />
                         ) : (
-                            <div className="flex-1 w-full overflow-hidden">
-                                <CustomTable
-                                    key={activeTab}
-                                    data={paginatedData as any}
-                                    columns={columns as any}
-                                    enableSelection={true}
-                                    onSelectionChange={setSelectedItems}
-                                    selectedItems={selectedItems}
-                                    className="h-full"
-                                    minRows={10}
-                                />
-                            </div>
+                            paginatedData.length === 0 ? (
+                                <div className="flex flex-col items-center justify-center flex-1 py-12 overflow-y-auto">
+                                    <span className="icon-[mdi--database-off] text-4xl text-neutral-300 mb-2"></span>
+                                    <p className="text-neutral-400">No se encontraron registros</p>
+                                </div>
+                            ) : (
+                                <div className="flex-1 w-full overflow-hidden">
+                                    <CustomTable
+                                        key={activeTab}
+                                        data={paginatedData as any}
+                                        columns={columns as any}
+                                        enableSelection={true}
+                                        onSelectionChange={setSelectedItems}
+                                        selectedItems={selectedItems}
+                                        className="h-full"
+                                        minRows={10}
+                                    />
+                                </div>
+                            )
                         )}
                     </div>
 
@@ -1182,12 +1136,14 @@ export default function Administration({ currentUser }: { currentUser: any }) {
                 onSave={handleSave}
                 item={currentItem}
                 mode={currentMode}
-                type={activeTab}
+                type={modalType as any}
                 parishes={parishes}
-                materias={legalfield}
-                categorias={categorylegalfield}
-                subcategorias={subcategorylegalfield}
+
                 semestres={semestres}
+                materias={materias}
+                categorias={categorias}
+                subcategorias={subcategorias}
+                initialData={initialModalData}
                 participations={
                     activeTab === "users" && currentItem
                         ? [
@@ -1247,6 +1203,169 @@ export default function Administration({ currentUser }: { currentUser: any }) {
                 cancelText="Cancelar"
                 isDestructive={currentItem ? currentItem.status === 'Activo' : false} // Blue for bulk safely
             />
+        </div >
+    );
+}
+
+function MateriasHierarchy({ materias, categorias, subcategorias, ambitos, onEdit, onDelete, onCreate }: any) {
+    const [expandedMaterias, setExpandedMaterias] = useState<Record<string, boolean>>({});
+    const [expandedCategorias, setExpandedCategorias] = useState<Record<string, boolean>>({});
+    const [expandedSubcategorias, setExpandedSubcategorias] = useState<Record<string, boolean>>({});
+
+    const toggleMateria = (id: string) => {
+        setExpandedMaterias(prev => ({ ...prev, [id]: !prev[id] }));
+    };
+
+    const toggleCategoria = (id: string) => {
+        setExpandedCategorias(prev => ({ ...prev, [id]: !prev[id] }));
+    };
+
+    const toggleSubcategoria = (id: string) => {
+        setExpandedSubcategorias(prev => ({ ...prev, [id]: !prev[id] }));
+    };
+
+    const getCategorias = (materiaId: string) => categorias.filter((c: any) => String(c.materiaid) === String(materiaId));
+    // Use flexible matching for subcategory parent ID (categorymateriaid or categorylegalfieldid)
+    const getSub = (catId: string) => subcategorias.filter((s: any) => String(s.categorymateriaid) === String(catId) || String(s.categorylegalfieldid) === String(catId));
+    const getAmbitos = (subId: string) => ambitos.filter((a: any) => String(a.categorylegalfieldid) === String(subId));
+
+    return (
+        <div className="h-full overflow-y-auto p-4 space-y-6 pb-20">
+            {materias.length === 0 && <p className="text-gray-500 text-center py-8 text-lg">No hay materias registradas.</p>}
+            {materias.map((materia: any) => {
+                const isExpanded = expandedMaterias[materia.id];
+                return (
+                    <div key={materia.id} className="border border-sky-100 rounded-xl overflow-hidden bg-white shadow-md transition-shadow hover:shadow-lg">
+                        {/* Materia Header */}
+                        <div
+                            className="bg-sky-50 px-6 py-4 flex justify-between items-center border-b border-sky-100 cursor-pointer hover:bg-sky-100 transition-colors group"
+                            onClick={() => toggleMateria(materia.id)}
+                        >
+                            <div className="flex items-center gap-4">
+                                <span className={`icon-[mdi--chevron-down] text-2xl text-sky-800 transition-transform duration-300 ${isExpanded ? 'rotate-180' : ''}`}></span>
+                                <span className="icon-[mdi--book-open-page-variant] text-2xl text-sky-700"></span>
+                                <span className="font-bold text-sky-950 text-xl">{materia.nombre}</span>
+                            </div>
+                            <div className="flex items-center gap-3 opacity-100 sm:opacity-0 sm:group-hover:opacity-100 transition-opacity" onClick={(e) => e.stopPropagation()}>
+                                <button
+                                    onClick={() => onCreate("categorias", { materiaId: materia.id })}
+                                    className="flex items-center gap-2 text-sm bg-sky-900 text-white px-4 py-2 rounded-lg hover:bg-sky-800 transition-all shadow-md active:scale-95 cursor-pointer"
+                                    title="Agregar Categoría"
+                                >
+                                    <span className="icon-[mdi--plus-circle-outline] text-lg"></span>
+                                    <span>Agregar Categoría</span>
+                                </button>
+                                <button onClick={() => onEdit(materia, "materias")} className="p-2 hover:bg-sky-200 rounded-full text-sky-700 transition-colors cursor-pointer" title="Editar Materia">
+                                    <span className="icon-[uil--pen] text-2xl"></span>
+                                </button>
+                                <button onClick={() => onDelete(materia, "materias")} className="p-2 hover:bg-red-200 rounded-full text-red-600 transition-colors cursor-pointer" title="Eliminar Materia">
+                                    <span className="icon-[mdi--trash-can-outline] text-2xl"></span>
+                                </button>
+                            </div>
+                        </div>
+
+                        {/* Categorias List */}
+                        {isExpanded && (
+                            <div className="p-6 space-y-6 bg-white animate-in slide-in-from-top-2 duration-300">
+                                {getCategorias(materia.id).map((categoria: any) => {
+                                    const isCatExpanded = expandedCategorias[categoria.id];
+                                    return (
+                                        <div key={categoria.id} className="pl-6 border-l-4 border-sky-200 ml-2 group/cat">
+                                            <div
+                                                className="flex justify-between items-center mb-4 cursor-pointer hover:bg-sky-50 p-2 rounded-lg transition-colors -ml-2 pr-4"
+                                                onClick={() => toggleCategoria(categoria.id)}
+                                            >
+                                                <div className="flex items-center gap-3">
+                                                    <span className={`icon-[mdi--chevron-down] text-xl text-sky-600 transition-transform duration-300 ${isCatExpanded ? 'rotate-180' : ''}`}></span>
+                                                    <span className="icon-[mdi--shape] text-xl text-sky-600"></span>
+                                                    <span className="font-semibold text-sky-900 text-lg">{categoria.nombre}</span>
+                                                </div>
+                                                <div className="flex items-center gap-2 opacity-100 sm:opacity-0 sm:group-hover/cat:opacity-100 transition-opacity" onClick={(e) => e.stopPropagation()}>
+                                                    <button
+                                                        onClick={() => onCreate("subcategorias", { categorylegalfieldid: categoria.id })}
+                                                        className="flex items-center gap-1 text-xs bg-sky-100 text-sky-800 px-3 py-1.5 rounded-lg hover:bg-sky-200 transition-colors border border-sky-300 font-medium cursor-pointer shadow-sm"
+                                                        title="Agregar Subcategoría"
+                                                    >
+                                                        <span className="icon-[mdi--plus] text-sm"></span>
+                                                        Subcategoría
+                                                    </button>
+                                                    <button onClick={() => onEdit(categoria, "categorias")} className="p-1.5 hover:bg-sky-100 rounded-full text-sky-700 transition-colors cursor-pointer" title="Editar Categoría">
+                                                        <span className="icon-[uil--pen] text-xl"></span>
+                                                    </button>
+                                                    <button onClick={() => onDelete(categoria, "categorias")} className="p-1.5 hover:bg-red-100 rounded-full text-red-600 transition-colors cursor-pointer" title="Eliminar Categoría">
+                                                        <span className="icon-[mdi--trash-can-outline] text-xl"></span>
+                                                    </button>
+                                                </div>
+                                            </div>
+
+                                            {/* Subcategorias List */}
+                                            {isCatExpanded && (
+                                                <div className="pl-8 space-y-4 animate-in slide-in-from-top-1 duration-200">
+                                                    {getSub(categoria.id).map((sub: any) => {
+                                                        const isSubExpanded = expandedSubcategorias[sub.id];
+                                                        return (
+                                                            <div key={sub.id} className="bg-gray-50 rounded-xl p-4 border border-gray-100 shadow-sm group/sub transition-all hover:border-gray-300 hover:shadow-md">
+                                                                <div
+                                                                    className="flex justify-between items-center cursor-pointer mb-2"
+                                                                    onClick={() => toggleSubcategoria(sub.id)}
+                                                                >
+                                                                    <div className="flex items-center gap-3">
+                                                                        <span className={`icon-[mdi--chevron-down] text-lg text-gray-500 transition-transform duration-300 ${isSubExpanded ? 'rotate-180' : ''}`}></span>
+                                                                        <span className="icon-[mdi--subdirectory-arrow-right] text-xl text-gray-400"></span>
+                                                                        <span className="font-medium text-gray-800 text-base">{sub.nombre}</span>
+                                                                    </div>
+                                                                    <div className="flex items-center gap-2 opacity-100 sm:opacity-0 sm:group-hover/sub:opacity-100 transition-opacity" onClick={(e) => e.stopPropagation()}>
+                                                                        <button
+                                                                            onClick={() => onCreate("ambitos", { longid: sub.id })}
+                                                                            className="flex items-center gap-1 text-xs bg-white border border-gray-300 text-gray-600 px-3 py-1.5 rounded-lg hover:bg-gray-100 transition-colors font-medium shadow-sm cursor-pointer"
+                                                                            title="Agregar Ámbito Legal"
+                                                                        >
+                                                                            <span className="icon-[mdi--plus] text-sm"></span>
+                                                                            Ámbito
+                                                                        </button>
+                                                                        <button onClick={() => onEdit(sub, "subcategorias")} className="p-1.5 hover:bg-gray-200 rounded-full text-gray-600 transition-colors cursor-pointer" title="Editar Subcategoría">
+                                                                            <span className="icon-[uil--pen] text-lg"></span>
+                                                                        </button>
+                                                                        <button onClick={() => onDelete(sub, "subcategorias")} className="p-1.5 hover:bg-red-100 rounded-full text-red-500 transition-colors cursor-pointer" title="Eliminar Subcategoría">
+                                                                            <span className="icon-[mdi--trash-can-outline] text-lg"></span>
+                                                                        </button>
+                                                                    </div>
+                                                                </div>
+
+                                                                {/* Ambitos List */}
+                                                                {isSubExpanded && (
+                                                                    <div className="pl-10 pt-3 grid grid-cols-1 md:grid-cols-2 gap-3 animate-in fade-in duration-300">
+                                                                        {getAmbitos(sub.id).map((ambito: any) => (
+                                                                            <div key={ambito.id} className="flex justify-between items-center bg-white border border-gray-200 rounded-lg px-4 py-2.5 text-base shadow-sm group/amb hover:border-blue-200 hover:shadow-md transition-all">
+                                                                                <span className="text-gray-700 font-medium">{ambito.nombre}</span>
+                                                                                <div className="flex gap-1 opacity-100 sm:opacity-0 sm:group-hover/amb:opacity-100 transition-opacity">
+                                                                                    <button onClick={() => onEdit(ambito, "ambitos")} className="p-1.5 hover:bg-blue-50 rounded-full text-blue-600 transition-colors cursor-pointer" title="Editar Ámbito">
+                                                                                        <span className="icon-[uil--pen] text-base"></span>
+                                                                                    </button>
+                                                                                    <button onClick={() => onDelete(ambito, "ambitos")} className="p-1.5 hover:bg-red-50 rounded-full text-red-400 transition-colors cursor-pointer" title="Eliminar Ámbito">
+                                                                                        <span className="icon-[mdi--trash-can-outline] text-base"></span>
+                                                                                    </button>
+                                                                                </div>
+                                                                            </div>
+                                                                        ))}
+                                                                        {getAmbitos(sub.id).length === 0 && <span className="text-sm text-gray-400 italic pl-1 py-1">Sin ámbitos legales</span>}
+                                                                    </div>
+                                                                )}
+                                                            </div>
+                                                        );
+                                                    })}
+                                                    {getSub(categoria.id).length === 0 && <div className="text-base text-gray-400 italic py-2">Sin subcategorías</div>}
+                                                </div>
+                                            )}
+                                        </div>
+                                    );
+                                })}
+                                {getCategorias(materia.id).length === 0 && <div className="text-base text-gray-400 italic pl-6 py-2">Sin categorías</div>}
+                            </div>
+                        )}
+                    </div>
+                );
+            })}
         </div>
     );
 }

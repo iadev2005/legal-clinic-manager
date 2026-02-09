@@ -857,6 +857,90 @@ export async function getMaterias() {
     }
 }
 
+export async function createMateria(data: Partial<{ nombre: string }>) {
+    try {
+        if (!data.nombre || data.nombre.trim() === '') {
+            return { success: false, error: 'El nombre de la materia es requerido' };
+        }
+
+        const result = await query(`
+            INSERT INTO Materias (nombre_materia)
+            VALUES ($1)
+            RETURNING id_materia, nombre_materia
+        `, [data.nombre]);
+
+        revalidatePath('/administration');
+        return {
+            success: true,
+            data: {
+                id: result.rows[0].id_materia.toString(),
+                nombre: result.rows[0].nombre_materia
+            }
+        };
+    } catch (error: any) {
+        console.error('Error al crear materia:', error);
+        return { success: false, error: error.message || 'Error al crear materia' };
+    }
+}
+
+export async function updateMateria(id: string, data: Partial<{ nombre: string }>) {
+    try {
+        const idMateria = parseInt(id);
+        if (isNaN(idMateria)) {
+            return { success: false, error: 'ID de materia inválido' };
+        }
+
+        const result = await query(`
+            UPDATE Materias
+            SET nombre_materia = $1
+            WHERE id_materia = $2
+            RETURNING id_materia, nombre_materia
+        `, [data.nombre, idMateria]);
+
+        revalidatePath('/administration');
+        return {
+            success: true,
+            data: {
+                id: result.rows[0].id_materia.toString(),
+                nombre: result.rows[0].nombre_materia
+            }
+        };
+    } catch (error: any) {
+        console.error('Error al actualizar materia:', error);
+        return { success: false, error: error.message || 'Error al actualizar materia' };
+    }
+}
+
+export async function deleteMateria(id: string) {
+    try {
+        const idMateria = parseInt(id);
+        if (isNaN(idMateria)) {
+            return { success: false, error: 'ID de materia inválido' };
+        }
+
+        // Verificar dependencias (Categorías)
+        const checkCategorias = await query('SELECT COUNT(*) as count FROM Categorias WHERE id_materia = $1', [idMateria]);
+        if (parseInt(checkCategorias.rows[0].count) > 0) {
+            return {
+                success: false,
+                error: `No se puede eliminar la materia porque tiene ${checkCategorias.rows[0].count} categoría(s) asociada(s). Elimine primero las categorías.`
+            };
+        }
+
+        const result = await query('DELETE FROM Materias WHERE id_materia = $1 RETURNING id_materia', [idMateria]);
+
+        if (result.rows.length === 0) {
+            return { success: false, error: 'Materia no encontrada' };
+        }
+
+        revalidatePath('/administration');
+        return { success: true };
+    } catch (error: any) {
+        console.error('Error al eliminar materia:', error);
+        return { success: false, error: error.message || 'Error al eliminar materia' };
+    }
+}
+
 // ============================================================================
 // SEMESTRES
 // ============================================================================
@@ -1089,6 +1173,7 @@ export async function getLegalField() {
                 num_ambito_legal || '-' || num_subcategoria || '-' || num_categoria || '-' || id_materia as id,
                 nombre_ambito_legal as nombre,
                 num_subcategoria || '-' || num_categoria || '-' || id_materia  as "longid",
+                num_subcategoria || '-' || num_categoria || '-' || id_materia  as "categorylegalfieldid",
                 num_subcategoria,
                 num_categoria,
                 id_materia

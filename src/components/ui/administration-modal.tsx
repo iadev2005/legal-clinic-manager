@@ -21,13 +21,14 @@ interface AdministrationModalProps {
     onSave: (data: any) => Promise<void> | void;
     item?: any;
     mode: "create" | "edit";
-    type: "users" | "subcatalogs" | "legalfield" | "centers" | "semestres";
+    type: "users" | "centers" | "semestres" | "materias" | "categorias" | "subcategorias" | "ambitos";
     parishes?: { id: string; nombre: string }[];
     participations?: any[];
     materias?: { id: string; nombre: string }[];
-    categorias?: { id: string; nombre: string; legalfieldid?: string; materiaid?: string }[];
+    categorias?: { id: string; nombre: string; materiaid?: string }[];
     subcategorias?: { id: string; nombre: string; categorymateriaid: string }[];
     semestres?: { term: string; fecha_inicio: string; fecha_final: string }[];
+    initialData?: any;
 }
 
 interface CustomSelectProps {
@@ -106,12 +107,17 @@ export default function AdministrationModal({
     categorias = [],
     subcategorias = [],
     semestres = [],
+    initialData = {},
 }: AdministrationModalProps) {
     const [formData, setFormData] = useState<any>({});
     const [loading, setLoading] = useState(false);
     const [showPassword, setShowPassword] = useState(false);
     const [error, setError] = useState<string | null>(null);
     const [isExistingUser, setIsExistingUser] = useState(false);
+
+    // Filter states
+    const [selectedMateriaId, setSelectedMateriaId] = useState<string>("");
+    const [selectedCategoryId, setSelectedCategoryId] = useState<string>("");
 
     // Initial State Setup
     useEffect(() => {
@@ -139,6 +145,26 @@ export default function AdministrationModal({
                     fecha_inicio: item.fecha_inicio ? new Date(item.fecha_inicio).toISOString().split('T')[0] : "",
                     fecha_final: item.fecha_final ? new Date(item.fecha_final).toISOString().split('T')[0] : "",
                 });
+
+                // Set initial filters for edit mode
+                if (type === "subcategorias" && (item.categorylegalfieldid || item.categorymateriaid)) {
+                    const catId = item.categorylegalfieldid || item.categorymateriaid;
+                    const cat = categorias.find(c => String(c.id) === String(catId));
+                    if (cat && cat.materiaid) {
+                        setSelectedMateriaId(cat.materiaid);
+                    }
+                } else if (type === "ambitos" && item.longid) {
+                    const sub = subcategorias.find(s => String(s.id) === String(item.longid));
+                    if (sub && (sub.categorymateriaid || (sub as any).categorylegalfieldid)) {
+                        const catId = sub.categorymateriaid || (sub as any).categorylegalfieldid;
+                        setSelectedCategoryId(catId);
+                        // Also set the materia ID
+                        const cat = categorias.find(c => String(c.id) === String(catId));
+                        if (cat && cat.materiaid) {
+                            setSelectedMateriaId(cat.materiaid);
+                        }
+                    }
+                }
             } else {
                 setFormData({
                     user: "",
@@ -157,7 +183,31 @@ export default function AdministrationModal({
                     nombre: "",
                     term: "",
                     tipoParticipacion: "Inscrito",
+                    ...initialData
                 });
+
+                // Set initial filters for create mode (from initialData)
+                if (type === "subcategorias" && initialData.categorylegalfieldid) {
+                    const cat = categorias.find(c => String(c.id) === String(initialData.categorylegalfieldid));
+                    if (cat && cat.materiaid) {
+                        setSelectedMateriaId(cat.materiaid);
+                    }
+                } else if (type === "ambitos" && initialData.longid) {
+                    const sub = subcategorias.find(s => String(s.id) === String(initialData.longid));
+                    if (sub && (sub.categorymateriaid || (sub as any).categorylegalfieldid)) {
+                        const catId = sub.categorymateriaid || (sub as any).categorylegalfieldid;
+                        setSelectedCategoryId(catId);
+                        // Also set the materia ID
+                        const cat = categorias.find(c => String(c.id) === String(catId));
+                        if (cat && cat.materiaid) {
+                            setSelectedMateriaId(cat.materiaid);
+                        }
+                    }
+                } else {
+                    // Reset filters if no initial data
+                    setSelectedMateriaId("");
+                    setSelectedCategoryId("");
+                }
             }
             setShowPassword(false);
         }
@@ -285,56 +335,55 @@ export default function AdministrationModal({
             finalData.id = `${formData.cedulaPrefix}-${formData.cedulaNumber}`;
             finalData.user = `${formData.nombres} ${formData.apellidos}`;
         }
-        if (type === "subcatalogs") {
-            // Validar Materia
+        if (type === "materias") {
+            if (!formData.nombre || formData.nombre.trim() === "") {
+                setError("El nombre es requerido");
+                setLoading(false);
+                return;
+            }
+        }
+
+        if (type === "categorias") {
+            if (!formData.nombre || formData.nombre.trim() === "") {
+                setError("El nombre es requerido");
+                setLoading(false);
+                return;
+            }
             if (!formData.materiaId) {
                 setError("Debe seleccionar una materia");
                 setLoading(false);
                 return;
             }
-
-            const isCivil = materias.find(m => String(m.id) === String(formData.materiaId))?.nombre.toLowerCase().includes("civil");
-
-            if (isCivil) {
-                // Si es Civil, requerimos selección explícita
-                if (!formData.categorylegalfieldid || formData.categorylegalfieldid.trim() === "") {
-                    setError("Debe seleccionar una categoría");
-                    setLoading(false);
-                    return;
-                }
-            } else {
-                // Si no es Civil, auto-asignamos la primera categoría disponible para esa materia si no se seleccionó ninguna
-                if (!formData.categorylegalfieldid) {
-                    const availableCats = categorias.filter(c => String(c.materiaid) === String(formData.materiaId));
-                    if (availableCats.length > 0) {
-                        finalData.categorylegalfieldid = availableCats[0].id;
-                    } else {
-                        // Fallback si no hay categorías (no debería pasar si la base de datos es consistente)
-                        console.warn("No se encontraron categorías para la materia seleccionada:", formData.materiaId);
-                        // Permitimos continuar, pero el backend podría fallar si requiere categoría válida
-                        // O podríamos lanzar error aquí
-                        setError("No hay categorías configuradas para esta materia.");
-                        setLoading(false);
-                        return;
-                    }
-                }
-            }
-            // Aseguramos que legalfieldid (o categorylegalfieldid) se envíe correctamente. 
-            // createSubCategoria usa categorylegalfieldid.
-            // finalData ya tiene categorylegalfieldid si fue seleccionado o auto-asignado.
-            // No necesitamos asignar legalfieldid aquí para subcatalogos, eso era confusión anterior.
+            // Prepare data for createCategoria/updateCategoria
+            finalData.materiaid = formData.materiaId; // API expects materiaid
         }
-        if (type === "legalfield") {
-            // Asegurar que longid (Subcategoría) esté presente y sea válido
-            if (!formData.longid || formData.longid.trim() === "") {
+
+        if (type === "subcategorias") {
+            if (!formData.nombre || formData.nombre.trim() === "") {
+                setError("El nombre es requerido");
+                setLoading(false);
+                return;
+            }
+            if (!formData.categorylegalfieldid) {
+                setError("Debe seleccionar una categoría");
+                setLoading(false);
+                return;
+            }
+        }
+
+        if (type === "ambitos") {
+            if (!formData.nombre || formData.nombre.trim() === "") {
+                setError("El nombre es requerido");
+                setLoading(false);
+                return;
+            }
+            if (!formData.longid) {
                 setError("Debe seleccionar una subcategoría");
                 setLoading(false);
                 return;
             }
-            // Enviar el ID de la subcategoría. Si el backend espera 'categorylegalfieldid', lo mapeamos.
-            // Pero lo más probable es que espere 'categorylegalfieldid' con el ID del padre inmediato.
-            finalData.categorylegalfieldid = String(formData.longid).trim();
         }
+
         if (type === "centers" && formData.parishId) {
             const parsed = parseInt(formData.parishId);
             if (!isNaN(parsed)) {
@@ -364,7 +413,16 @@ export default function AdministrationModal({
 
     const getTitle = () => {
         const action = mode === "create" ? "Crear" : "Editar";
-        const entity = type === "users" ? "Usuario" : type === "subcatalogs" ? "Subcategoría" : type === "legalfield" ? "Legalfield" : "Centro";
+        let entity = "";
+        switch (type) {
+            case "users": entity = "Usuario"; break;
+            case "centers": entity = "Centro"; break;
+            case "semestres": entity = "Semestre"; break;
+            case "materias": entity = "Materia"; break;
+            case "categorias": entity = "Categoría"; break;
+            case "subcategorias": entity = "Subcategoría"; break;
+            case "ambitos": entity = "Ámbito Legal"; break;
+        }
         return `${action} ${entity}`;
     };
 
@@ -579,7 +637,7 @@ export default function AdministrationModal({
                             </div>
                         ) : (
                             <div className="space-y-4">
-                                {type !== "semestres" && (
+                                {type !== "semestres" && type !== "materias" && type !== "categorias" && type !== "subcategorias" && type !== "ambitos" && (
                                     <div className="space-y-2">
                                         <Label htmlFor="nombre">Nombre <span className="text-red-500">*</span></Label>
                                         <Input
@@ -590,50 +648,128 @@ export default function AdministrationModal({
                                         />
                                     </div>
                                 )}
-                                {type === "subcatalogs" && (
+                                {type === "materias" && (
+                                    <div className="space-y-2">
+                                        <Label htmlFor="nombre">Nombre de la Materia <span className="text-red-500">*</span></Label>
+                                        <Input
+                                            id="nombre"
+                                            value={formData.nombre || ""}
+                                            onChange={(e) => handleChange("nombre", e.target.value)}
+                                            required
+                                        />
+                                    </div>
+                                )}
+
+                                {type === "categorias" && (
                                     <>
                                         <div className="space-y-2">
                                             <Label htmlFor="materia">Materia <span className="text-red-500">*</span></Label>
                                             <CustomSelect
                                                 value={formData.materiaId || ""}
+                                                onChange={(val) => handleChange("materiaId", val)}
+                                                options={materias.map(m => ({ value: m.id, label: m.nombre }))}
+                                            />
+                                        </div>
+                                        <div className="space-y-2">
+                                            <Label htmlFor="nombre">Nombre de la Categoría <span className="text-red-500">*</span></Label>
+                                            <Input
+                                                id="nombre"
+                                                value={formData.nombre || ""}
+                                                onChange={(e) => handleChange("nombre", e.target.value)}
+                                                required
+                                            />
+                                        </div>
+                                    </>
+                                )}
+
+                                {type === "subcategorias" && (
+                                    <>
+                                        <div className="space-y-2">
+                                            <Label htmlFor="materia_filter">Filtrar por Materia</Label>
+                                            <CustomSelect
+                                                value={selectedMateriaId}
                                                 onChange={(val) => {
-                                                    console.log('Materia seleccionada:', val);
-                                                    handleChange("materiaId", val);
-                                                    handleChange("categorylegalfieldid", ""); // Reset category
+                                                    setSelectedMateriaId(val);
+                                                    setFormData((prev: any) => ({ ...prev, categorylegalfieldid: "" })); // Reset category
                                                 }}
                                                 options={materias.map(m => ({ value: m.id, label: m.nombre }))}
                                             />
                                         </div>
-                                        {formData.materiaId && materias.find(m => m.id === formData.materiaId)?.nombre.toLowerCase().includes("civil") && (
-                                            <div className="space-y-2">
-                                                <Label htmlFor="categoria">Categoría <span className="text-red-500">*</span></Label>
-                                                <CustomSelect
-                                                    value={formData.categorylegalfieldid || ""}
-                                                    onChange={(val) => {
-                                                        console.log('Categoría seleccionada:', val);
-                                                        handleChange("categorylegalfieldid", val);
-                                                    }}
-                                                    options={categorias.filter(c => String(c.materiaid) === String(formData.materiaId)).map(c => ({ value: c.id, label: c.nombre }))}
-                                                />
-                                                {!formData.categorylegalfieldid && mode === "create" && (
-                                                    <p className="text-xs text-red-500">Debe seleccionar una categoría</p>
-                                                )}
-                                            </div>
-                                        )}
+                                        <div className="space-y-2">
+                                            <Label htmlFor="categoria">Categoría <span className="text-red-500">*</span></Label>
+                                            <CustomSelect
+                                                value={formData.categorylegalfieldid || ""}
+                                                onChange={(val) => handleChange("categorylegalfieldid", val)}
+                                                options={categorias
+                                                    .filter(c => !selectedMateriaId || String(c.materiaid) === String(selectedMateriaId))
+                                                    .map(c => ({ value: c.id, label: c.nombre }))
+                                                }
+                                            />
+                                        </div>
+                                        <div className="space-y-2">
+                                            <Label htmlFor="nombre">Nombre de la Subcategoría <span className="text-red-500">*</span></Label>
+                                            <Input
+                                                id="nombre"
+                                                value={formData.nombre || ""}
+                                                onChange={(e) => handleChange("nombre", e.target.value)}
+                                                required
+                                            />
+                                        </div>
                                     </>
                                 )}
-                                {type === "legalfield" && (
-                                    <div className="space-y-2">
-                                        <Label htmlFor="subcategoria">Subcategoría <span className="text-red-500">*</span></Label>
-                                        <CustomSelect
-                                            value={formData.longid || ""}
-                                            onChange={(val) => handleChange("longid", val)}
-                                            options={subcategorias.map(s => ({ value: s.id, label: s.nombre }))}
-                                        />
-                                        {!formData.longid && mode === "create" && (
-                                            <p className="text-xs text-red-500">Debe seleccionar una subcategoría</p>
-                                        )}
-                                    </div>
+
+                                {type === "ambitos" && (
+                                    <>
+                                        <div className="space-y-2">
+                                            <Label htmlFor="materia_filter_ambito">Filtrar por Materia</Label>
+                                            <CustomSelect
+                                                value={selectedMateriaId}
+                                                onChange={(val) => {
+                                                    setSelectedMateriaId(val);
+                                                    setSelectedCategoryId(""); // Reset category
+                                                    setFormData((prev: any) => ({ ...prev, longid: "" })); // Reset subcategory
+                                                }}
+                                                options={materias.map(m => ({ value: m.id, label: m.nombre }))}
+                                            />
+                                        </div>
+                                        <div className="space-y-2">
+                                            <Label htmlFor="categoria_filter">Filtrar por Categoría</Label>
+                                            <CustomSelect
+                                                value={selectedCategoryId}
+                                                onChange={(val) => {
+                                                    setSelectedCategoryId(val);
+                                                    setFormData((prev: any) => ({ ...prev, longid: "" })); // Reset subcategory
+                                                }}
+                                                options={categorias
+                                                    .filter(c => !selectedMateriaId || String(c.materiaid) === String(selectedMateriaId))
+                                                    .map(c => ({
+                                                        value: c.id,
+                                                        label: c.nombre
+                                                    }))
+                                                }
+                                            />
+                                        </div>
+                                        <div className="space-y-2">
+                                            <Label htmlFor="subcategoria">Subcategoría <span className="text-red-500">*</span></Label>
+                                            <CustomSelect
+                                                value={formData.longid || ""}
+                                                onChange={(val) => handleChange("longid", val)}
+                                                options={subcategorias
+                                                    .filter(s => !selectedCategoryId || String(s.categorymateriaid) === String(selectedCategoryId) || String((s as any).categorylegalfieldid) === String(selectedCategoryId))
+                                                    .map(s => ({ value: s.id, label: s.nombre }))
+                                                }
+                                            />
+                                        </div>
+                                        <div className="space-y-2">
+                                            <Label htmlFor="nombre">Nombre del Ámbito Legal <span className="text-red-500">*</span></Label>
+                                            <Input
+                                                id="nombre"
+                                                value={formData.nombre || ""}
+                                                onChange={(e) => handleChange("nombre", e.target.value)}
+                                                required
+                                            />
+                                        </div>
+                                    </>
                                 )}
                                 {type === "centers" && (
                                     <div className="space-y-2">
