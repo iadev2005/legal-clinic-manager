@@ -438,7 +438,7 @@ export default function AdministrationModal({
                     </DialogDescription>
                 </DialogHeader>
 
-                <div className="max-h-[80vh] overflow-y-auto pr-2 custom-scrollbar flex flex-col gap-4">
+                <div className="max-h-[80vh] overflow-y-auto pr-2 custom-scrollbar flex flex-col gap-4 px-1 pb-4">
                     <form id="admin-form" onSubmit={handleSubmit} className="space-y-4 pt-2">
                         {error && (
                             <div className="bg-red-100 text-red-600 p-3 rounded-lg text-sm font-semibold">
