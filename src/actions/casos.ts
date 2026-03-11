@@ -5,6 +5,24 @@ import { revalidatePath } from 'next/cache';
 import { getSession } from '@/lib/auth-utils';
 import { createNotificacion } from './notificaciones';
 import { verificarPermisoAlumno } from '@/lib/permissions';
+import { CasoRepository } from '@/lib/repositories/caso.repository';
+import { handleError } from '@/lib/errors';
+
+// Repository instance
+const casoRepository = new CasoRepository();
+
+// ============================================================================
+// HELPER: Manejo de errores consistente para Server Actions
+// ============================================================================
+
+function actionErrorHandler(error: any, context?: string): { success: false; error: string } {
+    const handled = handleError(error);
+    const prefix = context ? `[${context}] ` : '';
+    return { 
+        success: false, 
+        error: `${prefix}${handled.message}` 
+    };
+}
 
 // ============================================================================
 // INTERFACES Y TIPOS
@@ -223,8 +241,7 @@ export async function getCasos() {
     `, [cedulaUsuario]);
         return { success: true, data: result.rows };
     } catch (error: any) {
-        console.error('Error al obtener casos:', error);
-        return { success: false, error: error.message || 'Error al obtener casos' };
+        return actionErrorHandler(error, 'obtener casos');
     }
 }
 
@@ -271,8 +288,7 @@ export async function getCasoById(nroCaso: number) {
 
         return { success: true, data: result.rows[0] };
     } catch (error: any) {
-        console.error('Error al obtener caso:', error);
-        return { success: false, error: error.message || 'Error al obtener caso' };
+        return actionErrorHandler(error, 'obtener caso');
     }
 }
 
@@ -407,8 +423,7 @@ export async function createCaso(data: CreateCasoData) {
         return { success: true, data: casoResult.rows[0] };
     } catch (error: any) {
         await query('ROLLBACK');
-        console.error('Error al crear caso:', error);
-        return { success: false, error: error.message || 'Error al crear caso' };
+        return actionErrorHandler(error, 'crear caso');
     }
 }
 
@@ -538,8 +553,7 @@ export async function updateCaso(nroCaso: number, data: UpdateCasoData) {
         return { success: true, data: result.rows[0] };
     } catch (error: any) {
         await query('ROLLBACK');
-        console.error('Error al actualizar caso:', error);
-        return { success: false, error: error.message || 'Error al actualizar caso' };
+        return actionErrorHandler(error, 'actualizar caso');
     }
 }
 
@@ -596,9 +610,8 @@ export async function deleteCaso(nroCaso: number) {
 
         revalidatePath('/cases');
         return { success: true };
-    } catch (error: any) {
-        console.error('Error al eliminar caso:', error);
-        return { success: false, error: error.message || 'Error al eliminar el caso' };
+    } catch (error) {
+        return actionErrorHandler(error, 'eliminar caso');
     }
 }
 
@@ -621,8 +634,7 @@ export async function getEstatusActual(nroCaso: number) {
 
         return { success: true, data: result.rows[0] || null };
     } catch (error: any) {
-        console.error('Error al obtener estatus:', error);
-        return { success: false, error: error.message };
+        return actionErrorHandler(error, 'obtener estatus');
     }
 }
 
@@ -687,9 +699,8 @@ export async function cambiarEstatus(nroCaso: number, idEstatus: number, motivo:
 
         revalidatePath('/cases');
         return { success: true };
-    } catch (error: any) {
-        console.error('Error al cambiar estatus:', error);
-        return { success: false, error: error.message };
+    } catch (error) {
+        return actionErrorHandler(error, 'cambiar estatus');
     }
 }
 
@@ -709,9 +720,8 @@ export async function getHistorialEstatus(nroCaso: number) {
     `, [nroCaso]);
 
         return { success: true, data: result.rows };
-    } catch (error: any) {
-        console.error('Error al obtener historial:', error);
-        return { success: false, error: error.message };
+    } catch (error) {
+        return actionErrorHandler(error, 'obtener historial');
     }
 }
 
@@ -1137,9 +1147,8 @@ export async function getMaterias() {
       ORDER BY nombre_materia
     `);
         return { success: true, data: result.rows };
-    } catch (error: any) {
-        console.error('Error al obtener materias:', error);
-        return { success: false, error: error.message };
+    } catch (error) {
+        return actionErrorHandler(error, 'obtener materias');
     }
 }
 
@@ -1152,9 +1161,8 @@ export async function getCategoriasByMateria(idMateria: number) {
       ORDER BY nombre_categoria
     `, [idMateria]);
         return { success: true, data: result.rows };
-    } catch (error: any) {
-        console.error('Error al obtener categorías:', error);
-        return { success: false, error: error.message };
+    } catch (error) {
+        return actionErrorHandler(error, 'obtener categorías');
     }
 }
 
@@ -1167,9 +1175,8 @@ export async function getSubCategoriasByCategoria(numCategoria: number, idMateri
       ORDER BY nombre_subcategoria
     `, [numCategoria, idMateria]);
         return { success: true, data: result.rows };
-    } catch (error: any) {
-        console.error('Error al obtener subcategorías:', error);
-        return { success: false, error: error.message };
+    } catch (error) {
+        return actionErrorHandler(error, 'obtener subcategorías');
     }
 }
 
@@ -1228,9 +1235,10 @@ export async function getEstatus() {
       ORDER BY id_estatus
     `);
         return { success: true, data: result.rows };
-    } catch (error: any) {
-        console.error('Error al obtener estatus:', error);
-        return { success: false, error: error.message };
+    } catch (error) {
+        const handled = handleError(error);
+        // En producción, handled.message ya es user-friendly
+        return { success: false, error: handled.message };
     }
 }
 
@@ -1242,9 +1250,9 @@ export async function getNucleos() {
       ORDER BY nombre
     `);
         return { success: true, data: result.rows };
-    } catch (error: any) {
-        console.error('Error al obtener núcleos:', error);
-        return { success: false, error: error.message };
+    } catch (error) {
+        const handled = handleError(error);
+        return { success: false, error: handled.message };
     }
 }
 
@@ -1588,5 +1596,44 @@ export async function getProfesoresDisponibles(term?: string) {
     } catch (error: any) {
         console.error('Error al obtener profesores:', error);
         return { success: false, error: error.message };
+    }
+}
+
+// ============================================================================
+// REPOSITORY PATTERN - Ejemplo de refactorización incremental
+// ============================================================================
+
+/**
+ * Ejemplo de función refactorizada usando Repository Pattern
+ * getCasosSimple retorna casos con filtros básicos usando el repository
+ */
+export async function getCasosSimple(
+    search?: string,
+    estatusId?: number
+): Promise<{ success: boolean; data?: any[]; error?: string }> {
+    try {
+        const casos = await casoRepository.findWithFilters(search, estatusId);
+        return { success: true, data: casos };
+    } catch (error) {
+        const handled = handleError(error);
+        return { success: false, error: handled.message };
+    }
+}
+
+/**
+ * Ejemplo: Obtener caso por ID usando repository
+ */
+export async function getCasoByIdSimple(
+    nroCaso: number
+): Promise<{ success: boolean; data?: any; error?: string }> {
+    try {
+        const caso = await casoRepository.findById(nroCaso);
+        if (!caso) {
+            return { success: false, error: 'Caso no encontrado' };
+        }
+        return { success: true, data: caso };
+    } catch (error) {
+        const handled = handleError(error);
+        return { success: false, error: handled.message };
     }
 }
