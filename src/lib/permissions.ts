@@ -190,15 +190,3 @@ export async function verificarPermisoAlumno(
             return { allowed: false, error: 'Recurso no reconocido' };
     }
 }
-
-
-
-
-
-
-
-
-
-
-
-
